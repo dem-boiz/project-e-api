@@ -1,0 +1,5 @@
+# Code quality & tooling
+ruff==0.4.4          # Linting
+mypy==1.10.0         # Type checking
+pytest==8.2.1        # Test runner
+httpx==0.27.0        # Test client for FastAPI
