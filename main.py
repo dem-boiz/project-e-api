@@ -5,7 +5,6 @@ from auth.utils import verify_jwt
 
 app = FastAPI()
 security = HTTPBearer()
-
 app.include_router(auth_router)
 
 @app.get("/")
