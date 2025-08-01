@@ -1,16 +1,15 @@
-from sqlalchemy import Column, String, Text, DateTime, Integer, UniqueConstraint
+from sqlalchemy import Column, String, DateTime, Integer, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
 from database.session import Base
 from sqlalchemy.sql import func
 
-class Vendor(Base):
-    __tablename__ = "vendors"
+class Host(Base):
+    __tablename__ = "hosts"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    vendor_number = Column(Integer, unique=True, autoincrement=True)
+    host_number = Column(Integer, unique=True, autoincrement=True)
     company_name = Column(String, nullable=False)
     email = Column(String, unique=True, nullable=False)
     password_hash = Column(String, nullable=False)
-    description = Column(Text)
     created_at = Column(DateTime, server_default=func.now())

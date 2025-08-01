@@ -1,13 +1,10 @@
-# models/__init__.py
-
-from .otp_record import OTPRecord
+# models/__init__.py 
+from .vendor import Vendor 
+from .otp_schemas import OTPRequest, OTPVerify, TokenResponse
+from .user import User
+from .host import Host
 from .vendor import Vendor
-from .address import Address
-from .hosting_info import HostingInfo
-
-__all__ = [
-    "OTPRecord",
-    "Vendor",
-    "Address",
-    "HostingInfo",
-]
+from .event import Event
+from .otp import OTP
+from .user_event_access import UserEventAccess
+from .event_vendors import EventVendor

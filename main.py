@@ -1,17 +1,6 @@
-from fastapi import FastAPI, Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from auth.routes import router as auth_router
-from auth.utils import verify_jwt
-
-app = FastAPI()
-security = HTTPBearer()
-app.include_router(auth_router)
-
-@app.get("/")
-def read_root():
-    return {"message": "Hello, world"}
-
-@app.get("/me")
-def get_me(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    email = verify_jwt(credentials.credentials)
-    return {"email": email}
+from fastapi import FastAPI
+from routes.user_route import router as user_router
+from routes.otp_route import router as otp_router
+app = FastAPI() 
+app.include_router(user_router)
+app.include_router(otp_router)
