@@ -7,3 +7,4 @@ from routes.otp_route import router as otp_router
 app = FastAPI() 
 app.include_router(user_router)
 app.include_router(otp_router)
+app.include_router(base_router)
