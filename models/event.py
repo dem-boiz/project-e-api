@@ -20,6 +20,7 @@ class Event(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     event_number = Column(Integer, unique=True, autoincrement=True)
     event_name = Column(String, nullable=False)
+    description = Column(String, nullable=True)
     location = Column(String, nullable=False)
     event_datetime = Column(DateTime, nullable=False)
     event_date = Column(Date, Computed("event_datetime::date", persisted=True))
