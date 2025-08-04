@@ -6,9 +6,6 @@ router = APIRouter()
 async def read_root():
     return {"message": "Welcome to Project E API"}
 
-@router.get("/health", tags=["base"])
-async def health_check():
-    return {"status": "healthy", "message": "API is running"}
 
 @router.get("/debug", tags=["base"])
 async def debug_info():
