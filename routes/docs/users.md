@@ -20,14 +20,13 @@ Creates a new user if the email is not already registered.
 {
   "email": "example@example.com"
 }
+```
 Response (201 Created)
-json
-Copy
-Edit
+```json 
 {
   "id": "uuid",
   "email": "example@example.com"
-}
+```
 Errors
 400 Bad Request – Email already registered.
 
@@ -40,13 +39,12 @@ Path Parameters
 user_id (UUID): The unique ID of the user.
 
 Response (200 OK)
-json
-Copy
-Edit
+```json 
 {
   "id": "uuid",
   "email": "example@example.com"
 }
+```
 Errors
 404 Not Found – User not found.
 
@@ -59,13 +57,12 @@ Path Parameters
 email (string): The email address of the user.
 
 Response (200 OK)
-json
-Copy
-Edit
+```json 
 {
   "id": "uuid",
   "email": "example@example.com"
 }
+```
 Errors
 404 Not Found – User not found.
 
@@ -85,17 +82,15 @@ Errors
 
 🧱 Models
 🔸 UserCreate
-json
-Copy
-Edit
+```json 
 {
   "email": "example@example.com"
 }
+```
 🔸 UserRead
-json
-Copy
-Edit
+```json  
 {
   "id": "uuid",
   "email": "example@example.com"
 }
+```
