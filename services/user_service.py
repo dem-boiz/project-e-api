@@ -19,11 +19,11 @@ class UserService:
 
     async def create_user(self, user_data: UserCreate) -> User:
         # You might want to check if user already exists here:
-        existing = await self.repo.get_user_by_email(user_data.email)
+        existing = await self.repo.get_user_by_email(email=user_data.email)
         if existing:
             raise ValueError("User already exists with this email.")
 
-        return await self.repo.create_user(user_data)
+        return await self.repo.create_user(user_data.email)
 
     async def soft_delete_user(self, user_id: uuid.UUID) -> bool:
         user = await self.repo.get_user_by_id(user_id)
@@ -32,6 +32,13 @@ class UserService:
         user.is_deleted = True
         await self.repo.session.commit()
         return True
+
+    async def hard_delete_user(self, user_id: uuid.UUID) -> bool:
+        user = await self.repo.get_user_by_id(user_id)
+        if not user:
+            return False 
+        return await self.repo.delete_user_by_id(user_id)
+            
 
     async def list_users(self) -> list[User]:
         return await self.repo.list_users()

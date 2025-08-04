@@ -46,7 +46,7 @@ async def generate_unique_otp_code(repo: OTPRepository, length: int = 6) -> str:
     raise Exception("Failed to generate unique OTP code after multiple attempts")
 
 
-@router.post("/", response_model=OTPResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/create", response_model=OTPResponse, status_code=status.HTTP_201_CREATED)
 async def create_otp(
     otp_request: OTPCreateRequest,
     repo: OTPRepository = Depends(lambda: OTPRepository(get_async_session())),
