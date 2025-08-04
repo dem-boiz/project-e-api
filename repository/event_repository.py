@@ -10,6 +10,7 @@ class EventRepository:
         self.session = session
 
     async def create_event(self, event: EventCreateSchema) -> Event:
+        print(f"Creating new event: {event.name}")
         new_event = Event(
             id=uuid.uuid4(),
             name=event.name,
@@ -22,24 +23,31 @@ class EventRepository:
         self.session.add(new_event)
         await self.session.commit()
         await self.session.refresh(new_event)
+        print(f"Event created successfully with ID: {new_event.id}")
         return new_event
 
     async def get_all_events(self) -> list[Event]:
         print("Fetching all events from repository")
         result = await self.session.execute(select(Event))
-        return result.scalars().all()
+        events = result.scalars().all()
+        print(f"Found {len(events)} events in database")
+        return events
     
     async def delete_event(self, event_id: str) -> bool:
+        print(f"Attempting to delete event with ID: {event_id}")
         try:
             result = await self.session.execute(select(Event).where(Event.id == event_id))
             event = result.scalar_one()
             await self.session.delete(event)
             await self.session.commit()
+            print(f"Event {event_id} deleted successfully")
             return True
         except NoResultFound:
+            print(f"Event {event_id} not found for deletion")
             return False
         
     async def update_event(self, event_id: str, data: EventCreateSchema) -> Event | None:
+        print(f"Attempting to update event with ID: {event_id}")
         try:
             result = await self.session.execute(select(Event).where(Event.id == event_id))
             event = result.scalar_one()
@@ -50,6 +58,8 @@ class EventRepository:
 
             await self.session.commit()
             await self.session.refresh(event)
+            print(f"Event {event_id} updated successfully")
             return event
         except NoResultFound:
+            print(f"Event {event_id} not found for update")
             return None
