@@ -3,7 +3,7 @@ from handlers.event_handler import post_event_handler, delete_event_handler, get
 from database.session import get_async_session
 
 from repository.event_repository import EventRepository
-from schema.event_schemas import EventCreateSchema
+from schema.event_schemas import EventCreateSchema, EventUpdateSchema
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/events", tags=["events"])
@@ -26,5 +26,5 @@ async def get_events(repo: EventRepository = Depends(get_event_repo)):
     return await get_events_handler(repo)
 
 @router.patch("/{event_id}")
-async def update_event(event_id: str, data: EventCreateSchema, repo: EventRepository = Depends(get_event_repo)):
+async def update_event(event_id: str, data: EventUpdateSchema, repo: EventRepository = Depends(get_event_repo)):
     return await patch_event_handler(repo, event_id, data)

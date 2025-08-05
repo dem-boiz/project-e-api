@@ -1,4 +1,4 @@
-from schema.event_schemas import EventCreateSchema
+from schema.event_schemas import EventCreateSchema, EventUpdateSchema
 from repository.event_repository import EventRepository
 
 async def post_event_handler(repo: EventRepository, data: EventCreateSchema):
@@ -10,6 +10,6 @@ async def get_events_handler(repo: EventRepository):
 async def delete_event_handler(repo: EventRepository, event_id: str):
     return await repo.delete_event(event_id)
 
-async def patch_event_handler(repo: EventRepository, event_id: str, data: EventCreateSchema):
+async def patch_event_handler(repo: EventRepository, event_id: str, data: EventUpdateSchema):
     return await repo.update_event(event_id, data)
 

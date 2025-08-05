@@ -3,7 +3,7 @@ from sqlalchemy.future import select
 from sqlalchemy.exc import NoResultFound
 import uuid
 from models.event import Event
-from schema.event_schemas import EventCreateSchema
+from schema.event_schemas import EventCreateSchema, EventUpdateSchema
 from datetime import datetime
 
 class EventRepository:
@@ -50,15 +50,23 @@ class EventRepository:
             print(f"Event {event_id} not found for deletion")
             return False
         
-    async def update_event(self, event_id: str, data: EventCreateSchema) -> Event | None:
+    async def update_event(self, event_id: str, data: EventUpdateSchema) -> Event | None:
         print(f"Attempting to update event with ID: {event_id}")
         try:
             result = await self.session.execute(select(Event).where(Event.id == event_id))
             event = result.scalar_one()
-            event.event_name = data.name
-            event.description = data.description
-            event.event_datetime = data.datetime
-            event.location = data.location
+            
+            # Only update fields that are provided (not None)
+            if data.name is not None:
+                event.name = data.name
+            if data.description is not None:
+                event.description = data.description
+            if data.location is not None:
+                event.location = data.location
+            if data.datetime is not None:
+                event.date_time = datetime.fromisoformat(data.datetime)
+            if data.host_id is not None:
+                event.host_id = data.host_id
 
             await self.session.commit()
             await self.session.refresh(event)
