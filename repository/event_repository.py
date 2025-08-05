@@ -15,9 +15,9 @@ class EventRepository:
             id=uuid.uuid4(),
             name=event.name,
             description=event.description,
-            date=event.date_time,
-            location=event.location
-
+            date_time=event.datetime,
+            location=event.location,
+            host_id=event.host_id
         )
 
         self.session.add(new_event)
