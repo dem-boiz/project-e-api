@@ -12,6 +12,7 @@ async def get_event_repo(session: AsyncSession = Depends(get_async_session)):
     return EventRepository(session)
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED)
 async def create_event(data: EventCreateSchema, repo: EventRepository = Depends(get_event_repo)):
     return await post_event_handler(repo, data)
 
@@ -20,6 +21,7 @@ async def delete_event(event_id: str, repo: EventRepository = Depends(get_event_
     return await delete_event_handler(repo, event_id)
 
 @router.get("/")
+@router.get("")
 async def get_events(repo: EventRepository = Depends(get_event_repo)):
     return await get_events_handler(repo)
 
