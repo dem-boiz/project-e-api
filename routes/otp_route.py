@@ -10,22 +10,20 @@ from database.session import get_async_session
 from services import OTPService
 from models.otp import OTP
 from schema import OTPCreateRequest, OTPResponse, OTPVerifyRequest, OTPVerifyResponse, OTPDeleteRequest  
-
+from handlers import create_otp_handler, delete_otp_handler, verify_otp_handler
 router = APIRouter(prefix="/otps", tags=["otps"])
- 
-# Dependency to get OTPService
-async def get_otp_service(session: AsyncSession = Depends(get_async_session)):
+
+ # Dependency to get OTPService
+async def get_otp_service(session: AsyncSession = Depends(get_async_session)) -> OTPService:
     return OTPService(session)
 
- 
-# Create OTP Record 
+# ✅ Route using handler
 @router.post("/create", response_model=OTPResponse, status_code=status.HTTP_201_CREATED)
 async def create_otp(
     otp_request: OTPCreateRequest,
-    service: OTPService = Depends(get_otp_service),
+    service: OTPService = Depends(get_otp_service),  # ✅ NO parentheses
 ):
-    otp = await service.generate_otp(otp_request)
-    return otp
+    return await create_otp_handler(otp_request, service)
 
 # Delete OTP by code
 @router.delete("/delete", status_code=status.HTTP_204_NO_CONTENT)
@@ -33,10 +31,7 @@ async def delete_otp_by_code(
     otp_code: str,
     service: OTPService = Depends(get_otp_service),
 ):
-    deleted = await service.delete_otp(otp_code)
-    if not deleted:
-        raise HTTPException(status_code=404, detail="OTP not found")
-    return {"message": "OTP deleted successfully"}
+    return await delete_otp_handler(otp_code, service)
 
 # Verify OTP by code  
 @router.post("/verify", response_model=OTPVerifyResponse)
@@ -46,8 +41,4 @@ async def verify_code(
     event_id: str = Body(..., embed=True),
     service: OTPService = Depends(get_otp_service),
 ):
-    verified = await service.verify_otp(email=email, event_id=event_id, otp_code=otp_code)
-    if not verified:
-        raise HTTPException(status_code=400, detail="OTP could not be verified")
-
-    return OTPVerifyResponse(success=True, message="OTP verified successfully")
+    return await verify_otp_handler(otp_code, email, event_id, service)

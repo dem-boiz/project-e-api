@@ -1,5 +1,5 @@
-from schema.event_schemas import EventCreateSchema, EventUpdateSchema
-from repository.event_repository import EventRepository
+from schema import EventCreateSchema, EventUpdateSchema
+from repository import EventRepository
 
 async def post_event_handler(repo: EventRepository, data: EventCreateSchema):
     return await repo.create_event(data)

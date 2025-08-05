@@ -2,8 +2,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.exc import NoResultFound
 import uuid
-from models.event import Event
-from schema.event_schemas import EventCreateSchema, EventUpdateSchema
+from models import Event
+from schema import EventCreateSchema, EventUpdateSchema
 from datetime import datetime
 
 class EventRepository:
