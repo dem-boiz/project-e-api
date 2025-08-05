@@ -10,19 +10,11 @@ class OTPRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def create_otp(self, email: str, event_id: uuid.UUID, otp_code: str, expires_at: datetime) -> OTP:
+    async def create_otp(self, OTP: OTP) -> None:
         """Create and store a new OTP record."""
-        new_otp = OTP(
-            email=email,
-            event_id=event_id,
-            otp_code=otp_code,
-            expires_at=expires_at,
-            used=False,
-        )
-        self.session.add(new_otp)
+        self.session.add(OTP)
         await self.session.commit()
-        await self.session.refresh(new_otp)
-        return new_otp
+        await self.session.refresh(OTP)
 
     async def get_otp_by_code(self, otp_code: str) -> OTP | None:
         """Retrieve an OTP record by its unique OTP code."""
@@ -34,7 +26,20 @@ class OTPRepository:
             return otp
         except NoResultFound:
             return None
-
+        
+    async def delete_otp_by_code(self, otp_code: str) -> bool:
+        """Delete an OTP record by its unique OTP code. Returns True if deleted, False if not found."""
+        try:
+            result = await self.session.execute(
+                select(OTP).where(OTP.otp_code == otp_code)
+            )
+            otp = result.scalar_one()
+            await self.session.delete(otp)
+            await self.session.commit()
+            return True
+        except NoResultFound:
+            return False
+        
     async def mark_otp_used(self, otp_id: uuid.UUID) -> bool:
         """Mark the OTP as used by setting `used` flag to True."""
         otp = await self.session.get(OTP, otp_id)
