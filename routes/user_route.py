@@ -16,7 +16,8 @@ async def get_user_service(session: AsyncSession = Depends(get_async_session)):
 
 
 @router.post("/create", response_model=UserRead, status_code=status.HTTP_201_CREATED)
-async def create_user(user_in: UserCreate, service: UserService = Depends(get_user_service)):
+async def create_user(user_in: UserCreate, 
+                      service: UserService = Depends(get_user_service)):
     # Check if email exists
     existing = await service.get_user_by_email(user_in.email)
     if existing:
