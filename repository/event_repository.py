@@ -4,6 +4,7 @@ from sqlalchemy.exc import NoResultFound
 import uuid
 from models.event import Event
 from schema.event_schemas import EventCreateSchema
+from datetime import datetime
 
 class EventRepository:
     def __init__(self, session: AsyncSession):
@@ -11,11 +12,14 @@ class EventRepository:
 
     async def create_event(self, event: EventCreateSchema) -> Event:
         print(f"Creating new event: {event.name}")
+        # Clean the datetime string and parse it
+        #parsed_datetime = datetime.fromisoformat(event.datetime.replace('Z', '+00:00'))
+        
         new_event = Event(
             id=uuid.uuid4(),
             name=event.name,
             description=event.description,
-            date_time=event.datetime,
+            date_time=datetime.fromisoformat(event.datetime),
             location=event.location,
             host_id=event.host_id
         )
