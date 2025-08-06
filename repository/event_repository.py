@@ -5,7 +5,7 @@ import uuid
 from models import Event
 from schema import EventCreateSchema, EventUpdateSchema
 from datetime import datetime
-
+#TODO FINISH ADDING GET_EVENT METHOD AND SERVICE LAYER METHODS
 class EventRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
@@ -36,6 +36,30 @@ class EventRepository:
         events = result.scalars().all()
         print(f"Found {len(events)} events in database")
         return events
+    
+    async def get_event_by_name(self, event_name: str):
+        print(f"Fetching event with name: {event_name}")
+        result = await self.session.execute(
+            select(Event).where(Event.name == event_name)
+        )
+        event = result.scalar_one_or_none()
+        if event:
+            print(f"Event found: {event.name}")
+        else:
+            print("No event found with that name.")
+        return event
+    
+    async def get_event_by_id(self, event_id: uuid.UUID):
+        print(f"Fetching event with ID: {event_id}")
+        result = await self.session.execute(
+            select(Event).where(Event.id == event_id)
+        )
+        event = result.scalar_one_or_none()
+        if event:
+            print(f"Event found: {event.name}")
+        else:
+            print("No event found with that ID.")
+        return event
     
     async def delete_event(self, event_id: str) -> bool:
         print(f"Attempting to delete event with ID: {event_id}")

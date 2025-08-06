@@ -3,9 +3,9 @@ from pydantic import BaseModel
 from typing import Optional
 
 class EventCreateSchema(BaseModel):
-    name: str
+    name: str | None = None
     location: str | None = None
-    datetime: str
+    datetime: str | None = None
     host_id: UUID
     description: str | None = None
 

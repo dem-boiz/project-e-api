@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, EmailStr
 import uuid
-from handlers import create_user_handler, get_user_by_id_handler, delete_user_handler, get_events_handler
+from handlers import create_user_handler, get_user_by_id_handler, hard_delete_user_handler, get_user_by_email_handler
 from database.session import get_async_session
 from services import UserService
 from models.user import User
@@ -29,8 +29,8 @@ async def get_user(user_id: uuid.UUID, service: UserService = Depends(get_user_s
 
 @router.get("/get/by-email/{email}", response_model=UserRead)
 async def get_user_by_email(email: EmailStr, service: UserService = Depends(get_user_service)):
-    return await get_user_by_email(email, service)
+    return await get_user_by_email_handler(email, service)
  
 @router.delete("/delete/by-id", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(user_id: uuid.UUID, service: UserService = Depends(get_user_service)):
-    return delete_user_handler(user_id, service)
+    return await hard_delete_user_handler(user_id, service)
