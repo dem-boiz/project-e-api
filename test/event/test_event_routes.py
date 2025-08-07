@@ -158,3 +158,4 @@ async def test_patch_update_event():
         # Cleanup (delete event)
         delete_response = await client.delete(f"/events/{event_id}")
         assert delete_response.status_code == 204
+

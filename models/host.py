@@ -8,7 +8,7 @@ class Host(Base):
     __tablename__ = "hosts"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    host_number = Column(Integer, unique=True, autoincrement=True)
+    host_number = Column(Integer, unique=True, autoincrement=True, server_default=func.nextval('host_number_seq'))
     company_name = Column(String, nullable=False)
     email = Column(String, unique=True, nullable=False)
     password_hash = Column(String, nullable=False)

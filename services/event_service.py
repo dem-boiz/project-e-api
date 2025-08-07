@@ -97,3 +97,5 @@ class EventService:
             raise ValueError("Event with the specified ID does not exist.")
         
         return await self.repo.delete_event(event_id)
+    
+    
