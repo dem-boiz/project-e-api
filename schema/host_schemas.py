@@ -6,7 +6,7 @@ from datetime import datetime
 class HostCreateSchema(BaseModel): 
     company_name: str
     email: EmailStr # ISO format date string
-    password_hash: str 
+    password: str 
     created_at: datetime  # ISO format date string
 
 class HostUpdateSchema(BaseModel):
