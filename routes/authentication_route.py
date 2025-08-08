@@ -3,7 +3,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.session import get_async_session
 from services import AuthService, HostService
-from schema import LoginRequest, LoginResponse, CurrentUserResponse,
+from schema import LoginRequest, LoginResponse, CurrentUserResponse
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 security = HTTPBearer()
