@@ -21,7 +21,7 @@ class Event(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     event_number = Column(Integer, Identity(start=1, increment=1), unique=True, nullable=False)
     name = Column(String, nullable=False)
-    description = Column(String, nullable=True)
+    description = Column(String, nullable=True) # We probably want this to not be nullable?
     location = Column(String, nullable=False)
     date_time = Column(DateTime(timezone=True), nullable=False)
     host_id = Column(UUID(as_uuid=True), ForeignKey("hosts.id", ondelete="CASCADE"), nullable=False)
