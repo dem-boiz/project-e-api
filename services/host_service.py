@@ -18,8 +18,24 @@ class HostService:
             raise ValueError("Host already exists with this email.") 
         
         host = await self.repo.create_host(data)
-        host.password_hash = None  # Don't return password hash, security risk
-        return host
+        # Return a copy without password_hash to avoid modifying the DB object
+        return self._sanitize_host_response(host)
+
+    def _sanitize_host_response(self, host: Host, include_password: bool = False) -> Host:
+        """Create a copy of the host object without sensitive data"""
+        if include_password:
+            return host
+        
+        # Create a new Host object with the same data but without password_hash
+        sanitized_host = Host(
+            id=host.id,
+            host_number=host.host_number,
+            company_name=host.company_name,
+            email=host.email,
+            password_hash=None,  # Explicitly exclude password hash
+            created_at=host.created_at
+        )
+        return sanitized_host
 
     async def delete_host_by_id(self, host_id: uuid.UUID) -> bool:
         host = await self.repo.get_host_by_id(host_id)
@@ -39,17 +55,13 @@ class HostService:
         host = await self.repo.get_host_by_email(email)
         if not host:
             raise HTTPException(status_code=404, detail="Host not found")
-        if not includePassword:
-            host.password_hash = None
-        return host
+        return self._sanitize_host_response(host, includePassword)
 
     async def get_host_by_id(self, host_id: uuid.UUID, includePassword = False) -> Optional[Host]:
         host = await self.repo.get_host_by_id(host_id)
         if not host:
             raise HTTPException(status_code=404, detail="Host not found")
-        if not includePassword:
-            host.password_hash = None
-        return host
+        return self._sanitize_host_response(host, includePassword)
 
     async def update_host_service(self, host_id: uuid.UUID, data: HostUpdateSchema) -> Host:
         # Check if the host exists
@@ -63,5 +75,4 @@ class HostService:
 
         # Call repo update method (which you implement similar to update_host shown before)
         updated_host = await self.repo.update_host(host_id, data)
-        updated_host.password_hash = None
-        return updated_host
+        return self._sanitize_host_response(updated_host)
