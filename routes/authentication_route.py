@@ -36,12 +36,3 @@ async def get_current_user(
         email=host.email,
         host_id=str(host.id)
     )
-
-@router.post("/logout", response_model=LogoutResponse, status_code=status.HTTP_200_OK)
-async def logout(
-    credentials: HTTPAuthorizationCredentials = Security(security)
-):
-    """Logout endpoint (client-side token invalidation)"""
-    # JWT tokens are stateless, so logout is handled client-side
-    # In a production environment, you might want to maintain a blacklist
-    return LogoutResponse(message="Successfully logged out")
