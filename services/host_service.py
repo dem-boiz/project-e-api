@@ -16,7 +16,10 @@ class HostService:
         existing = await self.repo.get_host_by_email(email=data.email)
         if existing:
             raise ValueError("Host already exists with this email.") 
-        return await self.repo.create_host(data)
+        
+        host = await self.repo.create_host(data)
+        host.password_hash = None  # Don't return password hash, security risk
+        return host
 
     async def delete_host_by_id(self, host_id: uuid.UUID) -> bool:
         host = await self.repo.get_host_by_id(host_id)
@@ -36,14 +39,16 @@ class HostService:
         host = await self.repo.get_host_by_email(email)
         if not host:
             raise HTTPException(status_code=404, detail="Host not found")   
+        host.password_hash = None
         return host
-    
+
     async def get_host_by_id(self, host_id: uuid.UUID) -> Optional[Host]:
         host = await self.repo.get_host_by_id(host_id)
         if not host:
             raise HTTPException(status_code=404, detail="Host not found")
+        host.password_hash = None
         return host
-    
+
     async def update_host_service(self, host_id: uuid.UUID, data: HostUpdateSchema) -> Host:
         # Check if the host exists
         host = await self.repo.get_host_by_id(host_id)
@@ -56,4 +61,5 @@ class HostService:
 
         # Call repo update method (which you implement similar to update_host shown before)
         updated_host = await self.repo.update_host(host_id, data)
+        updated_host.password_hash = None
         return updated_host
