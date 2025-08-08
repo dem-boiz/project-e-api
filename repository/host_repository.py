@@ -8,8 +8,9 @@ from datetime import datetime
 from typing import Optional
 from passlib.context import CryptContext
 
-
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
 
 
 class HostRepository:
