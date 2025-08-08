@@ -7,6 +7,7 @@ from routes.otp_route import router as otp_router
 from routes.event_route import router as event_router
 from routes.host_route import router as host_router
 from fastapi.middleware.cors import CORSMiddleware
+from routes.user_event_access_route import router as user_event_access_router
 
 allowed_origins = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000").split(",")
 app = FastAPI() 
@@ -27,3 +28,4 @@ app.include_router(otp_router)
 app.include_router(base_router)
 app.include_router(event_router)
 app.include_router(host_router)
+app.include_router(user_event_access_router)

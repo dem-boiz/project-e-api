@@ -51,3 +51,4 @@ async def update_user(
     service: HostService = Depends(get_user_service),  # ✅ NO parentheses
 ):
     return await service.update_host_service(user_id, user_in)
+

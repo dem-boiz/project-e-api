@@ -16,6 +16,7 @@ class UserEventAccess(Base):
 
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     event_id = Column(UUID(as_uuid=True), ForeignKey("events.id", ondelete="CASCADE"), primary_key=True)
+    otp_id = Column(UUID(as_uuid=True), ForeignKey("otps.id", ondelete="SET NULL"), nullable=True)
     is_deleted = Column(Boolean, default=False)
     granted_at = Column(DateTime, server_default=func.now())
 
