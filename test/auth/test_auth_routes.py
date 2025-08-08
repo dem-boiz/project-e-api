@@ -1,0 +1,375 @@
+import pytest
+from fastapi.testclient import TestClient
+from main import app
+from httpx import AsyncClient, ASGITransport
+from services import HostService
+from database import AsyncSessionLocal
+from models import Host
+from schema import HostCreateSchema
+import sys
+import asyncio
+import json
+from uuid import uuid4
+
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+client = TestClient(app)
+
+@pytest.mark.asyncio
+async def test_login_route_success():
+    """Test POST /auth/login with valid credentials"""
+    # Create a test host first
+    email = f"route_test_{uuid4()}@example.com"
+    password = "routetest123"
+    
+    # Create host via direct API
+    host_payload = {
+        "email": email,
+        "company_name": "Route Test Company",
+        "password": password,
+        "created_at": "2023-10-01T12:00:00Z"
+    }
+    
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        # Create host
+        host_response = await client.post("/hosts/", json=host_payload)
+        assert host_response.status_code == 201
+        host_data = host_response.json()
+        
+        # Test login
+        login_payload = {
+            "email": email,
+            "password": password
+        }
+        
+        login_response = await client.post("/auth/login", json=login_payload)
+        assert login_response.status_code == 200
+        
+        login_data = login_response.json()
+        assert "access_token" in login_data
+        assert login_data["token_type"] == "bearer"
+        assert login_data["email"] == email
+        assert len(login_data["access_token"]) > 50  # JWT tokens are long
+        
+        # Clean up - delete the host
+        delete_response = await client.delete(f"/hosts/{host_data['id']}")
+        assert delete_response.status_code == 204
+
+
+@pytest.mark.asyncio
+async def test_login_route_invalid_email():
+    """Test POST /auth/login with invalid email"""
+    login_payload = {
+        "email": "nonexistent@example.com",
+        "password": "anypassword"
+    }
+    
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        login_response = await client.post("/auth/login", json=login_payload)
+        assert login_response.status_code == 401
+        
+        error_data = login_response.json()
+        assert "detail" in error_data
+        assert "Invalid email or password" in error_data["detail"]
+
+
+@pytest.mark.asyncio
+async def test_login_route_invalid_password():
+    """Test POST /auth/login with valid email but wrong password"""
+    # Create a test host first
+    email = f"route_test_{uuid4()}@example.com"
+    password = "correctpassword"
+    wrong_password = "wrongpassword"
+    
+    host_payload = {
+        "email": email,
+        "company_name": "Route Test Company",
+        "password": password,
+        "created_at": "2023-10-01T12:00:00Z"
+    }
+    
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        # Create host
+        host_response = await client.post("/hosts/", json=host_payload)
+        assert host_response.status_code == 201
+        host_data = host_response.json()
+        
+        # Test login with wrong password
+        login_payload = {
+            "email": email,
+            "password": wrong_password
+        }
+        
+        login_response = await client.post("/auth/login", json=login_payload)
+        assert login_response.status_code == 401
+        
+        error_data = login_response.json()
+        assert "detail" in error_data
+        assert "Invalid email or password" in error_data["detail"]
+        
+        # Clean up
+        delete_response = await client.delete(f"/hosts/{host_data['id']}")
+        assert delete_response.status_code == 204
+
+
+@pytest.mark.asyncio 
+async def test_login_route_missing_fields():
+    """Test POST /auth/login with missing required fields"""
+    
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        # Missing password
+        incomplete_payload = {"email": "test@example.com"}
+        response = await client.post("/auth/login", json=incomplete_payload)
+        assert response.status_code == 422  # Validation error
+        
+        # Missing email
+        incomplete_payload = {"password": "password123"}
+        response = await client.post("/auth/login", json=incomplete_payload)
+        assert response.status_code == 422  # Validation error
+        
+        # Empty payload
+        response = await client.post("/auth/login", json={})
+        assert response.status_code == 422  # Validation error
+
+
+@pytest.mark.asyncio
+async def test_get_current_user_route_success():
+    """Test GET /auth/me with valid JWT token"""
+    # Create host and login first
+    email = f"route_test_{uuid4()}@example.com"
+    password = "routetest123"
+    
+    host_payload = {
+        "email": email,
+        "company_name": "Route Test Company",
+        "password": password,
+        "created_at": "2023-10-01T12:00:00Z"
+    }
+    
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        # Create host
+        host_response = await client.post("/hosts/", json=host_payload)
+        assert host_response.status_code == 201
+        host_data = host_response.json()
+        
+        # Login to get token
+        login_payload = {"email": email, "password": password}
+        login_response = await client.post("/auth/login", json=login_payload)
+        assert login_response.status_code == 200
+        
+        login_data = login_response.json()
+        token = login_data["access_token"]
+        
+        # Test /auth/me endpoint
+        headers = {"Authorization": f"Bearer {token}"}
+        me_response = await client.get("/auth/me", headers=headers)
+        assert me_response.status_code == 200
+        
+        me_data = me_response.json()
+        assert me_data["email"] == email
+        assert me_data["host_id"] == host_data["id"]
+        
+        # Clean up
+        delete_response = await client.delete(f"/hosts/{host_data['id']}")
+        assert delete_response.status_code == 204
+
+
+@pytest.mark.asyncio
+async def test_get_current_user_route_no_token():
+    """Test GET /auth/me without authorization header"""
+    
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        me_response = await client.get("/auth/me")
+        assert me_response.status_code == 403  # Forbidden - no auth header
+
+
+@pytest.mark.asyncio
+async def test_get_current_user_route_invalid_token():
+    """Test GET /auth/me with invalid JWT token"""
+    
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        headers = {"Authorization": "Bearer invalid.jwt.token"}
+        me_response = await client.get("/auth/me", headers=headers)
+        assert me_response.status_code == 401  # Unauthorized
+
+
+@pytest.mark.asyncio
+async def test_get_current_user_route_malformed_header():
+    """Test GET /auth/me with malformed authorization header"""
+    
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        # Missing "Bearer" prefix
+        headers = {"Authorization": "some-token"}
+        me_response = await client.get("/auth/me", headers=headers)
+        assert me_response.status_code == 403  # Forbidden
+        
+        # Wrong auth type
+        headers = {"Authorization": "Basic some-token"}
+        me_response = await client.get("/auth/me", headers=headers)
+        assert me_response.status_code == 403  # Forbidden
+
+
+@pytest.mark.asyncio
+async def test_logout_route_success():
+    """Test POST /auth/logout with valid token"""
+    # Create host and login first
+    email = f"route_test_{uuid4()}@example.com"
+    password = "routetest123"
+    
+    host_payload = {
+        "email": email,
+        "company_name": "Route Test Company",
+        "password": password,
+        "created_at": "2023-10-01T12:00:00Z"
+    }
+    
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        # Create host
+        host_response = await client.post("/hosts/", json=host_payload)
+        assert host_response.status_code == 201
+        host_data = host_response.json()
+        
+        # Login to get token
+        login_payload = {"email": email, "password": password}
+        login_response = await client.post("/auth/login", json=login_payload)
+        assert login_response.status_code == 200
+        
+        login_data = login_response.json()
+        token = login_data["access_token"]
+        
+        # Test logout endpoint
+        headers = {"Authorization": f"Bearer {token}"}
+        logout_response = await client.post("/auth/logout", headers=headers)
+        assert logout_response.status_code == 200
+        
+        logout_data = logout_response.json()
+        assert "message" in logout_data
+        assert "logged out" in logout_data["message"].lower()
+        
+        # Clean up
+        delete_response = await client.delete(f"/hosts/{host_data['id']}")
+        assert delete_response.status_code == 204
+
+
+@pytest.mark.asyncio
+async def test_logout_route_no_token():
+    """Test POST /auth/logout without authorization header"""
+    
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        logout_response = await client.post("/auth/logout")
+        assert logout_response.status_code == 403  # Forbidden
+
+
+@pytest.mark.asyncio
+async def test_complete_auth_flow():
+    """Test complete authentication flow: register -> login -> access protected route -> logout"""
+    email = f"flow_test_{uuid4()}@example.com"
+    password = "flowtest123"
+    
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        # Step 1: Register (create host)
+        host_payload = {
+            "email": email,
+            "company_name": "Flow Test Company",
+            "password": password,
+            "created_at": "2023-10-01T12:00:00Z"
+        }
+        
+        host_response = await client.post("/hosts/", json=host_payload)
+        assert host_response.status_code == 201
+        host_data = host_response.json()
+        assert host_data["email"] == email
+        assert "password_hash" not in host_data  # Should be sanitized
+        
+        # Step 2: Login
+        login_payload = {"email": email, "password": password}
+        login_response = await client.post("/auth/login", json=login_payload)
+        assert login_response.status_code == 200
+        
+        login_data = login_response.json()
+        token = login_data["access_token"]
+        assert login_data["email"] == email
+        
+        # Step 3: Access protected route (/auth/me)
+        headers = {"Authorization": f"Bearer {token}"}
+        me_response = await client.get("/auth/me", headers=headers)
+        assert me_response.status_code == 200
+        
+        me_data = me_response.json()
+        assert me_data["email"] == email
+        assert me_data["host_id"] == host_data["id"]
+        
+        # Step 4: Logout
+        logout_response = await client.post("/auth/logout", headers=headers)
+        assert logout_response.status_code == 200
+        
+        logout_data = logout_response.json()
+        assert "message" in logout_data
+        
+        # Step 5: Verify token still works (JWT is stateless, so it should still work until expiry)
+        # In a real app with token blacklist, this would fail
+        me_response_after_logout = await client.get("/auth/me", headers=headers)
+        assert me_response_after_logout.status_code == 200  # Still works because JWT is stateless
+        
+        # Step 6: Clean up
+        delete_response = await client.delete(f"/hosts/{host_data['id']}")
+        assert delete_response.status_code == 204
+
+
+@pytest.mark.asyncio
+async def test_auth_route_response_schemas():
+    """Test that auth routes return data in correct schema format"""
+    email = f"schema_test_{uuid4()}@example.com"
+    password = "schematest123"
+    
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        # Create host
+        host_payload = {
+            "email": email,
+            "company_name": "Schema Test Company",
+            "password": password,
+            "created_at": "2023-10-01T12:00:00Z"
+        }
+        
+        host_response = await client.post("/hosts/", json=host_payload)
+        host_data = host_response.json()
+        
+        # Test login response schema
+        login_payload = {"email": email, "password": password}
+        login_response = await client.post("/auth/login", json=login_payload)
+        login_data = login_response.json()
+        
+        # Verify LoginResponse schema
+        required_login_fields = ["access_token", "token_type", "email"]
+        for field in required_login_fields:
+            assert field in login_data
+        
+        assert login_data["token_type"] == "bearer"
+        assert isinstance(login_data["access_token"], str)
+        assert isinstance(login_data["email"], str)
+        
+        # Test /auth/me response schema
+        headers = {"Authorization": f"Bearer {login_data['access_token']}"}
+        me_response = await client.get("/auth/me", headers=headers)
+        me_data = me_response.json()
+        
+        # Verify CurrentUserResponse schema
+        required_me_fields = ["email", "host_id"]
+        for field in required_me_fields:
+            assert field in me_data
+        
+        assert isinstance(me_data["email"], str)
+        assert isinstance(me_data["host_id"], str)
+        
+        # Test logout response schema
+        logout_response = await client.post("/auth/logout", headers=headers)
+        logout_data = logout_response.json()
+        
+        # Verify LogoutResponse schema
+        assert "message" in logout_data
+        assert isinstance(logout_data["message"], str)
+        
+        # Clean up
+        delete_response = await client.delete(f"/hosts/{host_data['id']}")
+        assert delete_response.status_code == 204

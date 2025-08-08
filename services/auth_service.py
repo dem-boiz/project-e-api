@@ -6,15 +6,17 @@ from passlib.context import CryptContext
 from models import Host
 from schema import LoginRequest, HostCreateSchema
 from utils.utils import create_jwt, verify_jwt
-from services.host_service import HostService
+from repository import HostRepository
 
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+# TODO: Check authentication token to ensure it's not expired.
+# For added security, check issuer, and audience (iss, aud).
 class AuthService:
     def __init__(self, db: AsyncSession):
         self.db = db
-        self.host_service = HostService(db)
+        self.host_repo = HostRepository(db)
 
     def hash_password(self, password: str) -> str:
         """Hash a password using bcrypt"""
@@ -27,14 +29,23 @@ class AuthService:
 
     async def authenticate_host(self, email: str, password: str) -> Optional[Host]:
         """Authenticate a host by email and password"""
-        host = await self.host_service.get_host_by_email(email, True)
+        host = await self.host_repo.get_host_by_email(email)
         if not host:
             return None
         
         if not self.verify_password(password, host.password_hash):
             return None
-            
-        return host
+        
+        # Return a sanitized copy without password hash
+        sanitized_host = Host(
+            id=host.id,
+            host_number=host.host_number,
+            email=host.email,
+            company_name=host.company_name,
+            created_at=host.created_at,
+            password_hash=None
+        )
+        return sanitized_host
 
     async def login(self, login_data: LoginRequest) -> dict:
         """Login a host and return JWT token"""
@@ -61,13 +72,22 @@ class AuthService:
             userId_str = verify_jwt(token)
             # Convert string UUID back to UUID object
             host_id = uuid.UUID(userId_str)
-            host = await self.host_service.get_host_by_id(host_id, False)
+            host = await self.host_repo.get_host_by_id(host_id)
             if not host:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Host not found"
                 )
-            return host
+            # Return a sanitized copy without password hash
+            sanitized_host = Host(
+                id=host.id,
+                host_number=host.host_number,
+                email=host.email,
+                company_name=host.company_name,
+                created_at=host.created_at,
+                password_hash=None
+            )
+            return sanitized_host
         except ValueError:
             # Handle invalid UUID format
             raise HTTPException(
