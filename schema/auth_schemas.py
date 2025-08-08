@@ -9,6 +9,9 @@ class LoginResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     email: EmailStr
+    user_id: str
+    name: str
+    id: str
 
 class CurrentUserResponse(BaseModel):
     email: EmailStr
