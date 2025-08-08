@@ -8,7 +8,12 @@ from datetime import datetime
 from typing import Optional
 from passlib.context import CryptContext
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Password hashing context - suppress bcrypt version warnings
+pwd_context = CryptContext(
+    schemes=["bcrypt"], 
+    deprecated="auto",
+    bcrypt__rounds=10  # The number of hashing rounds. Higher = more secure but slower
+)
 
 
 
