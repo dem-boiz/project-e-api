@@ -210,60 +210,13 @@ async def test_get_current_user_route_malformed_header():
         assert me_response.status_code == 403  # Forbidden
 
 
-@pytest.mark.asyncio
-async def test_logout_route_success():
-    """Test POST /auth/logout with valid token"""
-    # Create host and login first
-    email = f"route_test_{uuid4()}@example.com"
-    password = "routetest123"
-    
-    host_payload = {
-        "email": email,
-        "company_name": "Route Test Company",
-        "password": password,
-        "created_at": "2023-10-01T12:00:00Z"
-    }
-    
-    async with AsyncClient(base_url="http://localhost:8000") as client:
-        # Create host
-        host_response = await client.post("/hosts/", json=host_payload)
-        assert host_response.status_code == 201
-        host_data = host_response.json()
-        
-        # Login to get token
-        login_payload = {"email": email, "password": password}
-        login_response = await client.post("/auth/login", json=login_payload)
-        assert login_response.status_code == 200
-        
-        login_data = login_response.json()
-        token = login_data["access_token"]
-        
-        # Test logout endpoint
-        headers = {"Authorization": f"Bearer {token}"}
-        logout_response = await client.post("/auth/logout", headers=headers)
-        assert logout_response.status_code == 200
-        
-        logout_data = logout_response.json()
-        assert "message" in logout_data
-        assert "logged out" in logout_data["message"].lower()
-        
-        # Clean up
-        delete_response = await client.delete(f"/hosts/{host_data['id']}")
-        assert delete_response.status_code == 204
 
 
-@pytest.mark.asyncio
-async def test_logout_route_no_token():
-    """Test POST /auth/logout without authorization header"""
-    
-    async with AsyncClient(base_url="http://localhost:8000") as client:
-        logout_response = await client.post("/auth/logout")
-        assert logout_response.status_code == 403  # Forbidden
 
 
 @pytest.mark.asyncio
 async def test_complete_auth_flow():
-    """Test complete authentication flow: register -> login -> access protected route -> logout"""
+    """Test complete authentication flow: register -> login -> access protected route"""
     email = f"flow_test_{uuid4()}@example.com"
     password = "flowtest123"
     
@@ -299,18 +252,6 @@ async def test_complete_auth_flow():
         me_data = me_response.json()
         assert me_data["email"] == email
         assert me_data["host_id"] == host_data["id"]
-        
-        # Step 4: Logout
-        logout_response = await client.post("/auth/logout", headers=headers)
-        assert logout_response.status_code == 200
-        
-        logout_data = logout_response.json()
-        assert "message" in logout_data
-        
-        # Step 5: Verify token still works (JWT is stateless, so it should still work until expiry)
-        # In a real app with token blacklist, this would fail
-        me_response_after_logout = await client.get("/auth/me", headers=headers)
-        assert me_response_after_logout.status_code == 200  # Still works because JWT is stateless
         
         # Step 6: Clean up
         delete_response = await client.delete(f"/hosts/{host_data['id']}")
@@ -361,14 +302,6 @@ async def test_auth_route_response_schemas():
         
         assert isinstance(me_data["email"], str)
         assert isinstance(me_data["host_id"], str)
-        
-        # Test logout response schema
-        logout_response = await client.post("/auth/logout", headers=headers)
-        logout_data = logout_response.json()
-        
-        # Verify LogoutResponse schema
-        assert "message" in logout_data
-        assert isinstance(logout_data["message"], str)
         
         # Clean up
         delete_response = await client.delete(f"/hosts/{host_data['id']}")

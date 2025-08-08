@@ -16,6 +16,3 @@ class CurrentUserResponse(BaseModel):
     
     class Config:
         from_attributes = True
-
-class LogoutResponse(BaseModel):
-    message: str
