@@ -27,7 +27,7 @@ async def test_create_host_route():
         host_data = { 
             "email": email,
             "company_name": company_name,
-            "password_hash": password,
+            "password": password,
             "created_at": date
         }
 
@@ -60,7 +60,7 @@ async def test_create_and_delete_host():
         payload = { 
             "email": email,
             "company_name": company_name,
-            "password_hash": password,
+            "password": password,
             "created_at": date
         }
         create_response = await client.post("/hosts/", json=payload)
@@ -92,7 +92,7 @@ async def test_get_host_by_id():
         payload = {
             "email": email,
             "company_name": company_name,
-            "password_hash": password,
+            "password": password,
             "created_at": date
         }
 
@@ -127,7 +127,7 @@ async def test_get_host_by_email():
         payload = {
             "email": email,
             "company_name": company_name,
-            "password_hash": password,
+            "password": password,
             "created_at": date
         }
 
@@ -162,7 +162,7 @@ async def test_update_host():
         payload = {
             "email": email,
             "company_name": company_name,
-            "password_hash": password,
+            "password": password,
             "created_at": date
         }
 
@@ -184,6 +184,7 @@ async def test_update_host():
         assert updated_data["id"] == host_id
         assert updated_data["company_name"] == "Updated Company"
         assert updated_data["email"] == email  # unchanged
+        # TODO Update this test to handle hashed password?
         assert "password_hash" in updated_data  # still present
 
         # Step 4: Clean up by deleting the host

@@ -15,7 +15,7 @@ class HostRepository:
     async def create_host(self, data: HostCreateSchema) -> Host:
         """Create a new host with a unique UUID and email."""
         new_host = Host(email=data.email, company_name=data.company_name, 
-                        password_hash=data.password_hash, id=uuid.uuid4())
+                        password_hash=data.password, id=uuid.uuid4())
         self.session.add(new_host)
         await self.session.commit()
         await self.session.refresh(new_host)
@@ -72,8 +72,9 @@ class HostRepository:
                 host.email = data.email
             if data.company_name is not None:
                 host.company_name = data.company_name
-            if data.password_hash is not None:
-                host.password_hash = data.password_hash
+            if data.password is not None:
+                # TODO: hash password and update host.password_hash
+                host.password_hash = data.password
             if data.created_at is not None:
                 # Assuming created_at is a datetime or ISO string
                 if isinstance(data.created_at, str):
