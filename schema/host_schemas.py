@@ -22,4 +22,6 @@ class HostReadSchema(BaseModel):
     password_hash: str
     created_at: datetime 
     company_name: str
-    email: EmailStr # ISO format date string 
+    email: EmailStr
+    class Config:
+        from_attributes = True 
