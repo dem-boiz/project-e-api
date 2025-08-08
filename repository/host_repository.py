@@ -6,6 +6,10 @@ from schema import HostCreateSchema, HostUpdateSchema
 import uuid
 from datetime import datetime
 from typing import Optional
+from passlib.context import CryptContext
+
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class HostRepository:
@@ -14,8 +18,14 @@ class HostRepository:
 
     async def create_host(self, data: HostCreateSchema) -> Host:
         """Create a new host with a unique UUID and email."""
-        new_host = Host(email=data.email, company_name=data.company_name, 
-                        password_hash=data.password, id=uuid.uuid4())
+        password_hash = pwd_context.hash(data.password)
+        new_host = Host(
+            email=data.email, 
+            company_name=data.company_name, 
+            password_hash=password_hash, 
+            id=uuid.uuid4(),
+            created_at=datetime.now()
+        )
         self.session.add(new_host)
         await self.session.commit()
         await self.session.refresh(new_host)
