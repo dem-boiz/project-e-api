@@ -1,7 +1,7 @@
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
 from fastapi import HTTPException
-from config.settings import SECRET_KEY, ALGORITHM
+from config.settings import SECRET_KEY, ALGORITHM, JWT_LIFESPAN
 
 def generate_otp():
     import random
@@ -10,7 +10,7 @@ def generate_otp():
 def create_jwt(userId: str):
     payload = {
         "sub": userId,
-        "exp": datetime.utcnow() + timedelta(hours=1)
+        "exp": datetime.utcnow() + timedelta(hours=JWT_LIFESPAN)
     }
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
