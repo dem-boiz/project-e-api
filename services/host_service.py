@@ -35,18 +35,20 @@ class HostService:
         
         return await self.repo.delete_host_by_email(email)
     
-    async def get_host_by_email(self, email: str) -> Optional[Host]:
+    async def get_host_by_email(self, email: str, includePassword = False) -> Optional[Host]:
         host = await self.repo.get_host_by_email(email)
         if not host:
-            raise HTTPException(status_code=404, detail="Host not found")   
-        host.password_hash = None
+            raise HTTPException(status_code=404, detail="Host not found")
+        if not includePassword:
+            host.password_hash = None
         return host
 
-    async def get_host_by_id(self, host_id: uuid.UUID) -> Optional[Host]:
+    async def get_host_by_id(self, host_id: uuid.UUID, includePassword = False) -> Optional[Host]:
         host = await self.repo.get_host_by_id(host_id)
         if not host:
             raise HTTPException(status_code=404, detail="Host not found")
-        host.password_hash = None
+        if not includePassword:
+            host.password_hash = None
         return host
 
     async def update_host_service(self, host_id: uuid.UUID, data: HostUpdateSchema) -> Host:
