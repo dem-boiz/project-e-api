@@ -60,15 +60,13 @@ class AuthService:
         # Create JWT token
         access_token = create_jwt(str(host.id))
 
-        print("Successfully logged in host:", host)
-
         return {
             "access_token": access_token,
             "token_type": "bearer",
             "email": host.email,
-            "user_id": host.id,
+            "user_id": str(host.id),
             "name": host.company_name,
-            "id": host.id
+            "id": str(host.id)
         }
 
     async def get_current_host(self, token: str) -> Host:
