@@ -7,9 +7,9 @@ def generate_otp():
     import random
     return str(random.randint(100000, 999999))
 
-def create_jwt(email: str):
+def create_jwt(userId: str):
     payload = {
-        "sub": email,
+        "sub": userId,
         "exp": datetime.utcnow() + timedelta(hours=1)
     }
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
