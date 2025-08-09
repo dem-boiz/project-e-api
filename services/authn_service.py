@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 from passlib.context import CryptContext
 from models import Host
-from schema import LoginRequest, HostCreateSchema
+from schema import LoginRequest
 from utils.utils import create_jwt, verify_jwt
 from repository import HostRepository
 
@@ -13,7 +13,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # TODO: Check authentication token to ensure it's not expired.
 # For added security, check issuer, and audience (iss, aud).
-class AuthService:
+class AuthnService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.host_repo = HostRepository(db)

@@ -2,15 +2,15 @@ from fastapi import APIRouter, Depends, status, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.session import get_async_session
-from services import AuthService, HostService
+from services import AuthnService, HostService
 from schema import LoginRequest, LoginResponse, CurrentUserResponse
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 security = HTTPBearer()
 
-# Dependency to get AuthService
-async def get_auth_service(session: AsyncSession = Depends(get_async_session)) -> AuthService:
-    return AuthService(session)
+# Dependency to get AuthnService
+async def get_authn_service(session: AsyncSession = Depends(get_async_session)) -> AuthnService:
+    return AuthnService(session)
 
 # Dependency to get HostService for registration
 async def get_host_service(session: AsyncSession = Depends(get_async_session)) -> HostService:
@@ -19,7 +19,7 @@ async def get_host_service(session: AsyncSession = Depends(get_async_session)) -
 @router.post("/login", response_model=LoginResponse, status_code=status.HTTP_200_OK)
 async def login(
     login_data: LoginRequest,
-    service: AuthService = Depends(get_auth_service)
+    service: AuthnService = Depends(get_authn_service)
 ):
     """Login endpoint for hosts"""
     return await service.login(login_data)
@@ -27,7 +27,7 @@ async def login(
 @router.get("/me", response_model=CurrentUserResponse, status_code=status.HTTP_200_OK)
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Security(security),
-    service: AuthService = Depends(get_auth_service)
+    service: AuthnService = Depends(get_authn_service)
 ):
     """Get current authenticated user"""
     token = credentials.credentials

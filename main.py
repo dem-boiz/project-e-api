@@ -6,7 +6,7 @@ from routes.base_route import router as base_router
 from routes.otp_route import router as otp_router
 from routes.event_route import router as event_router
 from routes.host_route import router as host_router
-from routes.authentication_route import router as auth_router
+from routes.authentication_route import router as authn_router
 from fastapi.middleware.cors import CORSMiddleware
 from routes.user_event_access_route import router as user_event_access_router
 
@@ -29,5 +29,5 @@ app.include_router(otp_router)
 app.include_router(base_router)
 app.include_router(event_router)
 app.include_router(host_router)
-app.include_router(auth_router)
+app.include_router(authn_router)
 app.include_router(user_event_access_router)
