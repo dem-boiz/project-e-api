@@ -7,11 +7,13 @@ from repository import EventRepository
 from models import Event 
 from schema import EventCreateSchema, EventUpdateSchema
 
+#TODO: add logging
 class EventService:
     def __init__(self, db: AsyncSession):
         self.repo = EventRepository(db)
 
     async def create_event_service(self, event_data: EventCreateSchema) -> Event:
+        # TODO refactor this code to only raise an error if the duplicate event is for the same host
         # Check if an event with the same name already exists here:
         existing = await self.repo.get_event_by_name(event_data.name)   
         if existing:
@@ -88,7 +90,7 @@ class EventService:
             raise ValueError("Event with the specified ID does not exist.")
         
         # Update the event details
-        for key, value in data.dict(exclude_unset=True).items():
+        for key, value in data.model_dump(exclude_unset=True).items():
             setattr(event, key, value)
         
         return await self.repo.update_event(event_id, data)
@@ -100,5 +102,7 @@ class EventService:
             raise ValueError("Event with the specified ID does not exist.")
         
         return await self.repo.delete_event(event_id)
-    
-    
+
+    async def has_duplicate_event(self, event_data: EventCreateSchema) -> bool:
+        # TODO: Implement the logic to check for duplicate events
+        return False
