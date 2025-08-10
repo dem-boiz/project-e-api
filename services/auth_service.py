@@ -5,6 +5,7 @@ from fastapi import HTTPException, status
 from passlib.context import CryptContext
 from models import Host
 from schema import LoginRequest
+from schema.auth_schemas import RefreshResponse
 from utils.utils import create_jwt, verify_jwt
 from repository import HostRepository
 from config.logging_config import get_logger
@@ -90,6 +91,18 @@ class AuthService:
             "id": str(host.id)
         }
 
+
+    async def refresh_access_token(self, host_id: str) -> RefreshResponse:
+        """Generate a new access & refresh token for the host"""
+        logger.debug(f"Generating new access token (& refresh token) for host ID: {host_id}")
+        access_token = create_jwt(host_id)
+        refresh_token = create_jwt(host_id, remember_me=True)
+        return RefreshResponse(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_type="bearer"
+        )
+
     async def get_current_host(self, token: str) -> Host:
         """Get current host from JWT token"""
         logger.debug(f"Verifying JWT token")
@@ -131,3 +144,4 @@ class AuthService:
                 detail=f"Error occurred while verifying token. {e}",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+

@@ -14,9 +14,18 @@ class LoginResponse(BaseModel):
     name: str
     id: str
 
+class RefreshResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+
+    class Config:
+        from_attributes = True
+
 class CurrentUserResponse(BaseModel):
     email: EmailStr
     host_id: Optional[str] = None
     
     class Config:
         from_attributes = True
+
