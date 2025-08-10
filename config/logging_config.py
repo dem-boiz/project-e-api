@@ -100,6 +100,12 @@ LOGGING_CONFIG = {
             "handlers": ["console", "file_api", "file_error"],
             "propagate": False
         },
+        # API requests logger (for middleware)
+        "api.requests": {
+            "level": "INFO",
+            "handlers": ["console", "file_api", "file_error"],
+            "propagate": False
+        },
         # Database logger
         "database": {
             "level": "INFO",
