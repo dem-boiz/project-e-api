@@ -13,7 +13,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # TODO: Check authentication token to ensure it's not expired.
 # For added security, check issuer, and audience (iss, aud).
-class AuthnService:
+class AuthService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.host_repo = HostRepository(db)
