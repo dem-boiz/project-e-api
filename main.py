@@ -1,5 +1,10 @@
 import os
 
+# Initialize logging FIRST before any other imports
+from config.logging_config import setup_logging, get_logger
+setup_logging()
+logger = get_logger("app")
+
 from fastapi import FastAPI
 from routes.user_route import router as user_router
 from routes.base_route import router as base_router
@@ -9,12 +14,7 @@ from routes.host_route import router as host_router
 from routes.authentication_route import router as auth_router
 from fastapi.middleware.cors import CORSMiddleware
 from routes.user_event_access_route import router as user_event_access_router
-
-# Initialize logging first
-from config.logging_config import setup_logging, get_logger
 from middleware.request_logging import RequestLoggingMiddleware
-setup_logging()
-logger = get_logger("app")
 
 logger.info("Starting FastAPI application initialization")
 
