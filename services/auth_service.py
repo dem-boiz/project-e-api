@@ -8,12 +8,15 @@ from schema import LoginRequest
 from utils.utils import create_jwt, verify_jwt
 from repository import HostRepository
 from config.logging_config import get_logger
+import logging
+
+# Silences annoying warning
+logging.getLogger("passlib").setLevel(logging.ERROR)
 
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 logger = get_logger("auth")
 
-logger.info("AuthService initialized")
 # TODO: Check authentication token to ensure it's not expired.
 # For added security, check issuer, and audience (iss, aud).
 class AuthService:
@@ -23,16 +26,18 @@ class AuthService:
 
     def hash_password(self, password: str) -> str:
         """Hash a password using bcrypt"""
+        logger.debug("Hashing password")
         return pwd_context.hash(password)
 
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
         """Verify a password against its hash"""
+        logger.debug("Verifying password")
         return pwd_context.verify(plain_password, hashed_password)
 
 
     async def authenticate_host(self, email: str, password: str) -> Optional[Host]:
         """Authenticate a host by email and password"""
-        logger.info(f"Authentication attempt for email: {email}")
+        logger.debug(f"Authentication attempt for email: {email}")
         host = await self.host_repo.get_host_by_email(email)
         if not host:
             logger.warning(f"Host not found for email: {email}")
@@ -42,7 +47,7 @@ class AuthService:
             logger.warning(f"Invalid password for email: {email}")
             return None
         
-        logger.info(f"Host authenticated successfully: {email}")
+        logger.debug(f"Host authenticated successfully: {email}")
         # Return a sanitized copy without password hash
         sanitized_host = Host(
             id=host.id,
@@ -56,7 +61,7 @@ class AuthService:
 
     async def login(self, login_data: LoginRequest) -> dict:
         """Login a host and return JWT token"""
-        logger.info(f"Login attempt for email: {login_data.email}")
+        logger.debug(f"Login attempt for email: {login_data.email}")
         host = await self.authenticate_host(login_data.email, login_data.password)
         if not host:
             logger.error(f"Login failed for email: {login_data.email}")
@@ -68,7 +73,7 @@ class AuthService:
         
         # Create JWT token
         access_token = create_jwt(str(host.id))
-        logger.info(f"JWT token created for host: {host.email}")
+        logger.debug(f"JWT token created for host: {host.email}")
 
         return {
             "access_token": access_token,
@@ -103,7 +108,7 @@ class AuthService:
                 created_at=host.created_at,
                 password_hash=None
             )
-            logger.info(f"Host authenticated successfully: {sanitized_host.email}")
+            logger.debug(f"Host authenticated successfully: {sanitized_host.email}")
             return sanitized_host
         except ValueError:
             # Handle invalid UUID format
