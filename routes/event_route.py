@@ -14,6 +14,10 @@ from config.logging_config import get_logger
 logger = get_logger("api.events")
 
 router = APIRouter(prefix="/events", tags=["events"])
+
+# Note: If during a test request you get 403 forbidden unexpectedly,
+# make sure to include the Authorization header with a valid token.
+# HttpBearer automatically checks for the existence of a token but does not validate it. 
 security = HTTPBearer()
 
 # TODO: Move these dependencies to a separate file
