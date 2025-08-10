@@ -12,6 +12,8 @@ from models import Host
 router = APIRouter(prefix="/events", tags=["events"])
 security = HTTPBearer()
 
+# TODO: Move these dependencies to a separate file
+
 # Dependency to get EventService
 async def get_event_service(session: AsyncSession = Depends(get_async_session))-> EventService:
     return EventService(session)
@@ -42,6 +44,74 @@ async def verify_host_authorization(
         )
     return data
 
+# Dependency to verify host authorization for event deletion
+async def verify_event_ownership_for_delete(
+    event_id: str,
+    current_host: Host = Depends(get_current_host),
+    service: EventService = Depends(get_event_service)
+) -> str:
+    """Verify that the authenticated host owns the event they want to delete"""
+    import uuid
+    try:
+        event_uuid = uuid.UUID(event_id)
+        event = await service.get_event_by_id_service(event_uuid)
+
+        if event.host_id != current_host.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only delete events that you own"
+            )
+        return event_id
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid event ID format"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=e.status_code if hasattr(e, 'status_code') else status.HTTP_404_NOT_FOUND,
+            detail=f"Error occured. {e}"
+        )
+
+# Dependency to verify host authorization for event updates
+async def verify_event_ownership_for_update(
+    event_id: str,
+    data: EventUpdateSchema,
+    current_host: Host = Depends(get_current_host),
+    service: EventService = Depends(get_event_service)
+) -> tuple[str, EventUpdateSchema]:
+    """Verify that the authenticated host owns the event they want to update"""
+    import uuid
+    try:
+        event_uuid = uuid.UUID(event_id)
+        event = await service.get_event_by_id_service(event_uuid)
+
+        if event.host_id != current_host.id:
+            print("raising error")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only update events that you own"
+            )
+        
+        # If the update data includes a host_id, ensure it matches the current host
+        if data.host_id is not None and data.host_id != current_host.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You cannot change the host of an event to a different host"
+            )
+        
+        return event_id, data
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid event ID format"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=e.status_code if hasattr(e, 'status_code') else status.HTTP_404_NOT_FOUND,
+            detail=f"Error occured. {e}"
+        )
+
 @router.post("/", status_code=status.HTTP_201_CREATED)
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_event(
@@ -52,7 +122,11 @@ async def create_event(
     return await create_event_handler(data, service)
 
 @router.delete("/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_event(event_id: str, service: EventService = Depends(get_event_service)):
+async def delete_event(
+    event_id: str = Depends(verify_event_ownership_for_delete),
+    service: EventService = Depends(get_event_service)
+):
+    """Delete an event - requires authentication and ownership verification"""
     return await delete_event_handler(service, event_id)
 
 @router.get("/")
@@ -68,5 +142,10 @@ async def get_event_by_name(name: str, service: EventService = Depends(get_event
 
 
 @router.patch("/{event_id}")
-async def update_event(event_id: str, data: EventUpdateSchema, service: EventService = Depends(get_event_service)):
+async def update_event(
+    event_data: tuple[str, EventUpdateSchema] = Depends(verify_event_ownership_for_update),
+    service: EventService = Depends(get_event_service)
+):
+    """Update an event - requires authentication and ownership verification"""
+    event_id, data = event_data
     return await patch_event_handler(service, event_id, data)
