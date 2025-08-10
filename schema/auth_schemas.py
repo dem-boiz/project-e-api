@@ -4,6 +4,7 @@ from typing import Optional
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+    rememberMe: bool
 
 class LoginResponse(BaseModel):
     access_token: str

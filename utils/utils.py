@@ -11,10 +11,11 @@ def generate_otp():
     import random
     return str(random.randint(100000, 999999))
 
-def create_jwt(userId: str):
+def create_jwt(userId: str, rememberMe=False):
+    lifespan = timedelta(hours=JWT_LIFESPAN) if not rememberMe else timedelta(days=30)
     payload = {
         "sub": userId,
-        "exp": datetime.now() + timedelta(hours=JWT_LIFESPAN)
+        "exp": datetime.now() + lifespan
     }
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 

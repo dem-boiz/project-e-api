@@ -73,10 +73,16 @@ class AuthService:
         
         # Create JWT token
         access_token = create_jwt(str(host.id))
+
+
+        if (login_data.rememberMe):
+            refresh_token = create_jwt(str(host.id), remember_me=True)
+
         logger.debug(f"JWT token created for host: {host.email}")
 
         return {
             "access_token": access_token,
+            "refresh_token": refresh_token if login_data.rememberMe else None,
             "token_type": "bearer",
             "email": host.email,
             "user_id": str(host.id),
