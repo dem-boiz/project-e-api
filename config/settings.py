@@ -8,6 +8,7 @@ ALGORITHM = os.getenv("ALGORITHM", "HS256") # TODO Change to RS256 in future for
 OTP_EXPIRY_SECONDS = int(os.getenv("OTP_EXPIRY_SECONDS", 300))
 DATABASE_URL = os.getenv("DATABASE_URL")
 JWT_LIFESPAN = float(os.getenv("JWT_LIFESPAN", 1.0))
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
 if DATABASE_URL is None:
     raise ValueError("DATABASE_URL is not set in .env")

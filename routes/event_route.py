@@ -8,6 +8,10 @@ from repository.event_repository import EventRepository
 from schema.event_schemas import EventCreateSchema, EventUpdateSchema
 from sqlalchemy.ext.asyncio import AsyncSession
 from models import Host
+from config.logging_config import get_logger
+
+# Initialize logger
+logger = get_logger("api.events")
 
 router = APIRouter(prefix="/events", tags=["events"])
 security = HTTPBearer()
@@ -57,6 +61,7 @@ async def verify_event_ownership_for_delete(
         event = await service.get_event_by_id_service(event_uuid)
 
         if event.host_id != current_host.id:
+            logger.warning(f"Host {current_host.id} attempted to delete event {event_id} they do not own.")
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You can only delete events that you own"
@@ -119,7 +124,10 @@ async def create_event(
     service: EventService = Depends(get_event_service)
 ):
     """Create a new event - requires authentication and host authorization"""
-    return await create_event_handler(data, service)
+    logger.info(f"Creating new event: {data.name} for host: {data.host_id}")
+    result = await create_event_handler(data, service)
+    logger.info(f"Event created successfully: {data.name}")
+    return result
 
 @router.delete("/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_event(
@@ -127,19 +135,32 @@ async def delete_event(
     service: EventService = Depends(get_event_service)
 ):
     """Delete an event - requires authentication and ownership verification"""
-    return await delete_event_handler(service, event_id)
+    logger.info(f"Deleting event: {event_id}")
+    result = await delete_event_handler(service, event_id)
+    logger.info(f"Event deleted successfully: {event_id}")
+    return result
 
 @router.get("/")
 @router.get("")
 async def get_events(service: EventService = Depends(get_event_service)):
-    return await get_events_handler(service) 
+    logger.info("Fetching all events")
+    result = await get_events_handler(service)
+    logger.info(f"Retrieved {len(result) if isinstance(result, list) else 'unknown count'} events")
+    return result
+
 @router.get("/get/by-id/{event_id}")
 async def get_event_by_id(event_id: str, service: EventService = Depends(get_event_service)):
-    return await get_event_by_id_handler(event_id, service)
+    logger.info(f"Fetching event by ID: {event_id}")
+    result = await get_event_by_id_handler(event_id, service)
+    logger.info(f"Event retrieved by ID: {event_id}")
+    return result
+
 @router.get("/get/by-name/{name}")
 async def get_event_by_name(name: str, service: EventService = Depends(get_event_service)):
-    return await get_event_by_name_handler(name, service)
-
+    logger.info(f"Fetching event by name: {name}")
+    result = await get_event_by_name_handler(name, service)
+    logger.info(f"Event retrieved by name: {name}")
+    return result
 
 @router.patch("/{event_id}")
 async def update_event(
@@ -148,4 +169,7 @@ async def update_event(
 ):
     """Update an event - requires authentication and ownership verification"""
     event_id, data = event_data
-    return await patch_event_handler(service, event_id, data)
+    logger.info(f"Updating event: {event_id}")
+    result = await patch_event_handler(service, event_id, data)
+    logger.info(f"Event updated successfully: {event_id}")
+    return result
