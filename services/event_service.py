@@ -15,6 +15,7 @@ class EventService:
         # Check if an event with the same name already exists here:
         existing = await self.repo.get_event_by_name(event_data.name)   
         if existing:
+            # TODO: When this is raised, the client gets a 500 response. refactor to be a 422 or 409
             raise ValueError("Event already exists with this name.")
         
         ''' # TODO: Implement the functions in repository to check these conditions

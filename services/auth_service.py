@@ -98,9 +98,9 @@ class AuthService:
                 detail="Invalid token format",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        except Exception:
+        except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token",
+                detail=f"Error occurred while verifying token. {e}",
                 headers={"WWW-Authenticate": "Bearer"},
             )
