@@ -7,10 +7,13 @@ from models import Host
 from schema import LoginRequest
 from utils.utils import create_jwt, verify_jwt
 from repository import HostRepository
+from config.logging_config import get_logger
 
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+logger = get_logger("auth")
 
+logger.info("AuthService initialized")
 # TODO: Check authentication token to ensure it's not expired.
 # For added security, check issuer, and audience (iss, aud).
 class AuthService:
@@ -29,13 +32,17 @@ class AuthService:
 
     async def authenticate_host(self, email: str, password: str) -> Optional[Host]:
         """Authenticate a host by email and password"""
+        logger.info(f"Authentication attempt for email: {email}")
         host = await self.host_repo.get_host_by_email(email)
         if not host:
+            logger.warning(f"Host not found for email: {email}")
             return None
         
         if not self.verify_password(password, host.password_hash):
+            logger.warning(f"Invalid password for email: {email}")
             return None
         
+        logger.info(f"Host authenticated successfully: {email}")
         # Return a sanitized copy without password hash
         sanitized_host = Host(
             id=host.id,
@@ -49,8 +56,10 @@ class AuthService:
 
     async def login(self, login_data: LoginRequest) -> dict:
         """Login a host and return JWT token"""
+        logger.info(f"Login attempt for email: {login_data.email}")
         host = await self.authenticate_host(login_data.email, login_data.password)
         if not host:
+            logger.error(f"Login failed for email: {login_data.email}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid email or password",
@@ -59,6 +68,7 @@ class AuthService:
         
         # Create JWT token
         access_token = create_jwt(str(host.id))
+        logger.info(f"JWT token created for host: {host.email}")
 
         return {
             "access_token": access_token,
@@ -71,12 +81,15 @@ class AuthService:
 
     async def get_current_host(self, token: str) -> Host:
         """Get current host from JWT token"""
+        logger.debug(f"Verifying JWT token")
         try:
             userId_str = verify_jwt(token)
             # Convert string UUID back to UUID object
             host_id = uuid.UUID(userId_str)
+            logger.debug(f"Token verified for host ID: {host_id}")
             host = await self.host_repo.get_host_by_id(host_id)
             if not host:
+                logger.warning(f"Host not found: {host_id}")
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Host not found"
@@ -90,15 +103,18 @@ class AuthService:
                 created_at=host.created_at,
                 password_hash=None
             )
+            logger.info(f"Host authenticated successfully: {sanitized_host.email}")
             return sanitized_host
         except ValueError:
             # Handle invalid UUID format
+            logger.error(f"Invalid token format: {token}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token format",
                 headers={"WWW-Authenticate": "Bearer"},
             )
         except Exception as e:
+            logger.error(f"Error occurred while verifying token: {e}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=f"Error occurred while verifying token. {e}",
