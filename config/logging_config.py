@@ -2,6 +2,10 @@ import logging
 import logging.config
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file FIRST
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 # Create logs directory if it doesn't exist
 logs_dir = Path(__file__).parent.parent / "logs"
@@ -9,7 +13,6 @@ logs_dir.mkdir(exist_ok=True)
 
 # Get log level from environment variable, default to INFO
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
-
 # Define log configuration
 LOGGING_CONFIG = {
     "version": 1,
@@ -62,7 +65,7 @@ LOGGING_CONFIG = {
         },
         "file_auth": {
             "class": "logging.handlers.RotatingFileHandler",
-            "level": "INFO",
+            "level": "DEBUG",
             "formatter": "detailed",
             "filename": str(logs_dir / "auth.log"),
             "maxBytes": 10485760,  # 10MB
@@ -90,7 +93,7 @@ LOGGING_CONFIG = {
         },
         # Authentication specific logger
         "auth": {
-            "level": "INFO",
+            "level": "DEBUG",
             "handlers": ["console", "file_auth", "file_error"],
             "propagate": False
         },
@@ -115,6 +118,13 @@ LOGGING_CONFIG = {
         # Service layer logger
         "service": {
             "level": "INFO",
+            "handlers": ["console", "file_all", "file_error"],
+            "propagate": False
+        },
+
+        # Host service logger
+        "service.host": {
+            "level": "DEBUG",
             "handlers": ["console", "file_all", "file_error"],
             "propagate": False
         },
