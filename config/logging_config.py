@@ -1,7 +1,6 @@
 import logging
 import logging.config
 import os
-from datetime import datetime
 from pathlib import Path
 
 # Create logs directory if it doesn't exist
@@ -15,6 +14,8 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 LOGGING_CONFIG = {
     "version": 1,
     "disable_existing_loggers": False,
+    # Formatters define the layout of log messages and are used by handlers.
+    # Here we have 3 options, detailed, simple, and json. 
     "formatters": {
         "detailed": {
             "format": "{asctime} | {levelname:8} | {name:15} | {funcName:15} | {lineno:4} | {message}",
@@ -31,6 +32,9 @@ LOGGING_CONFIG = {
             "datefmt": "%Y-%m-%d %H:%M:%S"
         }
     },
+    # Handlers to be used by the loggers. A logger can write to multiple handlers.
+    # For example, the auth logger might write to file_auth for regular auth logs as well as
+    # file_error for any errors that occur.
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
@@ -75,6 +79,8 @@ LOGGING_CONFIG = {
             "encoding": "utf8"
         }
     },
+    # The various loggers throughout the application. This includes both custom loggers we make,
+    # as well as loggers for third-party libraries (e.g. SQLAlchemy, FastAPI).
     "loggers": {
         # Root logger
         "": {
