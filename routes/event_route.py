@@ -15,9 +15,7 @@ logger = get_logger("api.events")
 
 router = APIRouter(prefix="/events", tags=["events"])
 
-# Note: If during a test request you get 403 forbidden unexpectedly,
-# make sure to include the Authorization header with a valid token.
-# HttpBearer automatically checks for the existence of a token but does not validate it. 
+# Note: HttpBearer automatically checks for the existence of a token but does not validate it. 
 security = HTTPBearer()
 
 # TODO: Move these dependencies to a separate file
@@ -96,7 +94,6 @@ async def verify_event_ownership_for_update(
         event = await service.get_event_by_id_service(event_uuid)
 
         if event.host_id != current_host.id:
-            print("raising error")
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You can only update events that you own"
