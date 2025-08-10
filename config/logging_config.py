@@ -119,7 +119,7 @@ LOGGING_CONFIG = {
             "propagate": False
         },
         # SQLAlchemy logger (reduce verbosity)
-        "sqlalchemy.engine": {
+        "sqlalchemy.engine.Engine": {
             "level": "WARNING",
             "handlers": ["file_all"],
             "propagate": False
