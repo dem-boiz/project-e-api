@@ -11,15 +11,15 @@ def generate_otp():
     import random
     return str(random.randint(100000, 999999))
 
-def create_jwt(userId: str, type="access", rememberMe=False):
+def create_jwt(userId: str, type="access", remember_me=False):
     if (type == "access"):
         lifespan = timedelta(hours=JWT_ACCESS_LIFESPAN)
     else:
-        lifespan = timedelta(days=30) if rememberMe else timedelta(hours=JWT_REFRESH_LIFESPAN)
+        lifespan = timedelta(days=30) if remember_me else timedelta(hours=JWT_REFRESH_LIFESPAN)
     payload = {
         "sub": userId,
         "exp": datetime.now() + lifespan,
-        "rm": rememberMe if type == "refresh" else None  # Remember Me flag. This will be checked
+        "rm": remember_me if type == "refresh" else None  # Remember Me flag. This will be checked
     }
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
