@@ -24,6 +24,13 @@ class RefreshResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class RefreshTokens(BaseModel):
+    access_token: str
+    refresh_token: str
+
+    class Config:
+        from_attributes = True
+
 class CurrentUserResponse(BaseModel):
     email: EmailStr
     host_id: Optional[str] = None

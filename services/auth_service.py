@@ -5,7 +5,7 @@ from fastapi import HTTPException, status
 from passlib.context import CryptContext
 from models import Host
 from schema import LoginRequest
-from schema.auth_schemas import RefreshResponse
+from schema import RefreshTokens
 from utils.utils import create_jwt, verify_jwt
 from repository import HostRepository
 from config.logging_config import get_logger
@@ -91,15 +91,14 @@ class AuthService:
         }
 
 
-    async def refresh_access_token(self, host_id: str, remember_me: bool) -> RefreshResponse:
+    async def refresh_access_token(self, host_id: str, remember_me: bool) -> RefreshTokens:
         """Generate a new access & refresh token for the host"""
         logger.debug(f"Generating new access token (& refresh token) for host ID: {host_id}. remember_me optionset to '{remember_me}'")
         access_token = create_jwt(host_id)
         refresh_token = create_jwt(host_id, remember_me=remember_me)
-        return RefreshResponse(
+        return RefreshTokens(
             access_token=access_token,
             refresh_token=refresh_token,
-            token_type="bearer"
         )
 
     async def get_current_host(self, token: str) -> Host:

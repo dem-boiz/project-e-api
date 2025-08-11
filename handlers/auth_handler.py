@@ -30,23 +30,24 @@ async def handle_refresh_token(refresh_token, service: AuthService, response: Re
     logger.debug("Host info found. Refreshing access & refresh tokens.")
     # Generate new access token for this host
     tokens = await service.refresh_access_token(str(decoded_token["sub"]), decoded_token["rm"])
-
+    refresh_token = tokens.refresh_token
+    remember_me = decoded_token["rm"]
     # refresh token must be stored as HTTP only cookie
 
     logger.debug(f"Setting cookie for refresh token with ENV '{ENV}'")
     response.set_cookie(
         key="refresh_token",
-        value=tokens["refresh_token"],
+        value=refresh_token,
         httponly=True,
         secure=True if ENV == "PROD" else False,
         samesite="none" if ENV == "PROD" else "lax",
-        max_age=30*24*3600 if tokens["remember_me"] else None,
+        max_age=30*24*3600 if remember_me else None,
         #path="/auth/refresh" TODO: reintroduce after testing
     )
 
     # access token can be sent back via response body
     return {
-        "access_token": tokens["access_token"],
+        "access_token": tokens.access_token,
         "token_type": "bearer"
     }
 
