@@ -7,6 +7,10 @@ from config import SECRET_KEY, ALGORITHM, JWT_ACCESS_LIFESPAN, JWT_REFRESH_LIFES
 
 from datetime import datetime, timedelta
 
+from config.logging_config import get_logger
+
+logger = get_logger("auth")
+
 def generate_otp():
     import random
     return str(random.randint(100000, 999999))
@@ -35,6 +39,8 @@ def verify_jwt(token: str):
         return payload
     
     except ExpiredSignatureError as e:
+        logger.warning(f"JWT token has expired: {e}")
         raise HTTPException(status_code=401, detail="Token has expired")
     except JWTError as e:
+        logger.warning(f"Invalid token: {e}")
         raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
