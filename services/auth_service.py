@@ -79,21 +79,23 @@ class AuthService:
         logger.debug(f"JWT tokens created for host: {host.email}")
 
         return {
-            "access_token": access_token,
+            "response_body": {
+                "access_token": access_token,
+                "token_type": "bearer",
+                "email": host.email,
+                "user_id": str(host.id),
+                "name": host.company_name,
+                "id": str(host.id)
+            },
             "refresh_token": refresh_token,
-            "token_type": "bearer",
-            "email": host.email,
-            "user_id": str(host.id),
-            "name": host.company_name,
-            "id": str(host.id)
         }
 
 
-    async def refresh_access_token(self, host_id: str) -> RefreshResponse:
+    async def refresh_access_token(self, host_id: str, remember_me: bool) -> RefreshResponse:
         """Generate a new access & refresh token for the host"""
-        logger.debug(f"Generating new access token (& refresh token) for host ID: {host_id}")
+        logger.debug(f"Generating new access token (& refresh token) for host ID: {host_id}. remember_me optionset to '{remember_me}'")
         access_token = create_jwt(host_id)
-        refresh_token = create_jwt(host_id, remember_me=True)
+        refresh_token = create_jwt(host_id, remember_me=remember_me)
         return RefreshResponse(
             access_token=access_token,
             refresh_token=refresh_token,
@@ -104,7 +106,8 @@ class AuthService:
         """Get current host from JWT token"""
         logger.debug(f"Verifying JWT token")
         try:
-            userId_str = verify_jwt(token)
+            decoded_token = verify_jwt(token)
+            userId_str = decoded_token["sub"]
             # Convert string UUID back to UUID object
             host_id = uuid.UUID(userId_str)
             logger.debug(f"Token verified for host ID: {host_id}")

@@ -1,5 +1,5 @@
 from config.logging_config import get_logger
-from fastapi import APIRouter, Depends, status, Security, Response
+from fastapi import APIRouter, Depends, status, Security, Response, Cookie
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.session import get_async_session
@@ -47,11 +47,11 @@ async def get_current_user(
 
 @router.get("/refresh", response_model=RefreshResponse, status_code=status.HTTP_200_OK)
 async def refresh_token(
-    credentials: HTTPAuthorizationCredentials = Security(security),
+    refresh_token: str | None = Cookie(default=None),
     service: AuthService = Depends(get_auth_service)
 ) -> RefreshResponse:
     """Refresh JWT token"""
     logger.debug(f"Refreshing JWT token for host ID: {host.id}")
-    result = await handle_refresh_token(credentials, service)
+    result = await handle_refresh_token(refresh_token, service)
     logger.debug(f"New access token generated for host ID: {host.id}")
     return result

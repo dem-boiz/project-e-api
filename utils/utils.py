@@ -18,7 +18,8 @@ def create_jwt(userId: str, type="access", rememberMe=False):
         lifespan = timedelta(days=30) if rememberMe else timedelta(hours=JWT_REFRESH_LIFESPAN)
     payload = {
         "sub": userId,
-        "exp": datetime.now() + lifespan
+        "exp": datetime.now() + lifespan,
+        "rm": rememberMe if type == "refresh" else None  # Remember Me flag. This will be checked
     }
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -31,7 +32,7 @@ def create_jwt(userId: str, type="access", rememberMe=False):
 def verify_jwt(token: str):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload["sub"]
+        return payload
     
     except ExpiredSignatureError as e:
         raise HTTPException(status_code=401, detail="Token has expired")
