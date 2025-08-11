@@ -47,11 +47,12 @@ async def get_current_user(
 
 @router.post("/refresh", response_model=RefreshResponse, status_code=status.HTTP_200_OK)
 async def refresh_token(
+    response: Response,
     refresh_token: str | None = Cookie(default=None),
     service: AuthService = Depends(get_auth_service)
 ) -> RefreshResponse:
     """Refresh JWT token"""
-    logger.debug(f"Refreshing JWT token for host ID: {host.id}")
-    result = await handle_refresh_token(refresh_token, service)
-    logger.debug(f"New access token generated for host ID: {host.id}")
+    logger.debug("Refreshing JWT token")
+    result = await handle_refresh_token(refresh_token, service, response)
+    logger.debug("New access token generated")
     return result
