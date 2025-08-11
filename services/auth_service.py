@@ -74,7 +74,7 @@ class AuthService:
         
         # Create JWT tokens
         access_token = create_jwt(str(host.id))
-        refresh_token = create_jwt(str(host.id), remember_me=login_data.rememberMe)
+        refresh_token = create_jwt(str(host.id), type='refresh', remember_me=login_data.rememberMe)
 
         logger.debug(f"JWT tokens created for host: {host.email}")
 
@@ -95,7 +95,7 @@ class AuthService:
         """Generate a new access & refresh token for the host"""
         logger.debug(f"Generating new access token (& refresh token) for host ID: {host_id}. remember_me optionset to '{remember_me}'")
         access_token = create_jwt(host_id)
-        refresh_token = create_jwt(host_id, remember_me=remember_me)
+        refresh_token = create_jwt(host_id, type='refresh', remember_me=remember_me)
         return RefreshTokens(
             access_token=access_token,
             refresh_token=refresh_token,
