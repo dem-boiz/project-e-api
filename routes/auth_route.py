@@ -45,7 +45,7 @@ async def get_current_user(
     return result
 
 
-@router.get("/refresh", response_model=RefreshResponse, status_code=status.HTTP_200_OK)
+@router.post("/refresh", response_model=RefreshResponse, status_code=status.HTTP_200_OK)
 async def refresh_token(
     refresh_token: str | None = Cookie(default=None),
     service: AuthService = Depends(get_auth_service)
