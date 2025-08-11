@@ -62,7 +62,7 @@ async def handle_login(login_data: LoginRequest, response: Response, service: Au
     """Handle login for hosts"""
     loginResponse = await service.login(login_data)
     remember_me = login_data.rememberMe
-    logger.debug(f"Setting refresh token cookie for host: {loginResponse['email']}")
+    logger.debug(f"Setting refresh token cookie for host: {login_data.email}")
     response.set_cookie(
         key="refresh_token",
         value=loginResponse["refresh_token"],
@@ -72,6 +72,6 @@ async def handle_login(login_data: LoginRequest, response: Response, service: Au
         max_age=30*24*3600 if remember_me else None, # if the user wants to be remembered, make the cookie last 30 days
         path="/auth/refresh"  # limit cookie to auth endpoint
     )
-    logger.debug(f"Refresh token cookie successfully set for host: {loginResponse['email']}")
+    logger.debug(f"Refresh token cookie successfully set for host: {login_data.email}")
 
     return loginResponse["response_body"]
