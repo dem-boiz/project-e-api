@@ -3,7 +3,7 @@
 
 from config.logging_config import get_logger
 from fastapi.security import HTTPAuthorizationCredentials
-from schema import CurrentUserResponse, LoginRequest, LoginResponse, RefreshResponse, LoginResponseBody
+from schema import CurrentUserResponse, LoginRequest, LoginResponse, RefreshResponse
 from services.auth_service import AuthService
 from fastapi import HTTPException, Response, status
 
