@@ -58,7 +58,8 @@ async def handle_get_me(credentials: HTTPAuthorizationCredentials, service: Auth
     host = await service.get_current_host(token)
     return CurrentUserResponse(
         email=host.email,
-        host_id=str(host.id)
+        host_id=str(host.id),
+        name=host.company_name
     )
 
 async def handle_login(login_data: LoginRequest, response: Response, service: AuthService) -> LoginResponse:

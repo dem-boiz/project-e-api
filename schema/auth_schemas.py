@@ -33,6 +33,7 @@ class RefreshTokens(BaseModel):
 
 class CurrentUserResponse(BaseModel):
     email: EmailStr
+    name: str
     host_id: Optional[str] = None
     
     class Config:
