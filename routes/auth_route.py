@@ -1,5 +1,5 @@
 from config.logging_config import get_logger
-from fastapi import APIRouter, Depends, status, Security
+from fastapi import APIRouter, Depends, status, Security, Response
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.session import get_async_session
@@ -24,11 +24,12 @@ async def get_host_service(session: AsyncSession = Depends(get_async_session)) -
 @router.post("/login", response_model=LoginResponse, status_code=status.HTTP_200_OK)
 async def login(
     login_data: LoginRequest,
-    service: AuthService = Depends(get_auth_service)
+    response: Response,
+    service: AuthService = Depends(get_auth_service),
 ):
     """Login endpoint for hosts"""
     logger.info(f"Login attempt for email: {login_data.email}")
-    result = await handle_login(service, login_data)
+    result = await handle_login(service, login_data, response)
     logger.info(f"Login successful for email: {login_data.email}")
     return result
 
