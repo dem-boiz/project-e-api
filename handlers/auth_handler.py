@@ -3,7 +3,7 @@
 
 from config.logging_config import get_logger
 from fastapi.security import HTTPAuthorizationCredentials
-from schema.auth_schemas import CurrentUserResponse, LoginRequest, LoginResponse, RefreshResponse
+from schema import CurrentUserResponse, LoginRequest, LoginResponse, RefreshResponse, LoginResponseBody
 from services.auth_service import AuthService
 from fastapi import HTTPException, Response, status
 
@@ -58,11 +58,11 @@ async def handle_get_me(credentials: HTTPAuthorizationCredentials, service: Auth
         host_id=str(host.id)
     )
 
-async def handle_login(login_data: LoginRequest, response: Response, service: AuthService) -> LoginResponse:
+async def handle_login(login_data: LoginRequest, response: Response, service: AuthService) -> LoginResponseBody:
     """Handle login for hosts"""
     loginResponse = await service.login(login_data)
     remember_me = login_data.rememberMe
-
+    logger.debug(f"Setting refresh token cookie for host: {loginResponse['email']}")
     response.set_cookie(
         key="refresh_token",
         value=loginResponse["refresh_token"],
@@ -72,5 +72,6 @@ async def handle_login(login_data: LoginRequest, response: Response, service: Au
         max_age=30*24*3600 if remember_me else None, # if the user wants to be remembered, make the cookie last 30 days
         path="/auth/refresh"  # limit cookie to auth endpoint
     )
+    logger.debug(f"Refresh token cookie successfully set for host: {loginResponse['email']}")
 
     return loginResponse["response_body"]
