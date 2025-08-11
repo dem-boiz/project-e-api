@@ -29,8 +29,7 @@ app.add_middleware(RequestLoggingMiddleware)
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development
-    allow_origin_regex="http://localhost.*",
+    allow_origins=allowed_origins,  # Use specific origins from environment
     allow_credentials=True, # Will need to set to true when we implement authentication
     allow_methods=["*"],
     allow_headers=["*"],
