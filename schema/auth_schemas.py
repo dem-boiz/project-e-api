@@ -6,18 +6,18 @@ class LoginRequest(BaseModel):
     password: str
     rememberMe: bool
 
-class LoginResponseBody(BaseModel):
+class LoginResponse(BaseModel):
     access_token: str
-    refresh_token: str
     token_type: str = "bearer"
     email: EmailStr
     user_id: str
     name: str
     id: str
 
-class LoginResponse(BaseModel):
-    response_body: LoginResponseBody
+class LoginServiceResponse(BaseModel):
+    response_body: LoginResponse
     refresh_token: str
+
 class RefreshResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"

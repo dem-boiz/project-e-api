@@ -58,7 +58,7 @@ async def handle_get_me(credentials: HTTPAuthorizationCredentials, service: Auth
         host_id=str(host.id)
     )
 
-async def handle_login(login_data: LoginRequest, response: Response, service: AuthService) -> LoginResponseBody:
+async def handle_login(login_data: LoginRequest, response: Response, service: AuthService) -> LoginResponse:
     """Handle login for hosts"""
     loginResponse = await service.login(login_data)
     remember_me = login_data.rememberMe
