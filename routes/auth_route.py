@@ -29,7 +29,7 @@ async def login(
 ):
     """Login endpoint for hosts"""
     logger.info(f"Login attempt for email: {login_data.email}")
-    result = await handle_login(service, login_data, response)
+    result = await handle_login(login_data, response, service)
     logger.info(f"Login successful for email: {login_data.email}")
     return result
 
