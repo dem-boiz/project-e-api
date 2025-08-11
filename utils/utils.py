@@ -2,7 +2,7 @@ from jose import jwt, JWTError
 from jose.exceptions import ExpiredSignatureError  # <-- correct import
 from fastapi import HTTPException
 
-from config.settings import SECRET_KEY, ALGORITHM, JWT_LIFESPAN
+from config import SECRET_KEY, ALGORITHM, JWT_ACCESS_LIFESPAN, JWT_REFRESH_LIFESPAN
 
 
 from datetime import datetime, timedelta
@@ -11,13 +11,19 @@ def generate_otp():
     import random
     return str(random.randint(100000, 999999))
 
-def create_jwt(userId: str, rememberMe=False):
-    lifespan = timedelta(hours=JWT_LIFESPAN) if not rememberMe else timedelta(days=30)
+def create_jwt(userId: str, type="access", rememberMe=False):
+    if (type == "access"):
+        lifespan = timedelta(hours=JWT_ACCESS_LIFESPAN)
+    else:
+        lifespan = timedelta(days=30) if rememberMe else timedelta(hours=JWT_REFRESH_LIFESPAN)
     payload = {
         "sub": userId,
         "exp": datetime.now() + lifespan
     }
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+
+
 
 # Verifies the token by decoding it and validating it's properties, if present.
 # For example, if the token has an exp field, it checks if the token is expired and 
