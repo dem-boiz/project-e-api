@@ -15,9 +15,6 @@ pwd_context = CryptContext(
     bcrypt__rounds=10  # The number of hashing rounds. Higher = more secure but slower
 )
 
-
-
-
 class HostRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
@@ -78,7 +75,6 @@ class HostRepository:
             return None
         
     async def update_host(self, host_id: uuid.UUID, data: HostUpdateSchema) -> Optional[Host]:
-        print(f"Attempting to update host with ID: {host_id}")
         try:
             result = await self.session.execute(select(Host).where(Host.id == host_id))
             host = result.scalar_one()
@@ -91,18 +87,10 @@ class HostRepository:
             if data.password is not None:
                 # TODO: hash password and update host.password_hash
                 host.password_hash = data.password
-            if data.created_at is not None:
-                # Assuming created_at is a datetime or ISO string
-                if isinstance(data.created_at, str):
-                    host.created_at = datetime.fromisoformat(data.created_at)
-                else:
-                    host.created_at = data.created_at
 
             await self.session.commit()
             await self.session.refresh(host)
-            print(f"Host {host_id} updated successfully")
             return host
 
         except NoResultFound:
-            print(f"Host {host_id} not found for update")
             return None

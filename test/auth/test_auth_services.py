@@ -22,10 +22,10 @@ client = TestClient(app)
 async def test_hash_password():
     """Test password hashing functionality"""
     async with AsyncSessionLocal() as session:
-        auth_service = AuthService(session)
+        authn_service = AuthService(session)
         
         password = "testpassword123"
-        hashed = auth_service.hash_password(password)
+        hashed = authn_service.hash_password(password)
         
         # Verify the hash is different from the original password
         assert hashed != password
@@ -36,24 +36,24 @@ async def test_hash_password():
 async def test_verify_password():
     """Test password verification functionality"""
     async with AsyncSessionLocal() as session:
-        auth_service = AuthService(session)
+        authn_service = AuthService(session)
         
         password = "testpassword123"
         wrong_password = "wrongpassword"
-        hashed = auth_service.hash_password(password)
+        hashed = authn_service.hash_password(password)
         
         # Test correct password
-        assert auth_service.verify_password(password, hashed) is True
+        assert authn_service.verify_password(password, hashed) is True
         
         # Test wrong password
-        assert auth_service.verify_password(wrong_password, hashed) is False
+        assert authn_service.verify_password(wrong_password, hashed) is False
 
 
 @pytest.mark.asyncio
 async def test_authenticate_host_success():
     """Test successful host authentication"""
     async with AsyncSessionLocal() as session:
-        auth_service = AuthService(session)
+        authn_service = AuthService(session)
         host_service = HostService(session)
         
         # Create a test host first
@@ -71,7 +71,7 @@ async def test_authenticate_host_success():
         assert created_host is not None
         
         # Test authentication with correct credentials
-        authenticated_host = await auth_service.authenticate_host(email, password)
+        authenticated_host = await authn_service.authenticate_host(email, password)
         assert authenticated_host is not None
         assert authenticated_host.email == email
         assert authenticated_host.company_name == "Test Auth Company"
@@ -84,7 +84,7 @@ async def test_authenticate_host_success():
 async def test_authenticate_host_wrong_password():
     """Test host authentication with wrong password"""
     async with AsyncSessionLocal() as session:
-        auth_service = AuthService(session)
+        authn_service = AuthService(session)
         host_service = HostService(session)
         
         # Create a test host first
@@ -103,7 +103,7 @@ async def test_authenticate_host_wrong_password():
         assert created_host is not None
         
         # Test authentication with wrong password
-        authenticated_host = await auth_service.authenticate_host(email, wrong_password)
+        authenticated_host = await authn_service.authenticate_host(email, wrong_password)
         assert authenticated_host is None
         
         # Clean up
@@ -114,10 +114,10 @@ async def test_authenticate_host_wrong_password():
 async def test_authenticate_host_nonexistent_email():
     """Test host authentication with non-existent email"""
     async with AsyncSessionLocal() as session:
-        auth_service = AuthService(session)
+        authn_service = AuthService(session)
         
         # Test authentication with non-existent email
-        authenticated_host = await auth_service.authenticate_host("nonexistent@example.com", "password")
+        authenticated_host = await authn_service.authenticate_host("nonexistent@example.com", "password")
         assert authenticated_host is None
 
 
@@ -125,7 +125,7 @@ async def test_authenticate_host_nonexistent_email():
 async def test_login_success():
     """Test successful login and JWT token generation"""
     async with AsyncSessionLocal() as session:
-        auth_service = AuthService(session)
+        authn_service = AuthService(session)
         host_service = HostService(session)
         
         # Create a test host first
@@ -144,7 +144,7 @@ async def test_login_success():
         
         # Test login
         login_request = LoginRequest(email=email, password=password)
-        login_response = await auth_service.login(login_request)
+        login_response = await authn_service.login(login_request)
         
         assert "access_token" in login_response
         assert login_response["token_type"] == "bearer"
@@ -163,20 +163,20 @@ async def test_login_success():
 async def test_login_invalid_credentials():
     """Test login with invalid credentials"""
     async with AsyncSessionLocal() as session:
-        auth_service = AuthService(session)
+        authn_service = AuthService(session)
         
         # Test login with invalid credentials
         login_request = LoginRequest(email="nonexistent@example.com", password="wrongpassword")
         
         with pytest.raises(Exception):  # Should raise HTTPException
-            await auth_service.login(login_request)
+            await authn_service.login(login_request)
 
 
 @pytest.mark.asyncio
 async def test_get_current_host_success():
     """Test getting current host from valid JWT token"""
     async with AsyncSessionLocal() as session:
-        auth_service = AuthService(session)
+        authn_service = AuthService(session)
         host_service = HostService(session)
         
         # Create a test host and login
@@ -192,11 +192,11 @@ async def test_get_current_host_success():
         
         created_host = await host_service.create_host(host_create)
         login_request = LoginRequest(email=email, password=password)
-        login_response = await auth_service.login(login_request)
+        login_response = await authn_service.login(login_request)
         
         # Test get current host
         token = login_response["access_token"]
-        current_host = await auth_service.get_current_host(token)
+        current_host = await authn_service.get_current_host(token)
         
         assert current_host is not None
         assert current_host.email == email
@@ -211,32 +211,32 @@ async def test_get_current_host_success():
 async def test_get_current_host_invalid_token():
     """Test getting current host with invalid JWT token"""
     async with AsyncSessionLocal() as session:
-        auth_service = AuthService(session)
+        authn_service = AuthService(session)
         
         # Test with invalid token
         with pytest.raises(Exception):  # Should raise HTTPException
-            await auth_service.get_current_host("invalid.jwt.token")
+            await authn_service.get_current_host("invalid.jwt.token")
 
 
 @pytest.mark.asyncio
 async def test_get_current_host_invalid_uuid():
     """Test getting current host with JWT containing invalid UUID"""
     async with AsyncSessionLocal() as session:
-        auth_service = AuthService(session)
+        authn_service = AuthService(session)
         
         # Create a token with invalid UUID (this would be a malformed token scenario)
         from utils.utils import create_jwt
         invalid_token = create_jwt("not-a-valid-uuid")
         
         with pytest.raises(Exception):  # Should raise HTTPException due to invalid UUID
-            await auth_service.get_current_host(invalid_token)
+            await authn_service.get_current_host(invalid_token)
 
 
 @pytest.mark.asyncio
 async def test_get_current_host_nonexistent_host():
     """Test getting current host with JWT containing UUID of non-existent host"""
     async with AsyncSessionLocal() as session:
-        auth_service = AuthService(session)
+        authn_service = AuthService(session)
         
         # Create a token with valid UUID format but non-existent host
         from utils.utils import create_jwt
@@ -244,14 +244,14 @@ async def test_get_current_host_nonexistent_host():
         fake_token = create_jwt(fake_uuid)
         
         with pytest.raises(Exception):  # Should raise HTTPException due to host not found
-            await auth_service.get_current_host(fake_token)
+            await authn_service.get_current_host(fake_token)
 
 
 @pytest.mark.asyncio 
-async def test_auth_service_integration():
+async def test_authn_service_integration():
     """Test complete authentication flow: create host -> login -> get current user"""
     async with AsyncSessionLocal() as session:
-        auth_service = AuthService(session)
+        authn_service = AuthService(session)
         host_service = HostService(session)
         
         # Step 1: Create host (registration)
@@ -272,7 +272,7 @@ async def test_auth_service_integration():
         
         # Step 2: Login
         login_request = LoginRequest(email=email, password=password)
-        login_response = await auth_service.login(login_request)
+        login_response = await authn_service.login(login_request)
         
         assert "access_token" in login_response
         assert login_response["token_type"] == "bearer"
@@ -280,7 +280,7 @@ async def test_auth_service_integration():
         
         # Step 3: Get current user using JWT
         token = login_response["access_token"]
-        current_host = await auth_service.get_current_host(token)
+        current_host = await authn_service.get_current_host(token)
         
         assert current_host.email == email
         assert current_host.company_name == "Integration Test Company"
