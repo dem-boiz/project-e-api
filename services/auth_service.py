@@ -101,6 +101,15 @@ class AuthService:
             refresh_token=refresh_token,
         )
 
+    async def logout_user(self):
+            """
+            Optional: Revoke server-side session/token.
+            If you store refresh tokens or sessions in the DB, delete them here.
+            """
+            # Example: remove token from a session store
+            # await self.session_repo.delete_by_user_id(current_user.id)
+            pass
+    
     async def get_current_host(self, token: str) -> Host:
         """Get current host from JWT token"""
         logger.debug(f"Verifying JWT token")

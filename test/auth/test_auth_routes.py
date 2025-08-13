@@ -17,6 +17,45 @@ if sys.platform == "win32":
 client = TestClient(app)
 
 @pytest.mark.asyncio
+async def test_logout_route_success():
+    """Test POST /auth/logout after logging in"""
+    email = f"route_test_{uuid4()}@example.com"
+    password = "routetest123"
+
+    host_payload = {
+        "email": email,
+        "company_name": "Route Test Company",
+        "password": password,
+        "created_at": "2023-10-01T12:00:00Z"
+    }
+
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        # Create host
+        host_response = await client.post("/hosts/", json=host_payload)
+        assert host_response.status_code == 201
+        host_data = host_response.json()
+
+        # Login to get token & cookies
+        login_payload = {
+            "email": email,
+            "password": password,
+            "rememberMe": False
+        }
+        login_response = await client.post("/auth/login", json=login_payload)
+        assert login_response.status_code == 200
+
+        cookies = login_response.cookies
+
+        # Call logout endpoint
+        logout_response = await client.post("/auth/logout", cookies=cookies)
+        assert logout_response.status_code == 200
+        assert logout_response.json()["message"] == "Logged out successfully"
+
+        # Clean up - delete the host
+        delete_response = await client.delete(f"/hosts/{host_data['id']}")
+        assert delete_response.status_code == 204
+        
+@pytest.mark.asyncio
 async def test_login_route_success():
     """Test POST /auth/login with valid credentials"""
     # Create a test host first

@@ -79,3 +79,20 @@ async def handle_login(login_data: LoginRequest, response: Response, service: Au
     logger.debug(f"Refresh token cookie successfully set for host: {login_data.email}")
 
     return loginResponse["response_body"]
+
+
+async def handle_logout(response: Response):
+    """Handle logout logic for hosts."""
+    logger.info("Logout attempt")
+
+    is_prod = ENV == "PROD" 
+
+    response.delete_cookie(
+        key="refresh_token",   
+        httponly=is_prod,
+        samesite="none" if is_prod else "lax",
+        secure=is_prod,
+        path="/auth/refresh"  # Ensure the cookie is deleted from the correct path
+    )
+    logger.info("Logout successful")
+    return {"message": "Logged out successfully"}

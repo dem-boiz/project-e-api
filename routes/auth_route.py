@@ -1,3 +1,4 @@
+import os
 from config.logging_config import get_logger
 from fastapi import APIRouter, Depends, status, Security, Response, Cookie
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -7,7 +8,7 @@ from models import host
 from services import AuthService, HostService
 from schema import LoginRequest, LoginResponse, CurrentUserResponse, RefreshResponse
 
-from handlers.auth_handler import handle_refresh_token, handle_get_me, handle_login
+from handlers.auth_handler import handle_refresh_token, handle_get_me, handle_login, handle_logout
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 security = HTTPBearer()
@@ -32,6 +33,13 @@ async def login(
     result = await handle_login(login_data, response, service)
     logger.info(f"Login successful for email: {login_data.email}")
     return result
+
+@router.post("/logout", status_code=status.HTTP_200_OK)
+async def logout(
+    response: Response,
+    service: AuthService = Depends(get_auth_service),
+):
+    return await handle_logout(response)
 
 @router.get("/me", response_model=CurrentUserResponse, status_code=status.HTTP_200_OK)
 async def get_current_user(
