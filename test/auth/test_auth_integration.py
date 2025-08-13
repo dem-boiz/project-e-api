@@ -55,7 +55,7 @@ async def test_jwt_token_expiration():
 async def test_password_hashing_consistency():
     """Test that password hashing is consistent between auth service and host repository"""
     async with AsyncSessionLocal() as session:
-        auth_service = AuthService(session)
+        authn_service = AuthService(session)
         host_service = HostService(session)
         
         email = f"consistency_test_{uuid4()}@example.com"
@@ -75,11 +75,11 @@ async def test_password_hashing_consistency():
         host_with_password = await host_service.get_host_by_email(email, includePassword=True)
         
         # Verify auth service can validate the password hashed by repository
-        is_valid = auth_service.verify_password(password, host_with_password.password_hash)
+        is_valid = authn_service.verify_password(password, host_with_password.password_hash)
         assert is_valid is True
         
         # Verify wrong password fails
-        is_invalid = auth_service.verify_password("wrongpassword", host_with_password.password_hash)
+        is_invalid = authn_service.verify_password("wrongpassword", host_with_password.password_hash)
         assert is_invalid is False
         
         # Clean up
@@ -90,7 +90,7 @@ async def test_password_hashing_consistency():
 async def test_authentication_with_special_characters():
     """Test authentication with special characters in email and password"""
     async with AsyncSessionLocal() as session:
-        auth_service = AuthService(session)
+        authn_service = AuthService(session)
         host_service = HostService(session)
         
         # Email with special characters
@@ -109,13 +109,13 @@ async def test_authentication_with_special_characters():
         assert created_host is not None
         
         # Test authentication
-        authenticated_host = await auth_service.authenticate_host(email, password)
+        authenticated_host = await authn_service.authenticate_host(email, password)
         assert authenticated_host is not None
         assert authenticated_host.email == email
         
         # Test login
         login_request = LoginRequest(email=email, password=password)
-        login_response = await auth_service.login(login_request)
+        login_response = await authn_service.login(login_request)
         assert "access_token" in login_response
         
         # Clean up
@@ -126,7 +126,7 @@ async def test_authentication_with_special_characters():
 async def test_concurrent_authentication_requests():
     """Test multiple concurrent authentication requests"""
     async with AsyncSessionLocal() as session:
-        auth_service = AuthService(session)
+        authn_service = AuthService(session)
         host_service = HostService(session)
         
         # Create multiple test hosts
@@ -155,7 +155,7 @@ async def test_concurrent_authentication_requests():
                 email=host_data["email"],
                 password=host_data["password"]
             )
-            return await auth_service.login(login_request)
+            return await authn_service.login(login_request)
         
         # Execute concurrent logins
         import asyncio
@@ -177,30 +177,30 @@ async def test_concurrent_authentication_requests():
 async def test_authentication_edge_cases():
     """Test authentication edge cases and error conditions"""
     async with AsyncSessionLocal() as session:
-        auth_service = AuthService(session)
+        authn_service = AuthService(session)
         host_service = HostService(session)
         
         # Test empty email
         with pytest.raises(Exception):
-            await auth_service.authenticate_host("", "password")
+            await authn_service.authenticate_host("", "password")
         
         # Test empty password
         with pytest.raises(Exception):
-            await auth_service.authenticate_host("test@example.com", "")
+            await authn_service.authenticate_host("test@example.com", "")
         
         # Test None values
         with pytest.raises(Exception):
-            await auth_service.authenticate_host(None, "password")
+            await authn_service.authenticate_host(None, "password")
         
         with pytest.raises(Exception):
-            await auth_service.authenticate_host("test@example.com", None)
+            await authn_service.authenticate_host("test@example.com", None)
 
 
 @pytest.mark.asyncio
 async def test_host_sanitization_in_auth_responses():
     """Test that host objects returned by auth service have sanitized password_hash"""
     async with AsyncSessionLocal() as session:
-        auth_service = AuthService(session)
+        authn_service = AuthService(session)
         host_service = HostService(session)
         
         email = f"sanitization_test_{uuid4()}@example.com"
@@ -217,10 +217,10 @@ async def test_host_sanitization_in_auth_responses():
         
         # Login and get current host
         login_request = LoginRequest(email=email, password=password)
-        login_response = await auth_service.login(login_request)
+        login_response = await authn_service.login(login_request)
         
         token = login_response["access_token"]
-        current_host = await auth_service.get_current_host(token)
+        current_host = await authn_service.get_current_host(token)
         
         # Verify password_hash is None (sanitized)
         assert current_host.password_hash is None
@@ -235,7 +235,7 @@ async def test_host_sanitization_in_auth_responses():
 async def test_authentication_performance():
     """Test authentication performance with password hashing"""
     async with AsyncSessionLocal() as session:
-        auth_service = AuthService(session)
+        authn_service = AuthService(session)
         host_service = HostService(session)
         
         email = f"performance_test_{uuid4()}@example.com"
@@ -261,7 +261,7 @@ async def test_authentication_performance():
         
         # Measure authentication time
         start_time = time.time()
-        authenticated_host = await auth_service.authenticate_host(email, password)
+        authenticated_host = await authn_service.authenticate_host(email, password)
         auth_time = time.time() - start_time
         
         assert authenticated_host is not None
