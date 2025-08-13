@@ -13,6 +13,7 @@ from utils.utils import verify_jwt
 
 logger = get_logger("auth")
 
+IS_PROD = ENV == "PROD"
 
 async def handle_refresh_token(refresh_token, service: AuthService, response: Response) -> RefreshResponse:
     """Refresh JWT token"""
@@ -71,8 +72,8 @@ async def handle_login(login_data: LoginRequest, response: Response, service: Au
         key="refresh_token",
         value=loginResponse["refresh_token"],
         httponly=True,
-        secure=True if ENV == "PROD" else False,  # controls whether the cookie is sent only over HTTPS, for dev we want this as false
-        samesite="none" if ENV == "PROD" else "lax",  # PROD will have client and server on different domains so samesite=None is needed
+        secure=IS_PROD,  # controls whether the cookie is sent only over HTTPS, for dev we want this as false
+        samesite="none" if IS_PROD else "lax",  # PROD will have client and server on different domains so samesite=None is needed
         max_age=30*24*3600 if remember_me else None, # if the user wants to be remembered, make the cookie last 30 days
         path="/auth/refresh"  # limit cookie to auth endpoint
     )
@@ -84,14 +85,11 @@ async def handle_login(login_data: LoginRequest, response: Response, service: Au
 async def handle_logout(response: Response):
     """Handle logout logic for hosts."""
     logger.info("Logout attempt")
-
-    is_prod = ENV == "PROD" 
-
     response.delete_cookie(
         key="refresh_token",   
-        httponly=is_prod,
-        samesite="none" if is_prod else "lax",
-        secure=is_prod,
+        httponly=True,
+        samesite="none" if IS_PROD else "lax",
+        secure=IS_PROD,
         path="/auth/refresh"  # Ensure the cookie is deleted from the correct path
     )
     logger.info("Logout successful")
