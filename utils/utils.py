@@ -48,7 +48,7 @@ def verify_jwt(token: str):
 
 def verify_csrf_token(
     x_csrf_token: str = Header(None, alias="X-CSRF-Token"),
-    csrf_token: str = Cookie(None)
+    csrf_token: str = Cookie(None, alias="csrf_token")
 ):
     """Dependency to verify CSRF tokens"""
 
