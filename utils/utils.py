@@ -1,11 +1,11 @@
 from jose import jwt, JWTError
 from jose.exceptions import ExpiredSignatureError  # <-- correct import
-from fastapi import HTTPException
-
+from fastapi import Header, Cookie, HTTPException, status, Depends
 from config import SECRET_KEY, ALGORITHM, JWT_ACCESS_LIFESPAN, JWT_REFRESH_LIFESPAN
 
 
 from datetime import datetime, timedelta
+import secrets
 
 from config.logging_config import get_logger
 
@@ -44,3 +44,35 @@ def verify_jwt(token: str):
     except JWTError as e:
         logger.warning(f"Invalid token: {e}")
         raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
+
+
+def verify_csrf_token(
+    x_csrf_token: str = Header(None, alias="X-CSRF-Token"),
+    csrf_token: str = Cookie(None)
+):
+    """Dependency to verify CSRF tokens"""
+    if not x_csrf_token or not csrf_token:
+        raise HTTPException(
+            status_code=403,
+            detail="CSRF token missing"
+        )
+    
+    if x_csrf_token != csrf_token:
+        raise HTTPException(
+            status_code=403,
+            detail="CSRF token mismatch"
+        )
+    
+    return True
+
+async def generate_csrf_token(length: int = 32) -> str:
+    """
+    Generate a secure random CSRF token.
+
+    Args:
+        length (int): Number of bytes before encoding. Defaults to 32 bytes.
+
+    Returns:
+        str: URL-safe base64 encoded token.
+    """
+    return secrets.token_urlsafe(length)
