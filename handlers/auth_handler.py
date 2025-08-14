@@ -61,7 +61,7 @@ async def handle_refresh_token(
         value=new_csrf_token,
         httponly=False,  # JS needs to read this
         secure=True if ENV == "PROD" else False,
-        samesite="strict",  # Strict for CSRF
+        samesite="none" if ENV == "PROD" else "lax",
         max_age=30*24*3600 if remember_me else None,
     )
     # Return access token and new CSRF token in response body
@@ -114,7 +114,7 @@ async def handle_login(
         value=csrf_token,
         httponly=False,  # JavaScript needs to read this
         secure=True if ENV == "PROD" else False,
-        samesite="strict",  # Strict for CSRF cookie
+        samesite="none" if ENV == "PROD" else "lax",
         max_age=30*24*3600 if remember_me else None,
     )
 
@@ -151,8 +151,7 @@ async def handle_logout(response: Response):
         path="/",
         httponly=False,
         secure=is_prod,
-        samesite="strict"
-
+        samesite="none" if is_prod else "lax"
     )
 
     logger.debug("All cookies cleared for logout")
