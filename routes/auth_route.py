@@ -39,8 +39,7 @@ async def login(
     return result
     
 
-@router.post("/logout", 
-             status_code=status.HTTP_200_OK
+@router.post("/logout", status_code=status.HTTP_200_OK)
 async def logout(
     response: Response,
     service: AuthService = Depends(get_auth_service),
