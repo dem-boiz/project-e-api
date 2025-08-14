@@ -51,6 +51,9 @@ def verify_csrf_token(
     csrf_token: str = Cookie(None)
 ):
     """Dependency to verify CSRF tokens"""
+
+    print("CSRF Header:", x_csrf_token)
+    print("CSRF Cookie:", csrf_token)
     if not x_csrf_token or not csrf_token:
         raise HTTPException(
             status_code=403,
