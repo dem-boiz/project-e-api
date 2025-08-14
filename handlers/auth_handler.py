@@ -63,7 +63,6 @@ async def handle_refresh_token(
         secure=True if ENV == "PROD" else False,
         samesite="strict",  # Strict for CSRF
         max_age=30*24*3600 if remember_me else None,
-        path="/"
     )
     # Return access token and new CSRF token in response body
     return {
@@ -117,7 +116,6 @@ async def handle_login(
         secure=True if ENV == "PROD" else False,
         samesite="strict",  # Strict for CSRF cookie
         max_age=30*24*3600 if remember_me else None,
-        path="/"
     )
 
     logger.debug(f"CSRF token cookie set for host: {login_data.email}")
