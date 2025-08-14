@@ -13,6 +13,7 @@ class LoginResponse(BaseModel):
     user_id: str
     name: str
     id: str
+    csrf_token: Optional[str] = None  # CSRF token for CSRF protection
 
 class LoginServiceResponse(BaseModel):
     response_body: LoginResponse

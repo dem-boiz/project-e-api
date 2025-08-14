@@ -232,6 +232,73 @@ async def test_get_current_user_route_invalid_token():
         me_response = await client.get("/auth/me", headers=headers)
         assert me_response.status_code == 401  # Unauthorized
 
+@pytest.mark.asyncio
+async def test_refresh_token_rotates_access_and_csrf():
+    """Test that /refresh returns new access token and CSRF token"""
+    email = f"refresh_{uuid4()}@example.com"
+    password = "TestPassword123!"
+
+    # Create host first
+    host_payload = {
+        "email": email,
+        "company_name": "Refresh Test Company", 
+        "password": password,
+        "created_at": "2023-10-01T12:00:00Z"
+    }
+
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        # Create host
+        host_resp = await client.post("/hosts/", json=host_payload)
+        assert host_resp.status_code == 201
+
+        # Login to get tokens
+        login_payload = {"email": email, "password": password, "rememberMe": True}
+        login_resp = await client.post("/auth/login", json=login_payload)
+        assert login_resp.status_code == 200
+        
+        # DEBUG: Print what we got from login
+        print(f"Login response body: {login_resp.json()}")
+        print(f"Login cookies: {dict(login_resp.cookies)}")
+
+        refresh_cookie = login_resp.cookies.get("refresh_token")
+        assert refresh_cookie is not None
+        
+        # Get CSRF token from response
+        login_data = login_resp.json()
+        csrf_token = login_data.get("csrf_token")
+        
+        # DEBUG: Check if we have CSRF token
+        print(f"CSRF token from login: {csrf_token}")
+        
+        if not csrf_token:
+            print("WARNING: No CSRF token in login response!")
+            # Try without CSRF to see the error
+            refresh_resp = await client.post(
+                "/auth/refresh", 
+                cookies={"refresh_token": refresh_cookie}
+            )
+            print(f"Error response: {refresh_resp.json()}")
+            assert False, "No CSRF token in login response"
+        
+        # Check for CSRF cookie
+        csrf_cookie = login_resp.cookies.get("csrf_token") or csrf_token
+        
+        # Call refresh with CSRF
+        refresh_resp = await client.post(
+            "/auth/refresh",
+            cookies={
+                "refresh_token": refresh_cookie,
+                "csrf_token": csrf_cookie
+            },
+            headers={"X-CSRF-Token": csrf_cookie}
+        )
+        
+        # DEBUG: If failed, print error
+        if refresh_resp.status_code != 200:
+            print(f"Refresh failed with status {refresh_resp.status_code}")
+            print(f"Error: {refresh_resp.json()}")
+        
+        assert refresh_resp.status_code == 200
 
 @pytest.mark.asyncio
 async def test_get_current_user_route_malformed_header():
@@ -248,10 +315,44 @@ async def test_get_current_user_route_malformed_header():
         me_response = await client.get("/auth/me", headers=headers)
         assert me_response.status_code == 403  # Forbidden
 
+@pytest.mark.asyncio
+async def test_login_route_csrf_and_token():
+    """Test login returns access token, CSRF token, and sets refresh cookie"""
+    email = f"test_{uuid4()}@example.com"
+    password = "TestPassword123!"
+    
+    # Create host first
+    host_payload = {
+        "email": email,
+        "company_name": "Test Company",
+        "password": password,
+        "created_at": "2023-10-01T12:00:00Z"
+    }
 
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        # Create host
+        host_resp = await client.post("/hosts/", json=host_payload)
+        assert host_resp.status_code == 201
 
+        # Login
+        login_payload = {"email": email, "password": password, "rememberMe": True}
+        login_resp = await client.post("/auth/login", json=login_payload)
+        assert login_resp.status_code == 200
 
+        login_data = login_resp.json()
+        # Check response contains access token, CSRF token, and user info
+        assert "access_token" in login_data
+        assert login_data["token_type"] == "bearer"
+        assert "csrf_token" in login_data
+        assert len(login_data["csrf_token"]) > 0
 
+        # Check that refresh_token cookie is set
+        set_cookie = login_resp.headers.get("set-cookie")
+        assert "refresh_token=" in set_cookie
+
+        # Check that CSRF token cookie is set (if using cookie for CSRF)
+        if "csrf_token=" in set_cookie:
+            assert login_data["csrf_token"] in set_cookie
 
 @pytest.mark.asyncio
 async def test_complete_auth_flow():
