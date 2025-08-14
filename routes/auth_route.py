@@ -40,8 +40,7 @@ async def login(
     
 
 @router.post("/logout", 
-             status_code=status.HTTP_200_OK,
-             dependencies=[Depends(verify_csrf_token)])  # CSRF protection
+             status_code=status.HTTP_200_OK
 async def logout(
     response: Response,
     service: AuthService = Depends(get_auth_service),
