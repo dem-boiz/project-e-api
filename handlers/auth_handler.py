@@ -138,15 +138,6 @@ async def handle_logout(response: Response):
     is_prod = ENV == "PROD"
     logger.debug("Logging out user, clearing cookies")
 
-    # Delete access token cookie
-    response.delete_cookie(
-        key="access_token",
-        path="/",
-        httponly=True,
-        secure=is_prod,
-        samesite="none" if is_prod else "lax" # Match initial cookie settings
-    )
-
     # Delete refresh token cookie
     response.delete_cookie(
         key="refresh_token",
