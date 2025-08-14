@@ -32,7 +32,12 @@ async def login(
     logger.info(f"Login attempt for email: {login_data.email}")
     result = await handle_login(login_data, response, service)
     logger.info(f"Login successful for email: {login_data.email}")
+    # prevent browsers from caching tokens
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Pragma"] = "no-cache"
+
     return result
+    
 
 @router.post("/logout", 
              status_code=status.HTTP_200_OK,
@@ -73,3 +78,4 @@ async def refresh_token(
     
     logger.debug("New access token and CSRF token generated")
     return result
+ 

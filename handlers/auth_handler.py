@@ -11,6 +11,7 @@ import secrets
 
 logger = get_logger("auth")
 
+IS_PROD = ENV == "PROD"
 
 async def handle_refresh_token(
     refresh_token: str | None,
@@ -97,6 +98,7 @@ async def handle_login(
         key="refresh_token",
         value=loginResponse["refresh_token"],
         httponly=True,
+
         secure=True if ENV == "PROD" else False,
         samesite="none" if ENV == "PROD" else "lax",
         max_age=30*24*3600 if remember_me else None,
@@ -131,6 +133,7 @@ async def handle_login(
 
 
 async def handle_logout(response: Response):
+
     """Handle logout by deleting access, refresh, and CSRF cookies"""
     is_prod = ENV == "PROD"
     logger.debug("Logging out user, clearing cookies")
@@ -160,6 +163,7 @@ async def handle_logout(response: Response):
         httponly=False,
         secure=is_prod,
         samesite="strict"
+
     )
 
     logger.debug("All cookies cleared for logout")
