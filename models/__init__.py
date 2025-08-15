@@ -8,3 +8,5 @@ from .event import Event
 from .otp import OTP
 from .user_event_access import UserEventAccess
 from .event_vendors import EventVendor
+from .sessions import Session
+from .refresh_tokens import RefreshToken
