@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
+import uuid
 from ipaddress import IPv4Address, IPv6Address
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Union
@@ -163,3 +164,53 @@ class SessionActivity(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now)
     activity_type: str = Field(..., description="Type of activity (login, api_call, etc.)")
     details: Optional[dict] = Field(None, description="Additional activity details")
+
+
+class SessionReadSchema(BaseModel):
+    """Schema for reading Session data from the database"""
+
+    sid: uuid.UUID = Field(..., description="Primary key of the session record")
+    user_id: uuid.UUID = Field(..., description="ID of the user this session belongs to")
+    created_at: datetime = Field(..., description="When the session was created")
+    last_seen_at: datetime = Field(..., description="When the session was last seen")
+    revoked_at: Optional[datetime] = Field(None, description="When the session was revoked (if applicable)")
+    user_agent: Optional[str] = Field(None, description="Browser user agent string")
+    ip: Optional[IPAddress] = Field(None, description="IP address of the session")
+
+    class Config:
+        from_attributes = True 
+        json_encoders = {
+            datetime: lambda v: v.isoformat(),
+            uuid.UUID: lambda v: str(v)
+        }
+
+
+class SessionCreateSchema(BaseModel):
+    """Schema for creating new Session records"""
+    
+    sid: uuid.UUID = Field(..., description="Primary key of the session record")
+    user_id: uuid.UUID = Field(..., description="ID of the user this session belongs to")
+    created_at: datetime = Field(..., description="When the session was created")
+    last_seen_at: datetime = Field(..., description="When the session was last seen")
+
+    class Config:
+        from_attributes = True 
+        json_encoders = {
+            datetime: lambda v: v.isoformat(),
+            uuid.UUID: lambda v: str(v)
+        }
+
+
+class SessionUpdateSchema(BaseModel):
+    """Schema for updating Session records"""
+    
+    created_at: datetime = Field(..., description="When the session was created")
+    last_seen_at: datetime = Field(..., description="When the session was last seen")
+    revoked_at: Optional[datetime] = Field(None, description="When the session was revoked (if applicable)")
+    user_agent: Optional[str] = Field(None, description="Browser user agent string")
+    ip: Optional[IPAddress] = Field(None, description="IP address of the session")
+
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        } 

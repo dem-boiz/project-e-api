@@ -1,5 +1,5 @@
 from jose import jwt, JWTError 
-from jose.exceptions import ExpiredSignatureError 
+from jose.exceptions import ExpiredSignatureError, JWTClaimsError
 from fastapi import Header, Cookie, HTTPException, status, Depends
 from config import SECRET_KEY, ALGORITHM, JWT_ACCESS_LIFESPAN, JWT_REFRESH_LIFESPAN
 
@@ -15,8 +15,11 @@ logger = get_logger("auth")
 def generate_otp():
     import random
     return str(random.randint(100000, 999999))
-
-def create_jwt(userId: str, session_id: str, type="access", remember_me=False, issuer="your-app", audience="your-app-users"):
+# TODO: What should the JWT lifespan be? 15 minutes? 1 hour? 4 hours?
+# Refresh token lifespan? 7 days? 30 days? 90 days
+# What should the issuer and audience be?
+# Should we include a "remember me" flag in the token?
+def create_jwt(userId: str, session_id: str, remember_me, type="access", issuer="your-app", audience="your-app-users"):
     """
     Create a JWT token with comprehensive claims for security and session management.
     
@@ -52,7 +55,10 @@ def create_jwt(userId: str, session_id: str, type="access", remember_me=False, i
         "typ": type,                            # Token type ("access" or "refresh")
         "rm": remember_me if type == "refresh" else None  # Remember Me flag for refresh tokens
     }
+
+    # TODO: Add this to database refresh_token table if type == "refresh"
     
+    logger.debug(f"Creating {type} JWT for user {userId}, session {session_id}, remember_me={remember_me}")
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
@@ -127,17 +133,10 @@ def verify_jwt(token: str, expected_issuer="your-app", expected_audience="your-a
         logger.warning(f"JWT token has expired: {e}")
         raise HTTPException(status_code=401, detail="Token has expired")
     
-    except InvalidSignatureError as e:
-        logger.warning(f"JWT has invalid signature: {e}")
-        raise HTTPException(status_code=401, detail="Invalid token signature")
-    
-    except InvalidIssuerError as e:
-        logger.warning(f"JWT has invalid issuer: {e}")
-        raise HTTPException(status_code=401, detail="Invalid token issuer")
-    
-    except InvalidAudienceError as e:
-        logger.warning(f"JWT has invalid audience: {e}")
-        raise HTTPException(status_code=401, detail="Invalid token audience")
+     
+    except JWTClaimsError as e:
+        logger.warning(f"JWT claims validation failed: {e}")
+        raise HTTPException(status_code=401, detail="Invalid token claims")
     
     except JWTError as e:
         logger.warning(f"Invalid JWT token: {e}")

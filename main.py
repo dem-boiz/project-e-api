@@ -15,7 +15,7 @@ from routes.auth_route import router as auth_router
 from fastapi.middleware.cors import CORSMiddleware
 from routes.user_event_access_route import router as user_event_access_router
 from middleware.request_logging import RequestLoggingMiddleware
-
+from models import User, Session
 logger.info("Starting FastAPI application initialization")
 
 allowed_origins = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000").split(",")

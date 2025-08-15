@@ -1,13 +1,15 @@
+from datetime import datetime, timezone, timedelta
 import uuid
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 from passlib.context import CryptContext
-from models import Host
+from models import Host, Session
 from schema import LoginRequest
 from schema import RefreshTokens
+from schema import SessionCreateSchema
 from utils.utils import create_jwt, verify_jwt
-from repository import HostRepository
+from repository import HostRepository, SessionRepository
 from config.logging_config import get_logger
 import logging
 
@@ -24,6 +26,7 @@ class AuthService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.host_repo = HostRepository(db)
+        self.session_repo = SessionRepository(db)
 
     def hash_password(self, password: str) -> str:
         """Hash a password using bcrypt"""
@@ -73,11 +76,24 @@ class AuthService:
             )
         
         # Create JWT tokens
-        access_token = create_jwt(str(host.id))
-        refresh_token = create_jwt(str(host.id), type='refresh', remember_me=login_data.rememberMe)
+        user_id = str(host.id)
+        sid = uuid.uuid4() 
+        sid_str = str(sid) # New session ID for this login
+        access_token = create_jwt(user_id, session_id=sid_str, remember_me=login_data.rememberMe)
+        refresh_token = create_jwt(user_id, session_id=sid_str, remember_me=login_data.rememberMe, type='refresh')
 
         logger.debug(f"JWT tokens created for host: {host.email}")
 
+        # Create Session record in DB
+        session_record = await self.session_repo.create_session(
+            session_data=SessionCreateSchema(
+                sid=sid,
+                user_id=host.id,
+                created_at=datetime.now(),
+                last_seen_at=datetime.now()
+            )
+        )
+        logger.debug(f"Session record created with SID: {sid} for host: {host.email}")
         return {
             "response_body": {
                 "access_token": access_token,

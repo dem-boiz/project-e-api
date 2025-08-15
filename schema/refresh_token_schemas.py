@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
@@ -17,7 +17,7 @@ class RefreshTokenCreate(RefreshTokenBase):
     """Model for creating a new refresh token"""
     sid: UUID = Field(..., description="Session ID - binds token to its session")
     csrf_hash: Optional[bytes] = Field(None, description="Hash of CSRF secret for double-submit protection")
-    
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Token creation timestamp")
     model_config = ConfigDict(
         json_encoders={
             bytes: lambda v: v.hex() if v else None
@@ -32,7 +32,7 @@ class RefreshTokenUpdate(BaseModel):
     replaced_by_jti: Optional[UUID] = Field(None, description="Next token in rotation chain")
 
 
-class RefreshToken(RefreshTokenBase):
+class RefreshTokenSchema(RefreshTokenBase):
     """Complete refresh token model for responses"""
     jti: UUID = Field(..., description="Refresh token ID from JWT - must be unique")
     sid: UUID = Field(..., description="Session ID - binds token to its session")
@@ -51,7 +51,7 @@ class RefreshToken(RefreshTokenBase):
     @property
     def is_expired(self) -> bool:
         """Check if the refresh token has expired"""
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(timezone.utc) > self.expires_at
 
     @property
     def is_used(self) -> bool:
@@ -69,7 +69,7 @@ class RefreshToken(RefreshTokenBase):
         return not (self.is_expired or self.is_used or self.is_revoked)
 
 
-class RefreshTokenInDB(RefreshToken):
+class RefreshTokenInDB(RefreshTokenSchema):
     """Database representation of refresh token (includes all fields)"""
     pass
 
@@ -104,7 +104,7 @@ class RefreshTokenCleanup(BaseModel):
     """Model for cleanup job responses"""
     deleted_count: int = Field(..., description="Number of expired tokens deleted")
     oldest_deleted: Optional[datetime] = Field(None, description="Timestamp of oldest deleted token")
-    cleanup_timestamp: datetime = Field(default_factory=datetime.utcnow, description="When cleanup was performed")
+    cleanup_timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="When cleanup was performed")
 
 
 class RefreshTokenStats(BaseModel):
@@ -158,7 +158,7 @@ class TokenReuseError(RefreshTokenError):
     """Specific error for token reuse detection"""
     error: str = Field(default="token_reuse", description="Token reuse detected")
     description: str = Field(default="Refresh token has already been used", description="Error description")
-    detected_at: datetime = Field(default_factory=datetime.utcnow, description="When reuse was detected")
+    detected_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="When reuse was detected")
     original_use_at: Optional[datetime] = Field(None, description="When token was originally used")
 
 

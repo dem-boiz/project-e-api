@@ -4,8 +4,9 @@ from sqlalchemy.dialects.postgresql import UUID, INET
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+from models import Host
 import uuid
-
+from sqlalchemy.schema import ForeignKey
 Base = declarative_base()
 
 
@@ -18,9 +19,9 @@ class Session(Base):
     
     # Primary key: unique session identifier embedded in JWT
     sid = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    
+    # TODO: Should Host be used or User? 
     # Foreign key to users table
-    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey(Host.__table__.c.id), nullable=False)
     
     # Timestamp fields for session lifecycle tracking
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
@@ -34,8 +35,9 @@ class Session(Base):
     ip = Column(INET, nullable=True)
     
     # Relationships
-    user = relationship("User", back_populates="sessions")
-    refresh_tokens = relationship("RefreshToken", back_populates="session", cascade="all, delete-orphan")
+    #user = relationship("User") 
+    #user = relationship("User", back_populates="sessions")
+    #refresh_tokens = relationship("RefreshToken", back_populates="session", cascade="all, delete-orphan")
     
     # Table-level indexes
     __table_args__ = (
