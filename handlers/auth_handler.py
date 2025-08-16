@@ -63,6 +63,7 @@ async def handle_refresh_token(
         secure=True if ENV == "PROD" else False,
         samesite="none" if ENV == "PROD" else "lax",
         max_age=30*24*3600 if remember_me else None,
+        domain=None,  # Set domain only in production (once we have api and client on same domain we need to switch this)
     )
     # Return access token and new CSRF token in response body
     return {
@@ -97,9 +98,8 @@ async def handle_login(
         key="refresh_token",
         value=loginResponse["refresh_token"],
         httponly=True,
-
-        secure=True if ENV == "PROD" else False,
-        samesite="none" if ENV == "PROD" else "lax",
+        secure=True if IS_PROD else False,
+        samesite="none" if IS_PROD else "lax",
         max_age=30*24*3600 if remember_me else None,
         path="/auth/refresh"
     )
@@ -113,9 +113,11 @@ async def handle_login(
         key="csrf_token",
         value=csrf_token,
         httponly=False,  # JavaScript needs to read this
-        secure=True if ENV == "PROD" else False,
-        samesite="none" if ENV == "PROD" else "lax",
+        secure=True if IS_PROD else False,
+        samesite="none" if IS_PROD else "lax",
         max_age=30*24*3600 if remember_me else None,
+        domain=None,  # Set domain only in production (once we have api and client on same domain we need to switch this)
+
     )
 
     logger.debug(f"CSRF token cookie set for host: {login_data.email}")
@@ -133,7 +135,6 @@ async def handle_login(
 async def handle_logout(response: Response):
 
     """Handle logout by deleting access, refresh, and CSRF cookies"""
-    is_prod = ENV == "PROD"
     logger.debug("Logging out user, clearing cookies")
 
     # Delete refresh token cookie
@@ -141,17 +142,17 @@ async def handle_logout(response: Response):
         key="refresh_token",
         path="/auth/refresh",
         httponly=True,
-        secure=is_prod,
-        samesite="none" if is_prod else "lax"
+        secure=IS_PROD,
+        samesite="none" if IS_PROD else "lax"
     )
 
     # Delete CSRF token cookie
     response.delete_cookie(
         key="csrf_token",
-        path="/",
         httponly=False,
-        secure=is_prod,
-        samesite="none" if is_prod else "lax"
+        secure=IS_PROD,
+        samesite="none" if IS_PROD else "lax",
+        domain=None,  # Set domain only in production (once we have api and client on same domain we need to switch this)
     )
 
     logger.debug("All cookies cleared for logout")
