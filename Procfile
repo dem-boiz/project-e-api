@@ -1,1 +1,1 @@
-uvicorn app.main:app --host :: --port $PORT --proxy-headers
+web: uvicorn main:app --host '::' --port $PORT --proxy-headers
