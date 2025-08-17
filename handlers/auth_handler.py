@@ -63,7 +63,6 @@ async def handle_refresh_token(
         secure=True if ENV == "PROD" else False,
         samesite="none" if ENV == "PROD" else "lax",
         max_age=30*24*3600 if remember_me else None,
-        domain=None,  # Set domain only in production (once we have api and client on same domain we need to switch this)
         path="/"  # Available on all paths
     )
     # Return access token and new CSRF token in response body
@@ -117,7 +116,6 @@ async def handle_login(
         secure=True if IS_PROD else False,
         samesite="none" if IS_PROD else "lax",
         max_age=30*24*3600 if remember_me else None,
-        domain=None,  # Set domain only in production (once we have api and client on same domain we need to switch this)
         path="/"  # Available on all paths
 
     )
@@ -154,7 +152,6 @@ async def handle_logout(response: Response):
         httponly=False,
         secure=IS_PROD,
         samesite="none" if IS_PROD else "lax",
-        domain=None,  # Set domain only in production (once we have api and client on same domain we need to switch this)
         path="/"  # Available on all paths
     )
 
