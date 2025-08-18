@@ -10,6 +10,7 @@ class RefreshTokenBase(BaseModel):
     user_id: UUID = Field(..., description="User ID for quick lookup and auditing")
     expires_at: datetime = Field(..., description="Refresh token TTL - cleanup job target")
     parent_jti: Optional[UUID] = Field(None, description="Previous refresh token in rotation chain")
+    jti: UUID = Field(..., description="Unique identifier for the current refresh token (JWT ID)")
     replaced_by_jti: Optional[UUID] = Field(None, description="Next token in rotation chain")
 
 
@@ -17,7 +18,7 @@ class RefreshTokenCreate(RefreshTokenBase):
     """Model for creating a new refresh token"""
     sid: UUID = Field(..., description="Session ID - binds token to its session")
     csrf_hash: Optional[bytes] = Field(None, description="Hash of CSRF secret for double-submit protection")
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Token creation timestamp")
+    issued_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Token creation timestamp")
     model_config = ConfigDict(
         json_encoders={
             bytes: lambda v: v.hex() if v else None

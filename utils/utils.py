@@ -2,11 +2,12 @@ from jose import jwt, JWTError
 from jose.exceptions import ExpiredSignatureError, JWTClaimsError
 from fastapi import Header, Cookie, HTTPException, status, Depends
 from config import SECRET_KEY, ALGORITHM, JWT_ACCESS_LIFESPAN, JWT_REFRESH_LIFESPAN
-
-
+from repository import RefreshTokenRepository
+from schema import RefreshTokenCreate
 from datetime import datetime, timedelta, timezone
 import secrets
 import uuid
+from typing import Optional
 
 from config.logging_config import get_logger
 
@@ -19,7 +20,13 @@ def generate_otp():
 # Refresh token lifespan? 7 days? 30 days? 90 days
 # What should the issuer and audience be?
 # Should we include a "remember me" flag in the token?
-def create_jwt(userId: str, session_id: str, remember_me, type="access", issuer="your-app", audience="your-app-users"):
+async def create_jwt(userId: str,
+                     session_id: str, 
+                     remember_me,
+                     refresh_token_repo: Optional['RefreshTokenRepository'] = None,
+                     type="access", 
+                     issuer="your-app", 
+                     audience="your-app-users"):
     """
     Create a JWT token with comprehensive claims for security and session management.
     
@@ -57,7 +64,28 @@ def create_jwt(userId: str, session_id: str, remember_me, type="access", issuer=
     }
 
     # TODO: Add this to database refresh_token table if type == "refresh"
-    
+    if type == "refresh":
+        if refresh_token_repo is None:
+            raise ValueError("RefreshTokenRepository not provided for storing refresh token")
+        
+        csrtf_hash = str(uuid.uuid4()).replace("-", "")
+
+        # Create refresh token database record
+        token_data = RefreshTokenCreate(
+            jti=payload["jti"],
+            user_id=uuid.UUID(userId),
+            sid=uuid.UUID(session_id),
+            expires_at=now + lifespan,
+            issued_at=now,
+            csrf_hash=csrtf_hash
+        )
+
+        try:
+            await refresh_token_repo.create_refresh_token(token_data)
+        except Exception as e:
+            logger.error(f"Error storing refresh token in database: {e}")
+            raise HTTPException(status_code=500, detail="Internal server error")
+        
     logger.debug(f"Creating {type} JWT for user {userId}, session {session_id}, remember_me={remember_me}")
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 

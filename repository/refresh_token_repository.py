@@ -3,7 +3,7 @@ from sqlalchemy.future import select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy import and_, or_
 from models import RefreshToken
-from schema import RefreshTokenSchema, RefreshTokenCreate, RefreshTokenUpdate
+from schema import RefreshTokenSchema, RefreshTokenCreate
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
@@ -21,7 +21,7 @@ class RefreshTokenRepository:
             user_id=token_data.user_id,
             sid=token_data.sid,
             expires_at=token_data.expires_at,
-            created_at=token_data.created_at,
+            issued_at=token_data.issued_at,
             used_at=None,
             revoked_at=None,
             csrf_hash=token_data.csrf_hash
@@ -34,7 +34,7 @@ class RefreshTokenRepository:
             user_id=new_token.user_id,
             sid=new_token.sid,
             expires_at=new_token.expires_at,
-            created_at=new_token.created_at,
+            issued_at=new_token.issued_at,
             used_at=new_token.used_at,
             revoked_at=new_token.revoked_at,
             csrf_hash=new_token.csrf_hash

@@ -9,7 +9,7 @@ from schema import LoginRequest
 from schema import RefreshTokens
 from schema import SessionCreateSchema
 from utils.utils import create_jwt, verify_jwt
-from repository import HostRepository, SessionRepository
+from repository import HostRepository, SessionRepository, RefreshTokenRepository
 from config.logging_config import get_logger
 import logging
 
@@ -79,10 +79,7 @@ class AuthService:
         user_id = str(host.id)
         sid = uuid.uuid4() 
         sid_str = str(sid) # New session ID for this login
-        access_token = create_jwt(user_id, session_id=sid_str, remember_me=login_data.rememberMe)
-        refresh_token = create_jwt(user_id, session_id=sid_str, remember_me=login_data.rememberMe, type='refresh')
-
-        logger.debug(f"JWT tokens created for host: {host.email}")
+        
 
         # Create Session record in DB
         session_record = await self.session_repo.create_session(
@@ -94,6 +91,12 @@ class AuthService:
             )
         )
         logger.debug(f"Session record created with SID: {sid} for host: {host.email}")
+        # Create refresh token repo 
+        refresh_token_repo = RefreshTokenRepository(self.db)
+        access_token = await create_jwt(user_id, session_id=sid_str, remember_me=login_data.rememberMe)
+        refresh_token = await create_jwt(user_id, session_id=sid_str, remember_me=login_data.rememberMe, refresh_token_repo=refresh_token_repo, type='refresh')
+
+        logger.debug(f"JWT tokens created for host: {host.email}")
         return {
             "response_body": {
                 "access_token": access_token,

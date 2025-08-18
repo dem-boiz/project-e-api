@@ -1,6 +1,7 @@
 from datetime import datetime
 from tkinter import Text
 from sqlalchemy import Column, DateTime, ForeignKey, Index, LargeBinary, CheckConstraint
+from models import Session
 from sqlalchemy.dialects.postgresql import UUID, INET
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -20,7 +21,7 @@ class RefreshToken(Base):
     jti = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     
     # Foreign key: Binds token to its session.
-    sid = Column(UUID(as_uuid=True), ForeignKey('sessions.sid', ondelete='CASCADE'), nullable=False)
+    sid = Column(UUID(as_uuid=True), ForeignKey(Session.__table__.c.sid), nullable=False)
     
     # User ID: Quick lookup/auditing by user.
     user_id = Column(UUID(as_uuid=True), nullable=False)
@@ -39,7 +40,7 @@ class RefreshToken(Base):
     csrf_hash = Column(LargeBinary, nullable=True)
     
     # Relationship to session
-    session = relationship("Session", back_populates="refresh_tokens")
+    #session = relationship("Session", back_populates="refresh_tokens")
     
     # Table-level constraints and indexes
     __table_args__ = (
