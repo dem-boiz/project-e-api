@@ -49,7 +49,7 @@ async def handle_refresh_token(
         secure=IS_PROD,
         samesite="lax",
         max_age=30*24*3600 if remember_me else None,
-        path="/auth/refresh"
+        path="/api/auth/refresh"
     )
 
     # Rotate CSRF token
@@ -102,7 +102,7 @@ async def handle_login(
         secure=IS_PROD,
         samesite="lax",
         max_age=30*24*3600 if remember_me else None,
-        path="/auth/refresh"
+        path="/api/auth/refresh"
     )
 
     # Generate a CSRF token for the client
@@ -142,7 +142,7 @@ async def handle_logout(response: Response):
     # Delete refresh token cookie
     response.delete_cookie(
         key="refresh_token",
-        path="/auth/refresh",
+        path="/api/auth/refresh",
         httponly=True,
         secure=IS_PROD,
         samesite="lax"
