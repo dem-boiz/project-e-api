@@ -41,13 +41,13 @@ async def handle_refresh_token(
     remember_me = decoded_token["rm"]
 
     # Set updated refresh token as HTTP-only cookie
-    logger.debug(f"Setting cookie for refresh token with ENV '{ENV}'")
+    logger.debug(f"Setting cookie for refresh token. IS_PROD={IS_PROD}")
     response.set_cookie(
         key="refresh_token",
         value=new_refresh_token,
         httponly=True,
-        secure=True if ENV == "PROD" else False,
-        samesite="none" if ENV == "PROD" else "lax",
+        secure=IS_PROD,
+        samesite="lax",
         max_age=30*24*3600 if remember_me else None,
         path="/auth/refresh"
     )
@@ -60,8 +60,8 @@ async def handle_refresh_token(
         key="csrf_token",
         value=new_csrf_token,
         httponly=False,  # JS needs to read this
-        secure=True if ENV == "PROD" else False,
-        samesite="none" if ENV == "PROD" else "lax",
+        secure=IS_PROD,
+        samesite="lax",
         max_age=30*24*3600 if remember_me else None,
         domain=None,  # Set domain only in production (once we have api and client on same domain we need to switch this)
         path="/"  # Available on all paths
@@ -99,8 +99,8 @@ async def handle_login(
         key="refresh_token",
         value=loginResponse["refresh_token"],
         httponly=True,
-        secure=True if IS_PROD else False,
-        samesite="none" if IS_PROD else "lax",
+        secure=IS_PROD,
+        samesite="lax",
         max_age=30*24*3600 if remember_me else None,
         path="/auth/refresh"
     )
@@ -114,8 +114,8 @@ async def handle_login(
         key="csrf_token",
         value=csrf_token,
         httponly=False,  # JavaScript needs to read this
-        secure=True if IS_PROD else False,
-        samesite="none" if IS_PROD else "lax",
+        secure=IS_PROD,
+        samesite="lax",
         max_age=30*24*3600 if remember_me else None,
         domain=None,  # Set domain only in production (once we have api and client on same domain we need to switch this)
         path="/"  # Available on all paths
@@ -145,7 +145,7 @@ async def handle_logout(response: Response):
         path="/auth/refresh",
         httponly=True,
         secure=IS_PROD,
-        samesite="none" if IS_PROD else "lax"
+        samesite="lax"
     )
 
     # Delete CSRF token cookie
@@ -153,7 +153,7 @@ async def handle_logout(response: Response):
         key="csrf_token",
         httponly=False,
         secure=IS_PROD,
-        samesite="none" if IS_PROD else "lax",
+        samesite="lax",
         domain=None,  # Set domain only in production (once we have api and client on same domain we need to switch this)
         path="/"  # Available on all paths
     )
