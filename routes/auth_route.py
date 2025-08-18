@@ -71,7 +71,7 @@ async def refresh_token(
 ) -> RefreshResponse:
     """Refresh JWT token and rotate CSRF token"""
     logger.debug("Refreshing JWT token for host")
-    
+    logger.debug(f"Received refresh token: {refresh_token}")
     result = await handle_refresh_token(refresh_token, service, response)
     
     logger.debug("New access token and CSRF token generated")

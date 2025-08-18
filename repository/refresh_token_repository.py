@@ -39,3 +39,20 @@ class RefreshTokenRepository:
             revoked_at=new_token.revoked_at,
             csrf_hash=new_token.csrf_hash
         )
+    
+    async def get_refresh_token_by_jti(self, jti: str) -> RefreshToken | None:
+        """Retrieve a RefreshToken record by jti."""
+        try:
+            result = await self.RefreshToken.execute(
+                select(RefreshToken).where(
+                    RefreshToken.jti == jti,
+                    or_(
+                        RefreshToken.used_at.is_(None),
+                        RefreshToken.revoked_at.is_(None)
+                    )
+                )
+            )
+            token_record = result.scalar_one()
+            return token_record
+        except NoResultFound:
+            return None

@@ -110,11 +110,17 @@ class AuthService:
         }
 
 
-    async def refresh_access_token(self, host_id: str, remember_me: bool) -> RefreshTokens:
+    async def refresh_access_token(self, user_id: str, 
+                                   session_id: str, 
+                                   remember_me: bool, 
+                                   issuer: str, 
+                                   audience: str
+                                   ) -> RefreshTokens:
         """Generate a new access & refresh token for the host"""
-        logger.debug(f"Generating new access token (& refresh token) for host ID: {host_id}. remember_me optionset to '{remember_me}'")
-        access_token = create_jwt(host_id)
-        refresh_token = create_jwt(host_id, type='refresh', remember_me=remember_me)
+        refresh_token_repo = RefreshTokenRepository(self.db)
+        logger.debug(f"Generating new access token (& refresh token) for host ID: {user_id}. remember_me optionset to '{remember_me}'")
+        access_token = await create_jwt(user_id, session_id, remember_me=remember_me, refresh_token_repo=refresh_token_repo, type='access', issuer=issuer, audience=audience)
+        refresh_token = await create_jwt(user_id, session_id, remember_me=remember_me, refresh_token_repo=refresh_token_repo, type='refresh', issuer=issuer, audience=audience)
         return RefreshTokens(
             access_token=access_token,
             refresh_token=refresh_token,

@@ -1,13 +1,14 @@
 from config.logging_config import get_logger
 from fastapi.security import HTTPAuthorizationCredentials
 from schema import CurrentUserResponse, LoginRequest, LoginResponse, RefreshResponse
-from services.auth_service import AuthService
+from services import AuthService
 from fastapi import HTTPException, Response, status
 
 
 from config import ENV
 from utils.utils import verify_jwt, generate_csrf_token
 import secrets
+from repository import RefreshTokenRepository
 
 logger = get_logger("auth")
 
@@ -18,8 +19,7 @@ async def handle_refresh_token(
     service: AuthService,
     response: Response
 ) -> RefreshResponse:
-    """Refresh JWT token and rotate CSRF token."""
-    
+    """Refresh JWT token and rotate CSRF token.""" 
     if not refresh_token:
         logger.warning("Missing refresh token.")
         raise HTTPException(
@@ -27,18 +27,99 @@ async def handle_refresh_token(
             detail="Missing refresh token",
             headers={"WWW-Authenticate": "Bearer"},
         )
+ 
+    # Verify the refresh token
+    try:
+        logger.debug(f"Verifying refresh token: {refresh_token}")
+        # Decode and verify the JWT
+        decoded_token = verify_jwt(refresh_token)
+        logger.debug(f"Decoded refresh token: {decoded_token}")
+    except HTTPException as e:
+        logger.error(f"Refresh token verification failed: {e.detail}")
+        raise e
+    
+    user_id = decoded_token.get("sub")
+    if not user_id:
+        logger.warning("Refresh token has no user ID (sub) claim.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    # Validate session ID
+    session_id = decoded_token.get("sid")
+    if not session_id:
+        logger.warning("Refresh token has no session ID (sid) claim.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Validate remember_me flag'
+    remember_me = decoded_token.get("rm", False)
+    if not isinstance(remember_me, bool):   
+        logger.warning("Refresh token has invalid remember_me claim.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
-    logger.debug("Refresh token found. Retrieving host info.")
-    decoded_token = verify_jwt(refresh_token)
-    logger.debug("Host info found. Refreshing access & refresh tokens.")
+    # Validate issuer and audience
+    issuer = decoded_token.get("iss")   
+    audience = decoded_token.get("aud")
+    if not issuer or not audience:
+        logger.warning("Refresh token has missing issuer or audience claims.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
 
     # Generate new access + refresh tokens
     tokens = await service.refresh_access_token(
-        str(decoded_token["sub"]), 
-        decoded_token["rm"]
+        user_id=user_id,  
+        session_id=session_id,
+        remember_me=remember_me,
+        issuer=issuer,
+        audience=audience 
     )
     new_refresh_token = tokens.refresh_token
     remember_me = decoded_token["rm"]
+
+    # Look up the refresh token in the database  
+    refresh_token_repo = RefreshTokenRepository(service.db)
+    existing_refresh_token = await refresh_token_repo.get_refresh_token_by_jti(new_refresh_token)
+
+    # If no record found, reject the request 
+    if not existing_refresh_token:
+        logger.warning("Refresh token not found in database.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # IF revoked_at is not null, reject the request
+    if existing_refresh_token.revoked_at:
+        logger.warning("Refresh token has been revoked.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token has been revoked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # IF used_at is not null, reject the request and set the sessions.revboked_at to now
+    if existing_refresh_token.used_at:
+        logger.warning("Refresh token has already been used.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token has already been used",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+     
 
     # Set updated refresh token as HTTP-only cookie
     logger.debug(f"Setting cookie for refresh token with ENV '{ENV}'")
