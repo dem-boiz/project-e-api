@@ -58,7 +58,25 @@ class RefreshTokenRepository:
             return token_record
         except NoResultFound:
             return None
+    
+    async def get_refresh_token_by_user(self, user_id: uuid.UUID) -> RefreshToken | None:
+        """Retrieve a RefreshToken record by jti."""
+        try:
+            result = await self.RefreshToken.execute(
+                select(RefreshToken).where(
+                    RefreshToken.user_id == user_id,
+                    or_(
+                        RefreshToken.used_at.is_(None),
+                        RefreshToken.revoked_at.is_(None)
+                    )
+                )
+            )
+            token_record = result.scalar_one()
+            return token_record
+        except NoResultFound:
+            return None
         
+
     async def mark_refresh_token_as_used(self, old_jti: uuid.UUID, new_jti: uuid.UUID) -> bool:
         """Mark a refresh token as used and set its replacement JTI."""
         try:
