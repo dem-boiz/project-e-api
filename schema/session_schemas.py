@@ -10,26 +10,29 @@ from typing import Union
 IPAddress = Union[IPv4Address, IPv6Address]
 
 
-class SessionBase(BaseModel):
+class SessionBaseSchema(BaseModel):
     """Base session schema with common fields"""
     user_agent: Optional[str] = Field(None, description="Device fingerprinting and security visibility")
     ip: Optional[IPAddress] = Field(None, description="IP address for suspicious activity detection")
 
-
-class SessionCreate(SessionBase):
-    """Schema for creating a new session"""
-    user_id: UUID = Field(..., description="Owner of the session")
+ 
+class SessionCreateSchema(BaseModel):
+    """Schema for creating new Session records"""
     
-    model_config = ConfigDict(
-        json_encoders={
-            UUID: str,
-            IPv4Address: str,
-            IPv6Address: str,
+    sid: uuid.UUID = Field(..., description="Primary key of the session record")
+    user_id: uuid.UUID = Field(..., description="ID of the user this session belongs to")
+    created_at: datetime = Field(..., description="When the session was created")
+    last_seen_at: datetime = Field(..., description="When the session was last seen")
+
+    class Config:
+        from_attributes = True 
+        json_encoders = {
+            datetime: lambda v: v.isoformat(),
+            uuid.UUID: lambda v: str(v)
         }
-    )
+ 
 
-
-class SessionUpdate(BaseModel):
+class SessionUpdateSchema(BaseModel):
     """Schema for updating session fields"""
     last_seen_at: Optional[datetime] = Field(None, description="Update last activity timestamp")
     revoked_at: Optional[datetime] = Field(None, description="Revoke session (instant logout)")
@@ -44,12 +47,12 @@ class SessionUpdate(BaseModel):
     )
 
 
-class SessionRevoke(BaseModel):
+class SessionRevokeSchema(BaseModel):
     """Schema specifically for revoking sessions"""
     revoked_at: datetime = Field(default_factory=datetime.now, description="Timestamp when session was revoked")
 
 
-class SessionResponse(SessionBase):
+class SessionResponseSchema(SessionBaseSchema):
     """Schema for session responses (read operations)"""
     sid: UUID = Field(..., description="Unique session identifier")
     user_id: UUID = Field(..., description="Owner of the session")
@@ -78,9 +81,9 @@ class SessionResponse(SessionBase):
         return (datetime.now() - self.created_at).total_seconds()
 
 
-class SessionListResponse(BaseModel):
+class SessionListResponseSchema(BaseModel):
     """Schema for paginated session lists"""
-    sessions: list[SessionResponse]
+    sessions: list[SessionResponseSchema]
     total: int
     page: int = 1
     size: int = 50
@@ -88,7 +91,7 @@ class SessionListResponse(BaseModel):
     has_prev: bool = False
 
 
-class SessionSummary(BaseModel):
+class SessionSummarySchema(BaseModel):
     """Lightweight session schema for summaries"""
     sid: UUID
     created_at: datetime
@@ -105,7 +108,7 @@ class SessionSummary(BaseModel):
     )
 
 
-class SessionFilter(BaseModel):
+class SessionFilterSchema(BaseModel):
     """Schema for filtering sessions in queries"""
     user_id: Optional[UUID] = None
     is_active: Optional[bool] = None
@@ -116,7 +119,7 @@ class SessionFilter(BaseModel):
     user_agent_contains: Optional[str] = None
 
 
-class SessionStats(BaseModel):
+class SessionStatsSchema(BaseModel):
     """Schema for session statistics"""
     total_sessions: int
     active_sessions: int
@@ -127,7 +130,7 @@ class SessionStats(BaseModel):
 
 
 # JWT-related schemas for session management
-class JWTPayload(BaseModel):
+class JWTPayloadSchema(BaseModel):
     """JWT payload schema with session information"""
     sid: UUID = Field(..., description="Session identifier")
     user_id: UUID = Field(..., description="User identifier")
@@ -142,16 +145,16 @@ class JWTPayload(BaseModel):
     )
 
 
-class SessionValidationResult(BaseModel):
+class SessionValidationResultSchema(BaseModel):
     """Result of session validation"""
     is_valid: bool
-    session: Optional[SessionResponse] = None
+    session: Optional[SessionResponseSchema] = None
     error: Optional[str] = None
     reason: Optional[str] = Field(None, description="Reason for validation failure")
 
 
 # Example usage schemas for common operations
-class BulkSessionRevoke(BaseModel):
+class BulkSessionRevokeSchema(BaseModel):
     """Schema for bulk session revocation"""
     user_id: Optional[UUID] = Field(None, description="Revoke all sessions for user")
     exclude_current: bool = Field(True, description="Exclude current session from revocation")
@@ -184,33 +187,3 @@ class SessionReadSchema(BaseModel):
             uuid.UUID: lambda v: str(v)
         }
 
-
-class SessionCreateSchema(BaseModel):
-    """Schema for creating new Session records"""
-    
-    sid: uuid.UUID = Field(..., description="Primary key of the session record")
-    user_id: uuid.UUID = Field(..., description="ID of the user this session belongs to")
-    created_at: datetime = Field(..., description="When the session was created")
-    last_seen_at: datetime = Field(..., description="When the session was last seen")
-
-    class Config:
-        from_attributes = True 
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-            uuid.UUID: lambda v: str(v)
-        }
-
-
-class SessionUpdateSchema(BaseModel):
-    """Schema for updating Session records"""
-    
-    created_at: datetime = Field(..., description="When the session was created")
-    last_seen_at: datetime = Field(..., description="When the session was last seen")
-    revoked_at: Optional[datetime] = Field(None, description="When the session was revoked (if applicable)")
-    user_agent: Optional[str] = Field(None, description="Browser user agent string")
-    ip: Optional[IPAddress] = Field(None, description="IP address of the session")
-
-    class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        } 

@@ -5,7 +5,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, ConfigDict
 
 
-class RefreshTokenBase(BaseModel):
+class RefreshTokenBaseSchema(BaseModel):
     """Base refresh token model with common fields"""
     user_id: UUID = Field(..., description="User ID for quick lookup and auditing")
     expires_at: datetime = Field(..., description="Refresh token TTL - cleanup job target")
@@ -14,7 +14,7 @@ class RefreshTokenBase(BaseModel):
     replaced_by_jti: Optional[UUID] = Field(None, description="Next token in rotation chain")
 
 
-class RefreshTokenCreate(RefreshTokenBase):
+class RefreshTokenCreateSchema(RefreshTokenBaseSchema):
     """Model for creating a new refresh token"""
     sid: UUID = Field(..., description="Session ID - binds token to its session")
     csrf_hash: Optional[bytes] = Field(None, description="Hash of CSRF secret for double-submit protection")
@@ -26,14 +26,14 @@ class RefreshTokenCreate(RefreshTokenBase):
     )
 
 
-class RefreshTokenUpdate(BaseModel):
+class RefreshTokenUpdateSchema(BaseModel):
     """Model for updating a refresh token (mainly for rotation)"""
     used_at: Optional[datetime] = Field(None, description="Set when token is rotated")
     revoked_at: Optional[datetime] = Field(None, description="Explicit server revocation timestamp")
     replaced_by_jti: Optional[UUID] = Field(None, description="Next token in rotation chain")
 
 
-class RefreshTokenSchema(RefreshTokenBase):
+class RefreshTokenSchema(RefreshTokenBaseSchema):
     """Complete refresh token model for responses"""
     jti: UUID = Field(..., description="Refresh token ID from JWT - must be unique")
     sid: UUID = Field(..., description="Session ID - binds token to its session")
@@ -108,7 +108,7 @@ class RefreshTokenCleanup(BaseModel):
     cleanup_timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="When cleanup was performed")
 
 
-class RefreshTokenStats(BaseModel):
+class RefreshTokenStatsSchema(BaseModel):
     """Model for refresh token statistics"""
     total_tokens: int = Field(..., description="Total number of refresh tokens")
     active_tokens: int = Field(..., description="Number of active (valid) tokens")
@@ -120,13 +120,13 @@ class RefreshTokenStats(BaseModel):
 
 
 # API Request/Response models
-class TokenRotateRequest(BaseModel):
+class TokenRotateRequestSchema(BaseModel):
     """Request model for token rotation endpoint"""
     refresh_token: str = Field(..., description="Current refresh token JWT")
     csrf_token: Optional[str] = Field(None, description="CSRF token for double-submit protection")
 
 
-class TokenRotateResponse(BaseModel):
+class TokenRotateResponseSchema(BaseModel):
     """Response model for token rotation endpoint"""
     access_token: str = Field(..., description="New access token")
     refresh_token: str = Field(..., description="New refresh token")
@@ -134,14 +134,14 @@ class TokenRotateResponse(BaseModel):
     token_type: str = Field(default="Bearer", description="Token type")
 
 
-class TokenRevokeRequest(BaseModel):
+class TokenRevokeRequestSchema(BaseModel):
     """Request model for token revocation"""
     refresh_token: Optional[str] = Field(None, description="Specific token to revoke")
     revoke_all_user_tokens: bool = Field(False, description="Revoke all tokens for user")
     revoke_all_session_tokens: bool = Field(False, description="Revoke all tokens for session")
 
 
-class TokenRevokeResponse(BaseModel):
+class TokenRevokeResponseSchema(BaseModel):
     """Response model for token revocation"""
     revoked_count: int = Field(..., description="Number of tokens revoked")
     message: str = Field(..., description="Success message")

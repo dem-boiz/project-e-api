@@ -3,7 +3,7 @@ from sqlalchemy.future import select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy import and_, or_
 from models import Session
-from schema import SessionReadSchema, SessionCreateSchema, SessionUpdateSchema
+from schema import SessionReadSchema, SessionCreateSchema 
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional 

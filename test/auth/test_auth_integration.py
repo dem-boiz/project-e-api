@@ -5,7 +5,7 @@ from httpx import AsyncClient, ASGITransport
 from services import AuthService, HostService
 from database import AsyncSessionLocal
 from models import Host
-from schema import HostCreateSchema, LoginRequest
+from schema import HostCreateSchema, LoginRequestSchema
 from utils.utils import create_jwt, verify_jwt
 import sys
 import asyncio
@@ -114,8 +114,8 @@ async def test_authentication_with_special_characters():
         assert authenticated_host.email == email
         
         # Test login
-        login_request = LoginRequest(email=email, password=password)
-        login_response = await authn_service.login(login_request)
+        login_request = LoginRequestSchema(email=email, password=password)
+        login_response = await authn_service.login_service(login_request)
         assert "access_token" in login_response
         
         # Clean up
@@ -151,11 +151,11 @@ async def test_concurrent_authentication_requests():
         
         # Test concurrent logins
         async def login_host(host_data):
-            login_request = LoginRequest(
+            login_request = LoginRequestSchema(
                 email=host_data["email"],
                 password=host_data["password"]
             )
-            return await authn_service.login(login_request)
+            return await authn_service.login_service(login_request)
         
         # Execute concurrent logins
         import asyncio
@@ -216,11 +216,11 @@ async def test_host_sanitization_in_auth_responses():
         created_host = await host_service.create_host(host_create)
         
         # Login and get current host
-        login_request = LoginRequest(email=email, password=password)
-        login_response = await authn_service.login(login_request)
+        login_request = LoginRequestSchema(email=email, password=password)
+        login_response = await authn_service.login_service(login_request)
         
         token = login_response["access_token"]
-        current_host = await authn_service.get_current_host(token)
+        current_host = await authn_service.get_current_host_service(token)
         
         # Verify password_hash is None (sanitized)
         assert current_host.password_hash is None

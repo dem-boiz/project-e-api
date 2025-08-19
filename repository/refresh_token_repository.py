@@ -3,7 +3,7 @@ from sqlalchemy.future import select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy import and_, delete, or_
 from models import RefreshToken
-from schema import RefreshTokenSchema, RefreshTokenCreate
+from schema import RefreshTokenSchema, RefreshTokenCreateSchema
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional 
@@ -15,7 +15,7 @@ class RefreshTokenRepository:
     def __init__(self, RefreshToken: AsyncSession):
         self.RefreshToken = RefreshToken
     
-    async def create_refresh_token(self, token_data: RefreshTokenCreate) -> RefreshTokenSchema:
+    async def create_refresh_token(self, token_data: RefreshTokenCreateSchema) -> RefreshTokenSchema:
         """Create and store a new RefreshToken record."""
         
         new_token = RefreshToken(

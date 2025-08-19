@@ -3,7 +3,7 @@ from jose.exceptions import ExpiredSignatureError, JWTClaimsError
 from fastapi import Header, Cookie, HTTPException, status, Depends
 from config import SECRET_KEY, ALGORITHM, JWT_ACCESS_LIFESPAN, JWT_REFRESH_LIFESPAN
 from repository import RefreshTokenRepository
-from schema import RefreshTokenCreate
+from schema import RefreshTokenCreateSchema
 from datetime import datetime, timedelta, timezone
 import secrets
 import uuid
@@ -71,7 +71,7 @@ async def create_jwt(userId: str,
         csrtf_hash = str(uuid.uuid4()).replace("-", "")
 
         # Create refresh token database record
-        token_data = RefreshTokenCreate(
+        token_data = RefreshTokenCreateSchema(
             jti=payload["jti"],
             user_id=uuid.UUID(userId),
             sid=uuid.UUID(session_id),

@@ -35,7 +35,7 @@ async def get_current_host(
 ) -> Host:
     """Get the current authenticated host from JWT token"""
     token = credentials.credentials
-    return await auth_service.get_current_host(token)
+    return await auth_service.get_current_host_service(token)
 
 # Dependency to verify host authorization for event creation
 async def verify_host_authorization(

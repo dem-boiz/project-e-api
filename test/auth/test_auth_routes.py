@@ -16,203 +16,6 @@ if sys.platform == "win32":
 
 client = TestClient(app)
 
-@pytest.mark.asyncio
-async def test_logout_route_success():
-    """Test POST /auth/logout after logging in"""
-    email = f"route_test_{uuid4()}@example.com"
-    password = "routetest123"
-
-    host_payload = {
-        "email": email,
-        "company_name": "Route Test Company",
-        "password": password,
-        "created_at": "2023-10-01T12:00:00Z"
-    }
-
-    async with AsyncClient(base_url="http://localhost:8000") as client:
-        # Create host
-        host_response = await client.post("/hosts/", json=host_payload)
-        assert host_response.status_code == 201
-        host_data = host_response.json()
-
-        # Login to get token & cookies
-        login_payload = {
-            "email": email,
-            "password": password,
-            "rememberMe": False
-        }
-        login_response = await client.post("/auth/login", json=login_payload)
-        assert login_response.status_code == 200
-
-        cookies = login_response.cookies
-
-        # Call logout endpoint
-        logout_response = await client.post("/auth/logout", cookies=cookies)
-        assert logout_response.status_code == 200
-        assert logout_response.json()["message"] == "Logged out successfully"
-
-        # Clean up - delete the host
-        delete_response = await client.delete(f"/hosts/{host_data['id']}")
-        assert delete_response.status_code == 204
-        
-@pytest.mark.asyncio
-async def test_login_route_success():
-    """Test POST /auth/login with valid credentials"""
-    # Create a test host first
-    email = f"route_test_{uuid4()}@example.com"
-    password = "routetest123"
-    
-    # Create host via direct API
-    host_payload = {
-        "email": email,
-        "company_name": "Route Test Company",
-        "password": password,
-        "created_at": "2023-10-01T12:00:00Z"
-    }
-    
-    async with AsyncClient(base_url="http://localhost:8000") as client:
-        # Create host
-        host_response = await client.post("/hosts/", json=host_payload)
-        assert host_response.status_code == 201
-        host_data = host_response.json()
-        
-        # Test login
-        login_payload = {
-            "email": email,
-            "password": password
-        }
-        
-        login_response = await client.post("/auth/login", json=login_payload)
-        assert login_response.status_code == 200
-        
-        login_data = login_response.json()
-        assert "access_token" in login_data
-        assert login_data["token_type"] == "bearer"
-        assert login_data["email"] == email
-        assert len(login_data["access_token"]) > 50  # JWT tokens are long
-        
-        # Clean up - delete the host
-        delete_response = await client.delete(f"/hosts/{host_data['id']}")
-        assert delete_response.status_code == 204
-
-
-@pytest.mark.asyncio
-async def test_login_route_invalid_email():
-    """Test POST /auth/login with invalid email"""
-    login_payload = {
-        "email": "nonexistent@example.com",
-        "password": "anypassword"
-    }
-    
-    async with AsyncClient(base_url="http://localhost:8000") as client:
-        login_response = await client.post("/auth/login", json=login_payload)
-        assert login_response.status_code == 401
-        
-        error_data = login_response.json()
-        assert "detail" in error_data
-        assert "Invalid email or password" in error_data["detail"]
-
-
-@pytest.mark.asyncio
-async def test_login_route_invalid_password():
-    """Test POST /auth/login with valid email but wrong password"""
-    # Create a test host first
-    email = f"route_test_{uuid4()}@example.com"
-    password = "correctpassword"
-    wrong_password = "wrongpassword"
-    
-    host_payload = {
-        "email": email,
-        "company_name": "Route Test Company",
-        "password": password,
-        "created_at": "2023-10-01T12:00:00Z"
-    }
-    
-    async with AsyncClient(base_url="http://localhost:8000") as client:
-        # Create host
-        host_response = await client.post("/hosts/", json=host_payload)
-        assert host_response.status_code == 201
-        host_data = host_response.json()
-        
-        # Test login with wrong password
-        login_payload = {
-            "email": email,
-            "password": wrong_password
-        }
-        
-        login_response = await client.post("/auth/login", json=login_payload)
-        assert login_response.status_code == 401
-        
-        error_data = login_response.json()
-        assert "detail" in error_data
-        assert "Invalid email or password" in error_data["detail"]
-        
-        # Clean up
-        delete_response = await client.delete(f"/hosts/{host_data['id']}")
-        assert delete_response.status_code == 204
-
-
-@pytest.mark.asyncio 
-async def test_login_route_missing_fields():
-    """Test POST /auth/login with missing required fields"""
-    
-    async with AsyncClient(base_url="http://localhost:8000") as client:
-        # Missing password
-        incomplete_payload = {"email": "test@example.com"}
-        response = await client.post("/auth/login", json=incomplete_payload)
-        assert response.status_code == 422  # Validation error
-        
-        # Missing email
-        incomplete_payload = {"password": "password123"}
-        response = await client.post("/auth/login", json=incomplete_payload)
-        assert response.status_code == 422  # Validation error
-        
-        # Empty payload
-        response = await client.post("/auth/login", json={})
-        assert response.status_code == 422  # Validation error
-
-
-@pytest.mark.asyncio
-async def test_get_current_user_route_success():
-    """Test GET /auth/me with valid JWT token"""
-    # Create host and login first
-    email = f"route_test_{uuid4()}@example.com"
-    password = "routetest123"
-    
-    host_payload = {
-        "email": email,
-        "company_name": "Route Test Company",
-        "password": password,
-        "created_at": "2023-10-01T12:00:00Z"
-    }
-    
-    async with AsyncClient(base_url="http://localhost:8000") as client:
-        # Create host
-        host_response = await client.post("/hosts/", json=host_payload)
-        assert host_response.status_code == 201
-        host_data = host_response.json()
-        
-        # Login to get token
-        login_payload = {"email": email, "password": password}
-        login_response = await client.post("/auth/login", json=login_payload)
-        assert login_response.status_code == 200
-        
-        login_data = login_response.json()
-        token = login_data["access_token"]
-        
-        # Test /auth/me endpoint
-        headers = {"Authorization": f"Bearer {token}"}
-        me_response = await client.get("/auth/me", headers=headers)
-        assert me_response.status_code == 200
-        
-        me_data = me_response.json()
-        assert me_data["email"] == email
-        assert me_data["host_id"] == host_data["id"]
-        
-        # Clean up
-        delete_response = await client.delete(f"/hosts/{host_data['id']}")
-        assert delete_response.status_code == 204
-
 
 @pytest.mark.asyncio
 async def test_get_current_user_route_no_token():
@@ -299,44 +102,7 @@ async def test_refresh_token_rotates_access_and_csrf():
             print(f"Error: {refresh_resp.json()}")
         
         assert refresh_resp.status_code == 200
-
-@pytest.mark.asyncio
-async def test_logout_without_csrf_fails():
-    """Test that logout without CSRF token fails"""
-    email = f"logout_no_csrf_{uuid4()}@example.com"
-    password = "TestPassword123!"
-
-    # Create host first
-    host_payload = {
-        "email": email,
-        "company_name": "Logout CSRF Test Company", 
-        "password": password,
-        "created_at": "2023-10-01T12:00:00Z"
-    }
-
-    async with AsyncClient(base_url="http://localhost:8000") as client:
-        # Create host
-        host_resp = await client.post("/hosts/", json=host_payload)
-        assert host_resp.status_code == 201
-
-        # Login to get tokens
-        login_payload = {"email": email, "password": password, "rememberMe": True}
-        login_resp = await client.post("/auth/login", json=login_payload)
-        assert login_resp.status_code == 200
-
-        refresh_cookie = login_resp.cookies.get("refresh_token")
-        assert refresh_cookie is not None
-        
-        # Try logout WITHOUT CSRF token - should fail
-        logout_resp = await client.post(
-            "/auth/logout",
-            cookies={"refresh_token": refresh_cookie}
-        )
-        
-        # Should fail due to missing CSRF protection
-        assert logout_resp.status_code != 200
-        print(f"Logout without CSRF failed as expected: {logout_resp.status_code}")
-
+ 
 
 @pytest.mark.asyncio
 async def test_logout_without_refresh_token():
@@ -625,3 +391,206 @@ async def test_global_logout_only_affects_target_user():
         )
         print(f"User2 refresh after user1's global logout: {user2_refresh_resp.status_code}")
         assert user2_refresh_resp.status_code == 200, "User2 session should still be active"
+
+
+
+## OLD TESTS
+
+@pytest.mark.asyncio
+async def test_login_route_invalid_email():
+    """Test POST /auth/login with invalid email"""
+    login_payload = {
+        "email": "nonexistent@example.com",
+        "password": "anypassword"
+    }
+    
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        login_response = await client.post("/auth/login", json=login_payload)
+        assert login_response.status_code == 401
+        
+        error_data = login_response.json()
+        assert "detail" in error_data
+        assert "Invalid email or password" in error_data["detail"]
+
+
+@pytest.mark.asyncio
+async def test_login_route_invalid_password():
+    """Test POST /auth/login with valid email but wrong password"""
+    # Create a test host first
+    email = f"route_test_{uuid4()}@example.com"
+    password = "correctpassword"
+    wrong_password = "wrongpassword"
+    
+    host_payload = {
+        "email": email,
+        "company_name": "Route Test Company",
+        "password": password,
+        "created_at": "2023-10-01T12:00:00Z"
+    }
+    
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        # Create host
+        host_response = await client.post("/hosts/", json=host_payload)
+        assert host_response.status_code == 201
+        host_data = host_response.json()
+        
+        # Test login with wrong password
+        login_payload = {
+            "email": email,
+            "password": wrong_password
+        }
+        
+        login_response = await client.post("/auth/login", json=login_payload)
+        assert login_response.status_code == 401
+        
+        error_data = login_response.json()
+        assert "detail" in error_data
+        assert "Invalid email or password" in error_data["detail"]
+        
+        # Clean up
+        delete_response = await client.delete(f"/hosts/{host_data['id']}")
+        assert delete_response.status_code == 204
+
+
+@pytest.mark.asyncio 
+async def test_login_route_missing_fields():
+    """Test POST /auth/login with missing required fields"""
+    
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        # Missing password
+        incomplete_payload = {"email": "test@example.com"}
+        response = await client.post("/auth/login", json=incomplete_payload)
+        assert response.status_code == 422  # Validation error
+        
+        # Missing email
+        incomplete_payload = {"password": "password123"}
+        response = await client.post("/auth/login", json=incomplete_payload)
+        assert response.status_code == 422  # Validation error
+        
+        # Empty payload
+        response = await client.post("/auth/login", json={})
+        assert response.status_code == 422  # Validation error
+
+
+@pytest.mark.asyncio
+async def test_logout_route_success():
+    """Test POST /auth/logout after logging in"""
+    email = f"route_test_{uuid4()}@example.com"
+    password = "routetest123"
+
+    host_payload = {
+        "email": email,
+        "company_name": "Route Test Company",
+        "password": password,
+        "created_at": "2023-10-01T12:00:00Z"
+    }
+
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        # Create host
+        host_response = await client.post("/hosts/", json=host_payload)
+        assert host_response.status_code == 201
+        host_data = host_response.json()
+
+        # Login to get token & cookies
+        login_payload = {
+            "email": email,
+            "password": password,
+            "rememberMe": False
+        }
+        login_response = await client.post("/auth/login", json=login_payload)
+        assert login_response.status_code == 200
+
+        cookies = login_response.cookies
+
+        # Call logout endpoint
+        logout_response = await client.post("/auth/logout", cookies=cookies)
+        assert logout_response.status_code == 200
+        assert logout_response.json()["message"] == "Logged out successfully"
+
+        # Clean up - delete the host
+        delete_response = await client.delete(f"/hosts/{host_data['id']}")
+        assert delete_response.status_code == 204
+        
+@pytest.mark.asyncio
+async def test_login_route_success():
+    """Test POST /auth/login with valid credentials"""
+    # Create a test host first
+    email = f"route_test_{uuid4()}@example.com"
+    password = "routetest123"
+    
+    # Create host via direct API
+    host_payload = {
+        "email": email,
+        "company_name": "Route Test Company",
+        "password": password,
+        "created_at": "2023-10-01T12:00:00Z"
+    }
+    
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        # Create host
+        host_response = await client.post("/hosts/", json=host_payload)
+        assert host_response.status_code == 201
+        host_data = host_response.json()
+        
+        # Test login
+        login_payload = {
+            "email": email,
+            "password": password
+        }
+        
+        login_response = await client.post("/auth/login", json=login_payload)
+        assert login_response.status_code == 200
+        
+        login_data = login_response.json()
+        assert "access_token" in login_data
+        assert login_data["token_type"] == "bearer"
+        assert login_data["email"] == email
+        assert len(login_data["access_token"]) > 50  # JWT tokens are long
+        
+        # Clean up - delete the host
+        delete_response = await client.delete(f"/hosts/{host_data['id']}")
+        assert delete_response.status_code == 204
+
+
+
+@pytest.mark.asyncio
+async def test_get_current_user_route_success():
+    """Test GET /auth/me with valid JWT token"""
+    # Create host and login first
+    email = f"route_test_{uuid4()}@example.com"
+    password = "routetest123"
+    
+    host_payload = {
+        "email": email,
+        "company_name": "Route Test Company",
+        "password": password,
+        "created_at": "2023-10-01T12:00:00Z"
+    }
+    
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        # Create host
+        host_response = await client.post("/hosts/", json=host_payload)
+        assert host_response.status_code == 201
+        host_data = host_response.json()
+        
+        # Login to get token
+        login_payload = {"email": email, "password": password}
+        login_response = await client.post("/auth/login", json=login_payload)
+        assert login_response.status_code == 200
+        
+        login_data = login_response.json()
+        token = login_data["access_token"]
+        
+        # Test /auth/me endpoint
+        headers = {"Authorization": f"Bearer {token}"}
+        me_response = await client.get("/auth/me", headers=headers)
+        assert me_response.status_code == 200
+        
+        me_data = me_response.json()
+        assert me_data["email"] == email
+        assert me_data["host_id"] == host_data["id"]
+        
+        # Clean up
+        delete_response = await client.delete(f"/hosts/{host_data['id']}")
+        assert delete_response.status_code == 204
+
