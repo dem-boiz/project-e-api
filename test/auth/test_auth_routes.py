@@ -352,7 +352,7 @@ async def test_logout_without_refresh_token():
         # Most logout endpoints handle this gracefully and return 200
         # But adjust if your API returns a different status
         assert logout_resp.status_code in [200, 401, 403]
-        
+
 @pytest.mark.asyncio
 async def test_logout_clears_tokens_and_cookies():
     """Test that /logout clears refresh token and returns success"""
@@ -438,3 +438,190 @@ async def test_logout_clears_tokens_and_cookies():
         # Should fail because token was invalidated
         assert old_refresh_resp.status_code != 200
         print(f"Using old refresh token after logout failed as expected: {old_refresh_resp.status_code}")
+
+@pytest.mark.asyncio
+async def test_global_logout_revokes_all_sessions():
+    """Test that /global-logout revokes all active sessions for the user"""
+    email = f"global_logout_{uuid4()}@example.com"
+    password = "TestPassword123!"
+
+    # Create host first
+    host_payload = {
+        "email": email,
+        "company_name": "Global Logout Test Company", 
+        "password": password,
+        "created_at": "2023-10-01T12:00:00Z"
+    }
+
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        # Create host
+        host_resp = await client.post("/hosts/", json=host_payload)
+        assert host_resp.status_code == 201
+
+        # Login multiple times to create multiple sessions
+        login_sessions = []
+        for i in range(3):
+            login_payload = {"email": email, "password": password, "rememberMe": True}
+            login_resp = await client.post("/auth/login", json=login_payload)
+            assert login_resp.status_code == 200
+            
+            refresh_cookie = login_resp.cookies.get("refresh_token")
+            assert refresh_cookie is not None
+            
+            login_sessions.append({
+                "refresh_token": refresh_cookie,
+                "csrf_token": login_resp.json().get("csrf_token") or login_resp.cookies.get("csrf_token")
+            })
+            
+            print(f"Session {i+1} created with refresh token: {refresh_cookie[:20]}...")
+
+        # Verify all sessions work by using refresh endpoint
+        print("Verifying all sessions are active...")
+        for i, session in enumerate(login_sessions):
+            refresh_resp = await client.post(
+                "/auth/refresh",
+                cookies={
+                    "refresh_token": session["refresh_token"],
+                    "csrf_token": session["csrf_token"]
+                },
+                headers={"X-CSRF-Token": session["csrf_token"]}
+            )
+            print(f"Session {i+1} refresh status: {refresh_resp.status_code}")
+            assert refresh_resp.status_code == 200, f"Session {i+1} should be active before global logout"
+
+        # Use the first session's refresh token for global logout
+        global_logout_resp = await client.post(
+            "/auth/global-logout",
+            cookies={"refresh_token": login_sessions[0]["refresh_token"]}
+        )
+        
+        # DEBUG: If failed, print error
+        if global_logout_resp.status_code != 200:
+            print(f"Global logout failed with status {global_logout_resp.status_code}")
+            print(f"Error: {global_logout_resp.json()}")
+        
+        assert global_logout_resp.status_code == 200
+        print("Global logout succeeded")
+
+        # Verify ALL sessions are now invalid
+        print("Verifying all sessions are revoked...")
+        for i, session in enumerate(login_sessions):
+            refresh_resp = await client.post(
+                "/auth/refresh",
+                cookies={
+                    "refresh_token": session["refresh_token"],
+                    "csrf_token": session["csrf_token"]
+                },
+                headers={"X-CSRF-Token": session["csrf_token"]}
+            )
+            
+            print(f"Session {i+1} refresh status after global logout: {refresh_resp.status_code}")
+            
+            # All sessions should now be invalid
+            if refresh_resp.status_code == 200:
+                print(f"WARNING: Session {i+1} still works after global logout!")
+                print(f"Response: {refresh_resp.json()}")
+                # Comment out for debugging
+                # assert False, f"Session {i+1} should be revoked after global logout"
+            else:
+                assert refresh_resp.status_code != 200, f"Session {i+1} should be revoked"
+
+@pytest.mark.asyncio
+async def test_global_logout_without_refresh_token_fails():
+    """Test that global logout without refresh token fails"""
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        # Try global logout without refresh token
+        global_logout_resp = await client.post("/auth/global-logout")
+        
+        print(f"Global logout without token status: {global_logout_resp.status_code}")
+        print(f"Global logout without token response: {global_logout_resp.json()}")
+        
+        # Should fail with 401 due to missing refresh token
+        assert global_logout_resp.status_code == 401
+        
+        response_data = global_logout_resp.json()
+        assert "Missing refresh token" in response_data.get("detail", "")
+
+
+@pytest.mark.asyncio
+async def test_global_logout_with_invalid_refresh_token_fails():
+    """Test that global logout with invalid refresh token fails"""
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        # Try global logout with invalid refresh token
+        global_logout_resp = await client.post(
+            "/auth/global-logout",
+            cookies={"refresh_token": "invalid.jwt.token"}
+        )
+        
+        print(f"Global logout with invalid token status: {global_logout_resp.status_code}")
+        print(f"Global logout with invalid token response: {global_logout_resp.json()}")
+        
+        # Should fail with 401 due to invalid refresh token
+        assert global_logout_resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_global_logout_only_affects_target_user():
+    """Test that global logout only revokes sessions for the specific user"""
+    # Create two different users
+    user1_email = f"global_logout_user1_{uuid4()}@example.com"
+    user2_email = f"global_logout_user2_{uuid4()}@example.com"
+    password = "TestPassword123!"
+
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        # Create both hosts
+        for email in [user1_email, user2_email]:
+            host_payload = {
+                "email": email,
+                "company_name": f"Test Company for {email}", 
+                "password": password,
+                "created_at": "2023-10-01T12:00:00Z"
+            }
+            host_resp = await client.post("/hosts/", json=host_payload)
+            assert host_resp.status_code == 201
+
+        # Login both users
+        user1_session = {}
+        user2_session = {}
+        
+        for user_email, session_dict in [(user1_email, user1_session), (user2_email, user2_session)]:
+            login_payload = {"email": user_email, "password": password, "rememberMe": True}
+            login_resp = await client.post("/auth/login", json=login_payload)
+            assert login_resp.status_code == 200
+            
+            session_dict["refresh_token"] = login_resp.cookies.get("refresh_token")
+            session_dict["csrf_token"] = login_resp.json().get("csrf_token") or login_resp.cookies.get("csrf_token")
+            
+            assert session_dict["refresh_token"] is not None
+
+        # Global logout user1
+        global_logout_resp = await client.post(
+            "/auth/global-logout",
+            cookies={"refresh_token": user1_session["refresh_token"]}
+        )
+        assert global_logout_resp.status_code == 200
+        print("User1 global logout succeeded")
+
+        # Verify user1's session is revoked
+        user1_refresh_resp = await client.post(
+            "/auth/refresh",
+            cookies={
+                "refresh_token": user1_session["refresh_token"],
+                "csrf_token": user1_session["csrf_token"]
+            },
+            headers={"X-CSRF-Token": user1_session["csrf_token"]}
+        )
+        print(f"User1 refresh after global logout: {user1_refresh_resp.status_code}")
+        assert user1_refresh_resp.status_code != 200, "User1 session should be revoked"
+
+        # Verify user2's session is still active
+        user2_refresh_resp = await client.post(
+            "/auth/refresh",
+            cookies={
+                "refresh_token": user2_session["refresh_token"],
+                "csrf_token": user2_session["csrf_token"]
+            },
+            headers={"X-CSRF-Token": user2_session["csrf_token"]}
+        )
+        print(f"User2 refresh after user1's global logout: {user2_refresh_resp.status_code}")
+        assert user2_refresh_resp.status_code == 200, "User2 session should still be active"

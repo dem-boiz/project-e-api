@@ -382,3 +382,44 @@ class AuthService:
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
+    async def global_logout_service(self, 
+                                    refresh_token: str | None):
+        # Verify Refresh JWT info
+        """Refresh JWT token and rotate CSRF token.""" 
+        if not refresh_token:
+            logger.warning("Missing refresh token.")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Missing refresh token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+    
+        # Verify the refresh token
+        try:
+            logger.debug(f"Verifying refresh token: {refresh_token}")
+            # Decode and verify the JWT
+            decoded_token = verify_jwt(refresh_token)
+            logger.debug(f"Decoded refresh token: {decoded_token}")
+        except HTTPException as e:
+            logger.error(f"Refresh token verification failed: {e.detail}")
+            raise e 
+        
+        # Get user ID from the token
+        user_id = decoded_token.get("sub")
+        if not user_id:
+            logger.warning("Refresh token has no user ID (sub) claim.")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # Revoke in the repository
+        sessions_revoked = await self.session_repo.revoke_all_active_sessions_by_user_id(uuid.UUID(user_id))
+
+        # Remove refresh token records from db 
+        tokens_revoked = await self.refresh_token_repo.delete_all_refresh_tokens_by_user_id(uuid.UUID(user_id))
+
+        logger.info(f"Global logout for user {user_id}: sessions_revoked={sessions_revoked}, tokens_revoked={tokens_revoked}")
+    
+        return {"message": "All sessions and tokens revoked successfully"}

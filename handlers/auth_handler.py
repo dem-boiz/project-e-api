@@ -86,3 +86,6 @@ async def handle_logout(response: Response,
                         refresh_token: str | None):
     return await service.logout_user(response=response, refresh_token=refresh_token)
     
+async def handle_global_logout(service: AuthService, 
+                               refresh_token: str | None):
+    return await service.global_logout_service(refresh_token=refresh_token)

@@ -1,13 +1,16 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, delete, or_
 from models import RefreshToken
 from schema import RefreshTokenSchema, RefreshTokenCreate
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional 
 from sqlalchemy import update, func
+import logging
+
+logger = logging.getLogger(__name__)
 class RefreshTokenRepository:
     def __init__(self, RefreshToken: AsyncSession):
         self.RefreshToken = RefreshToken
@@ -101,3 +104,22 @@ class RefreshTokenRepository:
             
         except Exception as e:
             raise Exception(f"Failed to delete refresh tokens for sid {sid}: {e}")
+        
+    async def delete_all_refresh_tokens_by_user_id(self, user_id: uuid.UUID) -> bool:
+        try:
+            logger.info(f"Attempting to delete all refresh tokens for user_id: {user_id}")
+            
+            result = await self.RefreshToken.execute(
+                delete(RefreshToken).where(RefreshToken.user_id == user_id)
+            )
+            
+            await self.RefreshToken.commit()
+            rows_affected = result.rowcount
+            
+            logger.info(f"Deleted {rows_affected} refresh tokens for user_id: {user_id}")
+            return rows_affected > 0
+            
+        except Exception as e:
+            await self.RefreshToken.rollback()
+            logger.error(f"Failed to delete refresh tokens for user_id {user_id}: {e}")
+            return False

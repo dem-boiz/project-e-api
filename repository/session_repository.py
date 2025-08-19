@@ -6,9 +6,12 @@ from models import Session
 from schema import SessionReadSchema, SessionCreateSchema, SessionUpdateSchema
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional
+from typing import List, Optional 
+from sqlalchemy import update, func 
+import uuid
+import logging
 
-
+logger = logging.getLogger(__name__)
 class SessionRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
@@ -95,29 +98,29 @@ class SessionRepository:
             return True
         return False 
 
-    async def invalidate_all_user_sessions(self, user_id: uuid.UUID, except_session_id: str = None) -> int:
-        """Invalidate all sessions for a user, optionally except a specific session."""
-        query = select(Session).where(
-            Session.user_id == user_id,
-            Session.is_active == True
-        )
-        
-        if except_session_id:
-            query = query.where(Session.session_id != except_session_id)
+    async def revoke_all_active_sessions_by_user_id(self, user_id: uuid.UUID) -> bool:
+        try:
+            logger.info(f"Attempting to revoke sessions for user_id: {user_id}")
             
-        result = await self.session.execute(query)
-        sessions_to_invalidate = result.scalars().all()
-        
-        count = 0
-        for session_record in sessions_to_invalidate:
-            session_record.is_active = False
-            session_record.last_seen_at = datetime.now(timezone.utc)
-            count += 1
+            result = await self.session.execute(
+                update(Session)
+                .where(
+                    (Session.user_id == user_id) & 
+                    (Session.revoked_at.is_(None))
+                )
+                .values(revoked_at=func.now())
+            )
             
-        if count > 0:
             await self.session.commit()
+            rows_affected = result.rowcount
             
-        return count
+            logger.info(f"Revoked {rows_affected} sessions for user_id: {user_id}")
+            return rows_affected > 0
+            
+        except Exception as e:
+            await self.session.rollback()
+            logger.error(f"Failed to revoke sessions for user_id {user_id}: {e}")
+            return False
 
     async def cleanup_expired_sessions(self) -> int:
         """Remove or deactivate expired sessions."""

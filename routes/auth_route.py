@@ -8,7 +8,7 @@ from models import host
 from services import AuthService, HostService
 from schema import LoginRequest, LoginResponse, CurrentUserResponse, RefreshResponse
 from utils import verify_csrf_token
-from handlers.auth_handler import handle_refresh_token, handle_get_me, handle_login, handle_logout
+from handlers.auth_handler import handle_refresh_token, handle_get_me, handle_login, handle_logout, handle_global_logout
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 security = HTTPBearer()
@@ -44,10 +44,18 @@ async def logout(
     response: Response,
     refresh_token: str | None = Cookie(default=None),
     service: AuthService = Depends(get_auth_service)
-):
-    """Logout endpoint with CSRF protection"""
-    logger.info("CSRF token verified. Processing logout request")
+): 
+    logger.info("Processing logout request")
     return await handle_logout(response=response, service=service, refresh_token=refresh_token)
+
+# Global logout endpoint
+@router.post("/global-logout", status_code=status.HTTP_200_OK)
+async def global_logout( 
+    refresh_token: str | None = Cookie(default=None),
+    service: AuthService = Depends(get_auth_service)
+): 
+    logger.info("Processing global logout request")
+    return await handle_global_logout(service=service, refresh_token=refresh_token)
 
 @router.get("/me", response_model=CurrentUserResponse, status_code=status.HTTP_200_OK)
 async def get_current_user(
