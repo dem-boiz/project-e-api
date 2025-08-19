@@ -39,13 +39,12 @@ class SessionRepository:
             ip=None
         )
 
-    async def get_session_by_sid(self, sid: str) -> Session | None:
+    async def get_session_by_sid(self, sid: uuid.UUID) -> Session | None:
         """Retrieve a Session record by sid."""
         try:
             result = await self.session.execute(
                 select(Session).where(
-                    Session.sid == sid,
-                    Session.is_active == True
+                    Session.sid == sid
                 )
             )
             session_record = result.scalar_one()
@@ -77,7 +76,7 @@ class SessionRepository:
         if last_seen_at is None:
             last_seen_at = datetime.now(timezone.utc)
             
-        session_record = await self.get_session_by_session_id(session_id)
+        session_record = await self.get_session_by_sid(session_id)
         if session_record:
             session_record.last_seen_at = last_seen_at
             session_record.updated_at = datetime.now(timezone.utc)
@@ -85,15 +84,16 @@ class SessionRepository:
             await self.session.refresh(session_record)
         return session_record
 
-    async def invalidate_session(self, session_id: str) -> bool:
+    async def invalidate_session(self, session_id: uuid.UUID) -> bool:
         """Invalidate (deactivate) a specific session."""
-        session_record = await self.get_session_by_session_id(session_id)
-        if session_record:
-            session_record.is_active = False
-            session_record.updated_at = datetime.now(timezone.utc)
+        session_record = await self.get_session_by_sid(session_id)
+        if session_record is None:
+            raise "No session found"
+        if session_record: 
+            session_record.revoked_at = datetime.now(timezone.utc)
             await self.session.commit()
             return True
-        return False
+        return False 
 
     async def invalidate_all_user_sessions(self, user_id: uuid.UUID, except_session_id: str = None) -> int:
         """Invalidate all sessions for a user, optionally except a specific session."""

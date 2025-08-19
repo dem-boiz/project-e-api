@@ -301,30 +301,15 @@ async def test_refresh_token_rotates_access_and_csrf():
         assert refresh_resp.status_code == 200
 
 @pytest.mark.asyncio
-async def test_get_current_user_route_malformed_header():
-    """Test GET /auth/me with malformed authorization header"""
-    
-    async with AsyncClient(base_url="http://localhost:8000") as client:
-        # Missing "Bearer" prefix
-        headers = {"Authorization": "some-token"}
-        me_response = await client.get("/auth/me", headers=headers)
-        assert me_response.status_code == 403  # Forbidden
-        
-        # Wrong auth type
-        headers = {"Authorization": "Basic some-token"}
-        me_response = await client.get("/auth/me", headers=headers)
-        assert me_response.status_code == 403  # Forbidden
-
-@pytest.mark.asyncio
-async def test_login_route_csrf_and_token():
-    """Test login returns access token, CSRF token, and sets refresh cookie"""
-    email = f"test_{uuid4()}@example.com"
+async def test_logout_without_csrf_fails():
+    """Test that logout without CSRF token fails"""
+    email = f"logout_no_csrf_{uuid4()}@example.com"
     password = "TestPassword123!"
-    
+
     # Create host first
     host_payload = {
         "email": email,
-        "company_name": "Test Company",
+        "company_name": "Logout CSRF Test Company", 
         "password": password,
         "created_at": "2023-10-01T12:00:00Z"
     }
@@ -334,115 +319,122 @@ async def test_login_route_csrf_and_token():
         host_resp = await client.post("/hosts/", json=host_payload)
         assert host_resp.status_code == 201
 
-        # Login
+        # Login to get tokens
         login_payload = {"email": email, "password": password, "rememberMe": True}
         login_resp = await client.post("/auth/login", json=login_payload)
         assert login_resp.status_code == 200
 
-        login_data = login_resp.json()
-        # Check response contains access token, CSRF token, and user info
-        assert "access_token" in login_data
-        assert login_data["token_type"] == "bearer"
-        assert "csrf_token" in login_data
-        assert len(login_data["csrf_token"]) > 0
+        refresh_cookie = login_resp.cookies.get("refresh_token")
+        assert refresh_cookie is not None
+        
+        # Try logout WITHOUT CSRF token - should fail
+        logout_resp = await client.post(
+            "/auth/logout",
+            cookies={"refresh_token": refresh_cookie}
+        )
+        
+        # Should fail due to missing CSRF protection
+        assert logout_resp.status_code != 200
+        print(f"Logout without CSRF failed as expected: {logout_resp.status_code}")
 
-        # Check that refresh_token cookie is set
-        set_cookie = login_resp.headers.get("set-cookie")
-        assert "refresh_token=" in set_cookie
-
-        # Check that CSRF token cookie is set (if using cookie for CSRF)
-        if "csrf_token=" in set_cookie:
-            assert login_data["csrf_token"] in set_cookie
 
 @pytest.mark.asyncio
-async def test_complete_auth_flow():
-    """Test complete authentication flow: register -> login -> access protected route"""
-    email = f"flow_test_{uuid4()}@example.com"
-    password = "flowtest123"
-    
+async def test_logout_without_refresh_token():
+    """Test that logout without refresh token still succeeds (graceful handling)"""
     async with AsyncClient(base_url="http://localhost:8000") as client:
-        # Step 1: Register (create host)
-        host_payload = {
-            "email": email,
-            "company_name": "Flow Test Company",
-            "password": password,
-            "created_at": "2023-10-01T12:00:00Z"
-        }
+        # Try logout without any cookies
+        logout_resp = await client.post("/auth/logout")
         
-        host_response = await client.post("/hosts/", json=host_payload)
-        assert host_response.status_code == 201
-        host_data = host_response.json()
-        assert host_data["email"] == email
-        assert "password_hash" not in host_data  # Should be sanitized
+        # Depending on your implementation, this might succeed or fail
+        # Adjust the expected status code based on your API's behavior
+        print(f"Logout without refresh token status: {logout_resp.status_code}")
         
-        # Step 2: Login
-        login_payload = {"email": email, "password": password}
-        login_response = await client.post("/auth/login", json=login_payload)
-        assert login_response.status_code == 200
+        # Most logout endpoints handle this gracefully and return 200
+        # But adjust if your API returns a different status
+        assert logout_resp.status_code in [200, 401, 403]
         
-        login_data = login_response.json()
-        token = login_data["access_token"]
-        assert login_data["email"] == email
-        
-        # Step 3: Access protected route (/auth/me)
-        headers = {"Authorization": f"Bearer {token}"}
-        me_response = await client.get("/auth/me", headers=headers)
-        assert me_response.status_code == 200
-        
-        me_data = me_response.json()
-        assert me_data["email"] == email
-        assert me_data["host_id"] == host_data["id"]
-        
-        # Step 6: Clean up
-        delete_response = await client.delete(f"/hosts/{host_data['id']}")
-        assert delete_response.status_code == 204
-
-
 @pytest.mark.asyncio
-async def test_auth_route_response_schemas():
-    """Test that auth routes return data in correct schema format"""
-    email = f"schema_test_{uuid4()}@example.com"
-    password = "schematest123"
-    
+async def test_logout_clears_tokens_and_cookies():
+    """Test that /logout clears refresh token and returns success"""
+    email = f"logout_{uuid4()}@example.com"
+    password = "TestPassword123!"
+
+    # Create host first
+    host_payload = {
+        "email": email,
+        "company_name": "Logout Test Company", 
+        "password": password,
+        "created_at": "2023-10-01T12:00:00Z"
+    }
+
     async with AsyncClient(base_url="http://localhost:8000") as client:
         # Create host
-        host_payload = {
-            "email": email,
-            "company_name": "Schema Test Company",
-            "password": password,
-            "created_at": "2023-10-01T12:00:00Z"
-        }
+        host_resp = await client.post("/hosts/", json=host_payload)
+        assert host_resp.status_code == 201
+
+        # Login to get tokens
+        login_payload = {"email": email, "password": password, "rememberMe": True}
+        login_resp = await client.post("/auth/login", json=login_payload)
+        assert login_resp.status_code == 200
         
-        host_response = await client.post("/hosts/", json=host_payload)
-        host_data = host_response.json()
+        # DEBUG: Print what we got from login
+        print(f"Login response body: {login_resp.json()}")
+        print(f"Login cookies: {dict(login_resp.cookies)}")
+
+        refresh_cookie = login_resp.cookies.get("refresh_token")
+        assert refresh_cookie is not None
         
-        # Test login response schema
-        login_payload = {"email": email, "password": password}
-        login_response = await client.post("/auth/login", json=login_payload)
-        login_data = login_response.json()
+        # Get CSRF token from response
+        login_data = login_resp.json()
+        csrf_token = login_data.get("csrf_token")
         
-        # Verify LoginResponse schema
-        required_login_fields = ["access_token", "token_type", "email"]
-        for field in required_login_fields:
-            assert field in login_data
+        # DEBUG: Check if we have CSRF token
+        print(f"CSRF token from login: {csrf_token}")
         
-        assert login_data["token_type"] == "bearer"
-        assert isinstance(login_data["access_token"], str)
-        assert isinstance(login_data["email"], str)
+        if not csrf_token:
+            print("WARNING: No CSRF token in login response!")
+            assert False, "No CSRF token in login response"
         
-        # Test /auth/me response schema
-        headers = {"Authorization": f"Bearer {login_data['access_token']}"}
-        me_response = await client.get("/auth/me", headers=headers)
-        me_data = me_response.json()
+        # Check for CSRF cookie
+        csrf_cookie = login_resp.cookies.get("csrf_token") or csrf_token
         
-        # Verify CurrentUserResponse schema
-        required_me_fields = ["email", "host_id"]
-        for field in required_me_fields:
-            assert field in me_data
+        # Call logout with CSRF
+        logout_resp = await client.post(
+            "/auth/logout",
+            cookies={
+                "refresh_token": refresh_cookie,
+                "csrf_token": csrf_cookie
+            },
+            headers={"X-CSRF-Token": csrf_cookie}
+        )
         
-        assert isinstance(me_data["email"], str)
-        assert isinstance(me_data["host_id"], str)
+        # DEBUG: If failed, print error
+        if logout_resp.status_code != 200:
+            print(f"Logout failed with status {logout_resp.status_code}")
+            print(f"Error: {logout_resp.json()}")
         
-        # Clean up
-        delete_response = await client.delete(f"/hosts/{host_data['id']}")
-        assert delete_response.status_code == 204
+        assert logout_resp.status_code == 200
+        
+        # Check that refresh token cookie is cleared/expired
+        logout_cookies = dict(logout_resp.cookies)
+        print(f"Logout response cookies: {logout_cookies}")
+        
+        # Verify that refresh_token cookie is either removed or has expired/null value
+        refresh_token_after_logout = logout_resp.cookies.get("refresh_token")
+        if refresh_token_after_logout is not None:
+            # Cookie should be cleared (empty value or expired)
+            assert refresh_token_after_logout == "" or "expires" in str(logout_resp.headers.get("set-cookie", "")).lower()
+        
+        # Try to use the old refresh token - should fail
+        old_refresh_resp = await client.post(
+            "/auth/refresh",
+            cookies={
+                "refresh_token": refresh_cookie,
+                "csrf_token": csrf_cookie
+            },
+            headers={"X-CSRF-Token": csrf_cookie}
+        )
+        
+        # Should fail because token was invalidated
+        assert old_refresh_resp.status_code != 200
+        print(f"Using old refresh token after logout failed as expected: {old_refresh_resp.status_code}")

@@ -42,11 +42,12 @@ async def login(
 @router.post("/logout", status_code=status.HTTP_200_OK)
 async def logout(
     response: Response,
-    service: AuthService = Depends(get_auth_service),
+    refresh_token: str | None = Cookie(default=None),
+    service: AuthService = Depends(get_auth_service)
 ):
     """Logout endpoint with CSRF protection"""
     logger.info("CSRF token verified. Processing logout request")
-    return await handle_logout(response)
+    return await handle_logout(response=response, service=service, refresh_token=refresh_token)
 
 @router.get("/me", response_model=CurrentUserResponse, status_code=status.HTTP_200_OK)
 async def get_current_user(

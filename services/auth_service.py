@@ -2,7 +2,7 @@ from datetime import datetime, timezone, timedelta
 import uuid
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import HTTPException, status, Response
+from fastapi import HTTPException, status, Response, Cookie 
 from passlib.context import CryptContext
 from models import Host, Session
 from schema import LoginRequest
@@ -265,15 +265,80 @@ class AuthService:
         }
         
 
-    async def logout_user(self):
-            """
-            Optional: Revoke server-side session/token.
-            If you store refresh tokens or sessions in the DB, delete them here.
-            """
-            # Example: remove token from a session store
-            # await self.session_repo.delete_by_user_id(current_user.id)
-            pass
-    
+    async def logout_user(self, 
+                          response: Response,
+                          refresh_token: str | None):
+        """
+        Optional: Revoke server-side session/token.
+        If you store refresh tokens or sessions in the DB, delete them here.
+        """
+        # Example: remove token from a session store
+        # await self.session_repo.delete_by_user_id(current_user.id)
+        """Handle logout by deleting access, refresh, and CSRF cookies"""
+        is_prod = ENV == "PROD"
+        logger.info("Logging out user, clearing cookies")
+
+        # Verify the refresh token
+        try:
+            logger.info(f"Verifying refresh token: {refresh_token}")
+            # Decode and verify the JWT
+            decoded_token = verify_jwt(refresh_token)
+            logger.info(f"Decoded refresh token: {decoded_token}")
+        except HTTPException as e:
+            logger.error(f"Refresh token verification failed: {e.detail}")
+            raise e
+        
+        # Get JTI from the token
+        jti = decoded_token.get("jti")
+        if not jti:
+            logger.warning("Refresh token has no JTI (JWT ID) claim.")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # Validate session ID
+        session_id = decoded_token.get("sid")
+        if not session_id:
+            logger.warning("Refresh token has no session ID (sid) claim.")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token",
+                headers={"WWW-Authenticate": "Bearer"},
+            ) 
+        
+        # Invalidate session in db
+        logger.info(f"Checking for sid: {session_id}")
+        sid = uuid.UUID(session_id)
+        session_invalidated = await self.session_repo.invalidate_session(session_id=sid)
+        if session_invalidated is False: 
+            raise "Session not invalidated" 
+        
+        # Delete refresh token cookie
+        response.delete_cookie(
+            key="refresh_token",
+            path="/auth/refresh",
+            httponly=True,
+            secure=is_prod,
+            samesite="none" if is_prod else "lax"
+        )
+
+        # Delete CSRF token cookie
+        response.delete_cookie(
+            key="csrf_token",
+            path="/",
+            httponly=False,
+            secure=is_prod,
+            samesite="none" if is_prod else "lax"
+        )
+
+        # Delete all refresh tokens from the database
+        deleted_refresh_tokens = await self.refresh_token_repo.delete_all_refresh_tokens_by_sid(sid=sid)
+
+        logger.info("All cookies cleared for logout")
+        return {"message": "Logged out successfully"}
+        
     async def get_current_host(self, token: str) -> Host:
         """Get current host from JWT token"""
         logger.debug(f"Verifying JWT token")

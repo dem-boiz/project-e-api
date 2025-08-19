@@ -74,3 +74,30 @@ class RefreshTokenRepository:
             return result.rowcount > 0
         except Exception:
             return False      
+        
+    async def get_all_refresh_tokens_by_sid(self, session_id: uuid.UUID) -> list[RefreshToken]:
+        try:
+            result = await self.RefreshToken.execute(select(RefreshToken).where(
+                RefreshToken.sid == session_id
+            ))
+            
+            return result.scalars().all()
+        except Exception as e:  
+            return []
+        
+    async def delete_all_refresh_tokens_by_sid(self, sid: uuid.UUID) -> bool:
+        try:
+            token_list = await self.get_all_refresh_tokens_by_sid(sid)
+            
+            # Delete token records from the list
+            if not token_list:
+                return True  # No tokens to delete, consider it successful
+            
+            for token in token_list:
+                await self.RefreshToken.delete(token)
+                await self.RefreshToken.commit()
+            
+            return True
+            
+        except Exception as e:
+            raise Exception(f"Failed to delete refresh tokens for sid {sid}: {e}")

@@ -81,29 +81,8 @@ async def handle_login(
     return login_response_model
 
 
-async def handle_logout(response: Response):
-
-    """Handle logout by deleting access, refresh, and CSRF cookies"""
-    is_prod = ENV == "PROD"
-    logger.debug("Logging out user, clearing cookies")
-
-    # Delete refresh token cookie
-    response.delete_cookie(
-        key="refresh_token",
-        path="/auth/refresh",
-        httponly=True,
-        secure=is_prod,
-        samesite="none" if is_prod else "lax"
-    )
-
-    # Delete CSRF token cookie
-    response.delete_cookie(
-        key="csrf_token",
-        path="/",
-        httponly=False,
-        secure=is_prod,
-        samesite="none" if is_prod else "lax"
-    )
-
-    logger.debug("All cookies cleared for logout")
-    return {"message": "Logged out successfully"}
+async def handle_logout(response: Response, 
+                        service:AuthService, 
+                        refresh_token: str | None):
+    return await service.logout_user(response=response, refresh_token=refresh_token)
+    
