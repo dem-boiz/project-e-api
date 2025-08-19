@@ -6,9 +6,8 @@ from models import RefreshToken
 from schema import RefreshTokenSchema, RefreshTokenCreate
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional
-
-
+from typing import List, Optional 
+from sqlalchemy import update, func
 class RefreshTokenRepository:
     def __init__(self, RefreshToken: AsyncSession):
         self.RefreshToken = RefreshToken
@@ -56,3 +55,22 @@ class RefreshTokenRepository:
             return token_record
         except NoResultFound:
             return None
+        
+    async def mark_refresh_token_as_used(self, old_jti: uuid.UUID, new_jti: uuid.UUID) -> bool:
+        """Mark a refresh token as used and set its replacement JTI."""
+        try:
+            result = await self.RefreshToken.execute(
+                update(RefreshToken)
+                .where(RefreshToken.jti == old_jti)
+                .values(
+                    used_at=func.now(),
+                    replaced_by_jti=new_jti
+                )
+            ) 
+            # Commit the transaction
+            await self.RefreshToken.commit()
+        
+            # Check if any rows were affected
+            return result.rowcount > 0
+        except Exception:
+            return False      
