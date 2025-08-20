@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status, Security, HTTPException
+from fastapi import APIRouter, Depends, status, Security, HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from handlers import (
     create_event_handler, 
@@ -7,6 +7,7 @@ from handlers import (
     patch_event_handler, 
     get_event_by_id_handler, 
     get_event_by_name_handler,
+    get_my_events_handler,
     join_event_handler
 )               
 from database.session import get_async_session
@@ -17,6 +18,7 @@ from schema.event_schemas import EventCreateSchema, EventUpdateSchema
 from sqlalchemy.ext.asyncio import AsyncSession
 from models import Host
 from config.logging_config import get_logger
+
 
 # Initialize logger
 logger = get_logger("api.events")
@@ -68,7 +70,7 @@ async def verify_event_ownership_for_delete(
     import uuid
     try:
         event_uuid = uuid.UUID(event_id)
-        event = await service.get_event_by_id_service(event_uuid)
+        event = await service.get_event_by_id(event_uuid)
 
         if event.host_id != current_host.id:
             logger.warning(f"Host {current_host.id} attempted to delete event {event_id} they do not own.")
@@ -99,7 +101,7 @@ async def verify_event_ownership_for_update(
     import uuid
     try:
         event_uuid = uuid.UUID(event_id)
-        event = await service.get_event_by_id_service(event_uuid)
+        event = await service.get_event_by_id(event_uuid)
 
         if event.host_id != current_host.id:
             raise HTTPException(
@@ -125,6 +127,11 @@ async def verify_event_ownership_for_update(
             status_code=e.status_code if hasattr(e, 'status_code') else status.HTTP_404_NOT_FOUND,
             detail=f"Error occured. {e}"
         )
+
+
+
+async def validate_otp(otp: str, service: EventService = Depends(get_event_service)):
+    return await service.validate_otp(otp)
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 @router.post("", status_code=status.HTTP_201_CREATED)
@@ -157,20 +164,6 @@ async def get_events(service: EventService = Depends(get_event_service)):
     logger.info(f"Retrieved {len(result) if isinstance(result, list) else 'unknown count'} events")
     return result
 
-@router.get("/get/by-id/{event_id}")
-async def get_event_by_id(event_id: str, service: EventService = Depends(get_event_service)):
-    logger.info(f"Fetching event by ID: {event_id}")
-    result = await get_event_by_id_handler(event_id, service)
-    logger.info(f"Event retrieved by ID: {event_id}")
-    return result
-
-@router.get("/get/by-name/{name}")
-async def get_event_by_name(name: str, service: EventService = Depends(get_event_service)):
-    logger.info(f"Fetching event by name: {name}")
-    result = await get_event_by_name_handler(name, service)
-    logger.info(f"Event retrieved by name: {name}")
-    return result
-
 @router.patch("/{event_id}")
 async def update_event(
     event_data: tuple[str, EventUpdateSchema] = Depends(verify_event_ownership_for_update),
@@ -183,12 +176,23 @@ async def update_event(
     logger.info(f"Event updated successfully: {event_id}")
     return result
 
-@router.post("/{event_id}/join")
+@router.post("/join/{otp}")
 async def join_event(
-    event_id: str,
+    otp: str,
     service: EventService = Depends(get_event_service)
 ):
     """Join an event - requires authentication and event existence verification"""
-    logger.info(f"Joining event: {event_id}")
-    result = await join_event_handler(service, event_id)
+    logger.info(f"Joining event with otp: {otp}")
+    result = await join_event_handler(otp, service)
+    return result
+
+@router.get("/my-events")
+async def get_my_events(
+    request: Request,
+    service: EventService = Depends(get_event_service)
+):
+    """Get all events for the current user - requires authentication"""
+    logger.info("Fetching events for current user")
+    result = await get_my_events_handler(request.cookies, service)
+    logger.info(f"Retrieved {len(result) if isinstance(result, list) else 'unknown count'} events for user")
     return result

@@ -42,10 +42,9 @@ class OTPService:
             raise HTTPException(status_code=404, detail="OTP not found")
         return True
 
-    async def validate_otp(self, event_id: str, otp_code: str) -> bool:
+    async def validate_otp(self, otp_code: str) -> bool:
         """Validate the OTP code for a specific event by checking its existence and status."""
         results = await self.repo.get_otp_where(
-            event_id=event_id,
             otp_code=otp_code,
             used=False,
         )
@@ -61,5 +60,5 @@ class OTPService:
         marked_used = await self.repo.mark_otp_used(otp.id)
 
         if not marked_used:
-            return False
-        return True
+            raise HTTPException(status_code=500, detail="Failed to mark OTP as used")
+        return otp.event_id

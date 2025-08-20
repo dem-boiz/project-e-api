@@ -35,6 +35,13 @@ class DeviceGrantRepository:
         result = await self.db.execute(query)
         return result.scalars().all()
 
+
+    async def get_all_by_device_id(self, device_id: uuid.UUID) -> List[DeviceGrant]:
+        """Get all device grants for a specific device"""
+        query = select(DeviceGrant).where(DeviceGrant.device_id == device_id)
+        result = await self.db.execute(query)
+        return result.scalars().all()
+
     async def update(self, device_grant: DeviceGrant) -> DeviceGrant:
         """Update an existing device grant"""
         await self.db.commit()

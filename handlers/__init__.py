@@ -5,7 +5,8 @@ from .event_handler import (
     patch_event_handler, 
     get_event_by_id_handler,
     get_event_by_name_handler,
-    join_event_handler
+    join_event_handler,
+    get_my_events_handler
 )
 from .otp_handlers import (
     create_otp_handler, delete_otp_handler, verify_otp_handler
@@ -18,4 +19,12 @@ from .host_handler import (
 )
 from .user_event_access_handlers import (
     create_user_access_event_handler
+)
+
+from .auth_handler import (
+    handle_refresh_token, 
+    handle_get_me,
+    handle_login, 
+    handle_logout,
+    handle_refresh_device_token
 )

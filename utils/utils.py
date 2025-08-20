@@ -2,6 +2,7 @@ from jose import jwt, JWTError
 from jose.exceptions import ExpiredSignatureError  # <-- correct import
 from fastapi import Header, Cookie, HTTPException, status, Depends
 from config import SECRET_KEY, ALGORITHM, JWT_ACCESS_LIFESPAN, JWT_REFRESH_LIFESPAN
+import os, base64, hmac, hashlib
 
 
 from datetime import datetime, timedelta
@@ -10,10 +11,6 @@ import secrets
 from config.logging_config import get_logger
 
 logger = get_logger("auth")
-
-def generate_otp():
-    import random
-    return str(random.randint(100000, 999999))
 
 def create_jwt(userId: str, type="access", remember_me=False):
     if (type == "access"):
@@ -26,8 +23,6 @@ def create_jwt(userId: str, type="access", remember_me=False):
         "rm": remember_me if type == "refresh" else None  # Remember Me flag. This will be checked
     }
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
-
-
 
 
 # Verifies the token by decoding it and validating it's properties, if present.
@@ -79,3 +74,4 @@ async def generate_csrf_token(length: int = 32) -> str:
         str: URL-safe base64 encoded token.
     """
     return secrets.token_urlsafe(length)
+

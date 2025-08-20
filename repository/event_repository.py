@@ -49,6 +49,13 @@ class EventRepository:
 
         return event
     
+    async def get_events_by_ids(self, event_ids: list[uuid.UUID]) -> list[Event]:
+        result = await self.session.execute(
+            select(Event).where(Event.id.in_(event_ids))
+        )
+        events = result.scalars().all()
+        return events
+
     async def delete_event(self, event_id: str) -> bool:
         try:
             result = await self.session.execute(select(Event).where(Event.id == event_id))

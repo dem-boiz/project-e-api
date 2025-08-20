@@ -8,7 +8,12 @@ from models import host
 from services import AuthService, HostService
 from schema import LoginRequest, LoginResponse, CurrentUserResponse, RefreshResponse
 from utils import verify_csrf_token
-from handlers.auth_handler import handle_refresh_token, handle_get_me, handle_login, handle_logout
+from handlers import (
+    handle_refresh_token, 
+    handle_get_me, handle_login, 
+    handle_logout,
+    handle_refresh_device_token
+)
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 security = HTTPBearer()
@@ -63,7 +68,7 @@ async def get_current_user(
 @router.post("/refresh", 
              response_model=RefreshResponse, 
              status_code=status.HTTP_200_OK, 
-             dependencies =[Depends(verify_csrf_token)]) # CSRF protection
+             dependencies=[Depends(verify_csrf_token)]) # CSRF protection
 async def refresh_token(
     response: Response,
     refresh_token: str | None = Cookie(default=None),
@@ -77,3 +82,19 @@ async def refresh_token(
     logger.debug("New access token and CSRF token generated")
     return result
  
+
+@router.post("/device/refresh",
+             status_code=status.HTTP_204_NO_CONTENT
+             )
+async def refresh_device_token(
+    response: Response,
+    device_token: str | None = Cookie(default=None),
+    service: AuthService = Depends(get_auth_service)
+) -> RefreshResponse:
+    """Refresh device JWT token and rotate CSRF token"""
+    logger.debug("Refreshing device JWT token for host")
+
+    result = await handle_refresh_device_token(device_token, service, response)
+
+    logger.debug("New device access token and CSRF token generated")
+    return result

@@ -1,7 +1,8 @@
+from uuid import uuid4
 from config.logging_config import get_logger
 from fastapi.security import HTTPAuthorizationCredentials
 from schema import CurrentUserResponse, LoginRequest, LoginResponse, RefreshResponse
-from services.auth_service import AuthService
+from services import AuthService, GuestDeviceService
 from fastapi import HTTPException, Response, status
 
 
@@ -136,6 +137,7 @@ async def handle_login(
 
 async def handle_logout(response: Response):
 
+
     """Handle logout by deleting access, refresh, and CSRF cookies"""
     logger.debug("Logging out user, clearing cookies")
 
@@ -160,3 +162,29 @@ async def handle_logout(response: Response):
 
     logger.debug("All cookies cleared for logout")
     return {"message": "Logged out successfully"}
+
+async def handle_refresh_device_token(
+        device_id: str | None,
+        response: Response
+    ):
+    if not device_id:
+        uuid = str(uuid4())
+        logger.warning(f"No device ID provided, generated new UUID: {uuid}")
+        device_id = uuid
+
+    # Update last seen timestamp, or create if a new device
+    await GuestDeviceService.touch_guest_device(device_id)
+
+    # Set device ID in cookie (persistent httponly)
+    response.set_cookie(
+        key="device_id",
+        value=device_id,
+        httponly=True,
+        secure=IS_PROD,
+        samesite="lax",
+        max_age=30*24*3600,
+        path="/api/auth/device/refresh"
+    )
+
+    logger.debug("Device token refreshed successfully")
+    return {"message": "Device token refreshed successfully"}
