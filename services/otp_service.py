@@ -42,13 +42,24 @@ class OTPService:
             raise HTTPException(status_code=404, detail="OTP not found")
         return True
 
-    async def verify_otp(self, email: str, event_id: str, otp_code: str) -> bool:
-        otp = await self.repo.get_otp_by_code(otp_code)
-        if not otp:
-            raise HTTPException(status_code=400, detail="Invalid or expired OTP")
-
-        marked_used = await self.repo.mark_otp_used(otp.id) 
+    async def validate_otp(self, event_id: str, otp_code: str) -> bool:
+        """Validate the OTP code for a specific event by checking its existence and status."""
+        results = await self.repo.get_otp_where(
+            event_id=event_id,
+            otp_code=otp_code,
+            used=False,
+        )
         
-        if not marked_used: 
+        otp = results[0] if results else None
+
+        if not otp:
+            raise HTTPException(status_code=404, detail="OTP not found")
+
+        if otp.expires_at <= datetime.now():
+            raise HTTPException(status_code=400, detail="OTP has expired")
+
+        marked_used = await self.repo.mark_otp_used(otp.id)
+
+        if not marked_used:
             return False
         return True
