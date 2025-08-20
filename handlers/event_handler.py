@@ -20,4 +20,4 @@ async def get_event_by_name_handler(name: str, service: EventService):
     return await service.get_event_by_name_service(name)
 
 async def join_event_handler(otp: str, service: EventService):
-    return await service.join_event_service(otp)
+    return await service.join_event(otp)
