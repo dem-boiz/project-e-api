@@ -77,6 +77,37 @@ class RefreshTokenRepository:
             return None
         
 
+    async def revoke_refresh_token_by_jti(self, jti: uuid.UUID) -> bool:
+        """Mark a refresh token as revoked by setting revoked_at timestamp."""
+        try:
+            result = await self.RefreshToken.execute(
+                update(RefreshToken)
+                .where(RefreshToken.jti == jti)
+                .values(revoked_at=func.now())
+            ) 
+            await self.RefreshToken.commit()
+            return result.rowcount > 0
+        except Exception:
+            return False
+
+    async def expire_refresh_token_in_db(self, jti: uuid.UUID) -> bool:
+        """Mark a refresh token as expired by setting its expires_at to the past."""
+        try:
+            result = await self.RefreshToken.execute(
+                update(RefreshToken)
+                .where(RefreshToken.jti == jti)
+                .values(
+                    expires_at=func.now() - func.interval('1 hour')  # Set to 1 hour ago
+                )
+            ) 
+            # Commit the transaction
+            await self.RefreshToken.commit()
+        
+            # Check if any rows were affected
+            return result.rowcount > 0
+        except Exception:
+            return False
+    
     async def mark_refresh_token_as_used(self, old_jti: uuid.UUID, new_jti: uuid.UUID) -> bool:
         """Mark a refresh token as used and set its replacement JTI."""
         try:

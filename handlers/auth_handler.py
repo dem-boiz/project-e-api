@@ -2,7 +2,7 @@ from config.logging_config import get_logger
 from fastapi.security import HTTPAuthorizationCredentials
 from schema import CurrentUserResponseSchema, LoginRequestSchema, LoginResponseSchema, RefreshResponseSchema
 from services import AuthService
-from fastapi import HTTPException, Response, status 
+from fastapi import HTTPException, Request, Response, status 
 from config import ENV
 from utils.utils import verify_jwt, generate_csrf_token
 import secrets
@@ -15,9 +15,10 @@ IS_PROD = ENV == "PROD"
 async def refresh_token_handler(
     refresh_token: str | None,
     service: AuthService,
-    response: Response
+    response: Response, 
+    request: Request
 ) -> RefreshResponseSchema:
-    return await service.refresh_access_token_service(refresh_token=refresh_token, response=response)
+    return await service.refresh_access_token_service(refresh_token=refresh_token, response=response, request=request)
 
 
 async def get_me_handler(credentials: HTTPAuthorizationCredentials, service: AuthService) -> CurrentUserResponseSchema:
