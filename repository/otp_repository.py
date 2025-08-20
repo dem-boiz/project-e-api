@@ -26,7 +26,15 @@ class OTPRepository:
             return otp
         except NoResultFound:
             return None
-        
+
+    async def get_otp_where(self, **kwargs) -> list[OTP]:
+        """Retrieve OTP records matching the given criteria."""
+        query = select(OTP)
+        for key, value in kwargs.items():
+            query = query.where(getattr(OTP, key) == value)
+        result = await self.session.execute(query)
+        return result.scalars().all()
+
     async def delete_otp_by_code(self, otp_code: str) -> bool:
         """Delete an OTP record by its unique OTP code. Returns True if deleted, False if not found."""
         try:
