@@ -320,7 +320,28 @@ class AuthService:
         """Handle logout by deleting access, refresh, and CSRF cookies"""
         is_prod = ENV == "PROD"
         logger.info("Logging out user, clearing cookies")
+        # Delete refresh token cookie
+        response.delete_cookie(
+            key="refresh_token",
+            path="/auth/refresh",
+            httponly=True,
+            secure=is_prod,
+            samesite="none" if is_prod else "lax"
+        )
 
+        # Delete CSRF token cookie
+        response.delete_cookie(
+            key="csrf_token",
+            path="/",
+            httponly=False,
+            secure=is_prod,
+            samesite="none" if is_prod else "lax"
+        )
+        # Only try to invalidate server-side tokens if refresh token exists
+        if refresh_token is None:
+            logger.info("No refresh token provided, only clearing cookies")
+            return {"message": "Logged out successfully"}
+        
         # Verify the refresh token
         try:
             logger.info(f"Verifying refresh token: {refresh_token}")
@@ -356,25 +377,7 @@ class AuthService:
         sid = uuid.UUID(session_id)
         session_invalidated = await self.session_repo.invalidate_session(session_id=sid)
         if session_invalidated is False: 
-            raise "Session not invalidated" 
-        
-        # Delete refresh token cookie
-        response.delete_cookie(
-            key="refresh_token",
-            path="/auth/refresh",
-            httponly=True,
-            secure=is_prod,
-            samesite="none" if is_prod else "lax"
-        )
-
-        # Delete CSRF token cookie
-        response.delete_cookie(
-            key="csrf_token",
-            path="/",
-            httponly=False,
-            secure=is_prod,
-            samesite="none" if is_prod else "lax"
-        )
+            raise "Session not invalidated"  
 
         # Delete all refresh tokens from the database
         deleted_refresh_tokens = await self.refresh_token_repo.delete_all_refresh_tokens_by_sid(sid=sid)

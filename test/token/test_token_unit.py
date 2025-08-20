@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from main import app
 from httpx import AsyncClient, ASGITransport
 from services import AuthService, HostService
-from database import AsyncSessionLocal
+from database import AsyncSessionLocal, get_async_session
 from models import Host, RefreshToken
 from schema import LoginRequestSchema, RefreshResponseSchema, HostCreateSchema
 import sys
@@ -15,7 +15,7 @@ import asyncio
 import json
 from uuid import uuid4
 from datetime import datetime, timedelta, timezone 
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, update
 import secrets
 
 if sys.platform == "win32":
@@ -435,3 +435,223 @@ class TestTokenRotation:
             )
             
             assert second_refresh.status_code == 401  # Should be unauthorized
+
+ 
+class TestDatabaseValidation:
+    """Test database operations for token management"""
+    
+    @pytest.mark.asyncio
+    async def test_refresh_token_database_cleanup_on_logout(self):
+        """Test that refresh tokens are cleaned up on logout"""
+        
+        email = f"logout_test_{uuid4()}@example.com"
+        password = "TestPassword123!"
+        
+        # Create host
+        host_payload = {
+            "email": email,
+            "company_name": "Logout Test Company",
+            "password": password,
+            "created_at": "2023-10-01T12:00:00Z"
+        }
+        
+        async with AsyncClient(base_url="http://localhost:8000") as client:
+            # Create host
+            host_resp = await client.post("/hosts/", json=host_payload)
+            assert host_resp.status_code == 201
+            host_id = host_resp.json()["id"]
+            
+            # Login
+            login_data = {
+                "email": email,
+                "password": password,
+                "rememberMe": True
+            }
+            
+            login_response = await client.post("/auth/login", json=login_data)
+            assert login_response.status_code == 200
+            
+            # Verify token exists in database
+            async with AsyncSessionLocal() as db:
+                tokens = await db.execute(
+                    select(RefreshToken).where(RefreshToken.user_id == host_id)
+                )
+                assert len(tokens.scalars().all()) == 1
+            
+            # Logout
+            access_token = login_response.json()["access_token"]
+            headers = {"Authorization": f"Bearer {access_token}"}
+            logout_response = await client.post("/auth/logout", headers=headers)
+            
+            # Note: This assumes you have a logout endpoint that cleans up tokens
+            # Adjust status code based on your implementation
+            assert logout_response.status_code in [200, 204]
+            
+            # Verify tokens are cleaned up (or marked as revoked)
+            async with AsyncSessionLocal() as db:
+                tokens = await db.execute(
+                    select(RefreshToken).where(
+                        RefreshToken.user_id == host_id,
+                        RefreshToken.is_revoked == False
+                    )
+                )
+                active_tokens = tokens.scalars().all()
+                assert len(active_tokens) == 0  # Should be revoked or deleted
+    
+    @pytest.mark.asyncio
+    async def test_expired_refresh_tokens_rejected_simple(self):
+        """Test that invalid/expired refresh tokens are rejected"""
+        
+        email = f"expired_simple_{uuid4()}@example.com"
+        password = "TestPassword123!"
+        
+        # Create host 
+        host_payload = {
+            "email": email,
+            "company_name": "Expired Simple Test Co", 
+            "password": password,
+            "created_at": "2023-10-01T12:00:00Z"
+        }
+        
+        async with AsyncClient(base_url="http://localhost:8000") as client:
+            # Create host
+            host_resp = await client.post("/hosts/", json=host_payload)
+            assert host_resp.status_code == 201
+            
+            # Login to get a valid CSRF token
+            login_resp = await client.post("/auth/login", json={
+                "email": email,
+                "password": password,
+                "rememberMe": True
+            })
+            assert login_resp.status_code == 200
+            
+            csrf_token = login_resp.json()["csrf_token"]
+            
+            # Test with obviously invalid/expired token
+            invalid_cookies = {
+                "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJleHBpcmVkIiwiZXhwIjoxfQ.invalid",
+                "csrf_token": csrf_token
+            }
+            headers = {"X-CSRF-Token": csrf_token}
+            
+            refresh_response = await client.post(
+                "/auth/refresh",
+                headers=headers,
+                cookies=invalid_cookies
+            )
+            
+            assert refresh_response.status_code == 401  # Should reject invalid token
+
+    @pytest.mark.asyncio
+    async def test_revoked_refresh_tokens_rejected(self):
+        """Test that revoked refresh tokens are rejected"""
+        
+        email = f"revoked_test_{uuid4()}@example.com"
+        password = "TestPassword123!"
+        
+        # Create host
+        host_payload = {
+            "email": email,
+            "company_name": "Revoked Token Test Co",
+            "password": password,
+            "created_at": "2023-10-01T12:00:00Z"
+        }
+        
+        async with AsyncClient(base_url="http://localhost:8000") as client:
+            # Create host
+            host_resp = await client.post("/hosts/", json=host_payload)
+            assert host_resp.status_code == 201
+            
+            # Login to get tokens
+            login_data = {
+                "email": email,
+                "password": password,
+                "rememberMe": True
+            }
+            
+            login_response = await client.post("/auth/login", json=login_data)
+            assert login_response.status_code == 200
+            
+            # Get tokens and CSRF
+            csrf_token = login_response.json()["csrf_token"]
+            cookies = login_response.cookies
+            headers = {"X-CSRF-Token": csrf_token}
+            
+            # First refresh should work
+            refresh_response = await client.post(
+                "/auth/refresh",
+                headers=headers,
+                cookies=cookies
+            )
+            assert refresh_response.status_code == 200
+            
+            # Logout to revoke tokens
+            logout_response = await client.post(
+                "/auth/logout",
+                headers=headers,
+                cookies=cookies
+            )
+            assert logout_response.status_code == 200
+            
+            # Try to refresh with revoked token (should fail)
+            refresh_response_after_logout = await client.post(
+                "/auth/refresh",
+                headers=headers,
+                cookies=cookies
+            )
+            
+            assert refresh_response_after_logout.status_code == 401  # Should reject revoked token
+    
+    @pytest.mark.asyncio
+    async def test_inactive_host_cannot_refresh_tokens(self):
+        """Test that inactive hosts cannot refresh tokens"""
+        
+        email = f"inactive_test_{uuid4()}@example.com"
+        password = "TestPassword123!"
+        
+        # Create host
+        host_payload = {
+            "email": email,
+            "company_name": "Inactive Host Test Co",
+            "password": password,
+            "created_at": "2023-10-01T12:00:00Z"
+        }
+        
+        async with AsyncClient(base_url="http://localhost:8000") as client:
+            # Create host
+            host_resp = await client.post("/hosts/", json=host_payload)
+            assert host_resp.status_code == 201
+            host_id = host_resp.json()["id"]
+            
+            # Login while active
+            login_data = {
+                "email": email,
+                "password": password,
+                "rememberMe": True
+            }
+            
+            login_response = await client.post("/auth/login", json=login_data)
+            assert login_response.status_code == 200
+            
+            # Deactivate host
+            async with AsyncSessionLocal() as db:
+                await db.execute(
+                    Host.__table__.update()
+                    .where(Host.id == host_id)
+                    .values(is_active=False)
+                )
+                await db.commit()
+            
+            # Try to refresh tokens
+            csrf_token = login_response.json()["csrf_token"]
+            cookies = login_response.cookies
+            headers = {"X-CSRF-Token": csrf_token}
+            
+            refresh_response = await client.post(
+                "/auth/refresh",
+                headers=headers,
+                cookies=cookies
+            )
+            
+            assert refresh_response.status_code == 401  # Should reject inactive host
