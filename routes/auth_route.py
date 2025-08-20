@@ -57,8 +57,9 @@ async def global_logout(
 ): 
     logger.info("Processing global logout request")
     return await global_logout_handler(service=service, refresh_token=refresh_token)
+
 # Kill session endpoint
-@router.get("/kill-session/{sid}", status_code=status.HTTP_200_OK)
+@router.post("/kill-session/{sid}", status_code=status.HTTP_200_OK)
 async def kill_session(
     sid: uuid.UUID, 
     auth_service: AuthService = Depends(get_auth_service)

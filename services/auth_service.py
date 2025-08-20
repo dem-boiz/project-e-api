@@ -233,7 +233,7 @@ class AuthService:
         
         # Look up the refresh token in the database   
         existing_refresh_token = await self.refresh_token_repo.get_refresh_token_by_jti(jti=jti)
-
+        
         # If no record found, reject the request 
         if not existing_refresh_token:
             logger.warning("Refresh token not found in database.")
@@ -260,9 +260,19 @@ class AuthService:
                 detail="Refresh token has already been used",
                 headers={"WWW-Authenticate": "Bearer"},
         )
-        # TODO: set the sessions.revboked_at to now 
 
-        
+        # Validate that the session is active
+        parent_session = await self.session_repo.get_session_by_sid(sid=uuid.UUID(session_id))
+        logger.info(f"parent session: {parent_session.revoked_at}")
+        if parent_session.revoked_at is not None and parent_session.revoked_at >= decoded_token.get("iat"):
+            logger.warning("The parent session for this refresh token is no longer active. Rejecting request")
+            raise HTTPException(
+                status_code=403,
+                detail="Session ended",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+
         # Generate new access + refresh tokens
         logger.debug(f"Generating new access token (& refresh token) for host ID: {user_id}. remember_me optionset to '{remember_me}'")
         access_token = await create_jwt(user_id, session_id, remember_me=remember_me, refresh_token_repo=self.refresh_token_repo, type='access', issuer=issuer, audience=audience)
@@ -394,12 +404,11 @@ class AuthService:
         )
 
         # Delete all refresh tokens from the database
-        deleted_refresh_tokens = await self.refresh_token_repo.delete_all_refresh_tokens_by_sid(sid=sid)
+        #deleted_refresh_tokens = await self.refresh_token_repo.delete_all_refresh_tokens_by_sid(sid=sid)
 
         logger.info("All cookies cleared for logout")
         return {"message": "Logged out successfully"}
     
-
     async def get_me_service(self, credentials:HTTPAuthorizationCredentials) -> CurrentUserResponseSchema:
         """Get current authenticated user"""
         token = credentials.credentials
@@ -452,8 +461,18 @@ class AuthService:
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
+    async def validate_session_is_active(self, token: str):
+        # this is duplicate work. Look for a way to reduce this
+        decoded_token = verify_jwt(token)
+        parent_session = await self.session_repo.get_session_by_sid(decoded_token["sid"])
+        
+        return parent_session.revoked_at == None or parent_session.revoked_at <= decoded_token["iat"]
+        
+
+        
+
     async def global_logout_service(self, 
-                                    refresh_token: str | None):
+                                refresh_token: str | None):
         # Verify Refresh JWT info
         """Refresh JWT token and rotate CSRF token.""" 
         if not refresh_token:
@@ -463,7 +482,7 @@ class AuthService:
                 detail="Missing refresh token",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-    
+
         # Verify the refresh token
         try:
             logger.debug(f"Verifying refresh token: {refresh_token}")
@@ -473,7 +492,7 @@ class AuthService:
         except HTTPException as e:
             logger.error(f"Refresh token verification failed: {e.detail}")
             raise e 
-        
+
         # Get user ID from the token
         user_id = decoded_token.get("sub")
         if not user_id:
@@ -483,7 +502,7 @@ class AuthService:
                 detail="Invalid refresh token",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        
+
         # Revoke in the repository
         sessions_revoked = await self.session_repo.revoke_all_active_sessions_by_user_id(uuid.UUID(user_id))
 
@@ -491,5 +510,5 @@ class AuthService:
         tokens_revoked = await self.refresh_token_repo.delete_all_refresh_tokens_by_user_id(uuid.UUID(user_id))
 
         logger.info(f"Global logout for user {user_id}: sessions_revoked={sessions_revoked}, tokens_revoked={tokens_revoked}")
-    
+
         return {"message": "All sessions and tokens revoked successfully"}

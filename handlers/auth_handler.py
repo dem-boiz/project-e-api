@@ -1,5 +1,7 @@
 import traceback
 import uuid
+import secrets
+
 from config.logging_config import get_logger
 from fastapi.security import HTTPAuthorizationCredentials
 from schema import CurrentUserResponseSchema, LoginRequestSchema, LoginResponseSchema, RefreshResponseSchema
@@ -7,7 +9,6 @@ from services import AuthService
 from fastapi import HTTPException, Response, status 
 from config import ENV
 from utils.utils import verify_jwt, generate_csrf_token
-import secrets
 from repository import RefreshTokenRepository
 
 logger = get_logger("auth")

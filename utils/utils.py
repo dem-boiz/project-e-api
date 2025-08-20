@@ -9,25 +9,25 @@ from datetime import datetime, timedelta, timezone
 import secrets
 import uuid
 from typing import Optional
-
+import os
 from config.logging_config import get_logger
 
 logger = get_logger("auth")
 
+
+ISSUER = os.getenv("ISSUER", "SERVER")
+AUDIENCE = os.getenv('AUDIENCE', "CLIENT")
 def generate_otp():
     import random
     return str(random.randint(100000, 999999))
-# TODO: What should the JWT lifespan be? 15 minutes? 1 hour? 4 hours?
-# Refresh token lifespan? 7 days? 30 days? 90 days
-# What should the issuer and audience be?
-# Should we include a "remember me" flag in the token?
+# TODO:  # What should the issuer and audience be? 
 async def create_jwt(userId: str,
                      session_id: str, 
                      remember_me,
                      refresh_token_repo: Optional['RefreshTokenRepository'] = None,
                      type="access", 
-                     issuer="your-app", 
-                     audience="your-app-users"):
+                     issuer=ISSUER, 
+                     audience=AUDIENCE):
     """
     Create a JWT token with comprehensive claims for security and session management.
     
@@ -62,9 +62,8 @@ async def create_jwt(userId: str,
         "aud": audience,                        # Audience
         "typ": type,                            # Token type ("access" or "refresh")
         "rm": remember_me if type == "refresh" else None  # Remember Me flag for refresh tokens
-    }
+    }  
 
-    # TODO: Add this to database refresh_token table if type == "refresh"
     if type == "refresh":
         if refresh_token_repo is None:
             raise ValueError("RefreshTokenRepository not provided for storing refresh token")
@@ -93,7 +92,7 @@ async def create_jwt(userId: str,
 
 
 
-def verify_jwt(token: str, expected_issuer="your-app", expected_audience="your-app-users", token_type=None):
+def verify_jwt(token: str, expected_issuer=ISSUER, expected_audience=AUDIENCE, token_type=None):
     """
     Verifies the JWT token by decoding it and validating all claims.
     
