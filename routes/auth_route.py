@@ -1,6 +1,6 @@
 import os
 from config.logging_config import get_logger
-from fastapi import APIRouter, Depends, status, Security, Response, Cookie, Header, HTTPException
+from fastapi import APIRouter, Depends, Request, status, Security, Response, Cookie, Header, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.session import get_async_session
@@ -75,13 +75,14 @@ async def get_current_user(
              dependencies =[Depends(verify_csrf_token)]) # CSRF protection
 async def refresh_token(
     response: Response,
+    request: Request,
     refresh_token: str | None = Cookie(default=None),
     service: AuthService = Depends(get_auth_service) 
 ) -> RefreshResponseSchema:
     """Refresh JWT token and rotate CSRF token"""
     logger.debug("Refreshing JWT token for host")
     logger.debug(f"Received refresh token: {refresh_token}")
-    result = await refresh_token_handler(refresh_token, service, response)
+    result = await refresh_token_handler(refresh_token, service, response, request)
     
     logger.debug("New access token and CSRF token generated")
     return result

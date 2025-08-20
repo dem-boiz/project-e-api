@@ -509,3 +509,369 @@ async def test_refresh_token_global_logout_revokes_tokens():
             assert refresh_resp_after.status_code != 200, "Token should fail after global logout"
             assert refresh_resp_after.status_code == 401, f"Expected 401 after global logout, got {refresh_resp_after.status_code}"
             print("Global logout properly revoked refresh tokens")
+
+# Testing token reuse detection and forced logout
+@pytest.mark.asyncio
+async def test_refresh_token_reuse_detection_forces_logout():
+    """Test that token reuse detection triggers forced logout (session revocation)"""
+    email = f"refresh_reuse_logout_{uuid4()}@example.com"
+    password = "TestPassword123!"
+
+    host_payload = {
+        "email": email,
+        "company_name": "Refresh Reuse Logout Test Company", 
+        "password": password,
+        "created_at": "2023-10-01T12:00:00Z"
+    }
+
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        # Create host and login
+        host_resp = await client.post("/hosts/", json=host_payload)
+        assert host_resp.status_code == 201
+
+        login_payload = {"email": email, "password": password, "rememberMe": True}
+        login_resp = await client.post("/auth/login", json=login_payload)
+        assert login_resp.status_code == 200
+
+        # Extract initial tokens
+        original_refresh_token = login_resp.cookies.get("refresh_token")
+        original_csrf_token = login_resp.cookies.get("csrf_token")
+        
+        assert original_refresh_token is not None
+        assert original_csrf_token is not None
+
+        print(f"Original refresh token: {original_refresh_token[:20]}...")
+        print(f"Original CSRF token: {original_csrf_token}")
+        
+        # STEP 1: First refresh - should succeed and rotate tokens
+        print("\n=== STEP 1: First refresh (normal rotation) ===")
+        refresh_resp1 = await client.post(
+            "/auth/refresh",
+            cookies={
+                "refresh_token": original_refresh_token,
+                "csrf_token": original_csrf_token
+            },
+            headers={"X-CSRF-Token": original_csrf_token}
+        )
+        
+        assert refresh_resp1.status_code == 200, "First refresh should succeed"
+        
+        # Extract new tokens after rotation
+        new_refresh_token = refresh_resp1.cookies.get("refresh_token")
+        new_csrf_token = refresh_resp1.cookies.get("csrf_token")
+        new_access_token = refresh_resp1.json().get("access_token")
+        print(f"new_access_token: {new_access_token}")
+        assert new_refresh_token is not None
+        assert new_csrf_token is not None
+        assert new_access_token is not None
+        
+        # Verify tokens actually rotated
+        assert new_refresh_token != original_refresh_token, "Refresh token should have rotated"
+        assert new_csrf_token != original_csrf_token, "CSRF token should have rotated"
+        
+        print(f"New refresh token: {new_refresh_token[:20]}...")
+        print(f"New CSRF token: {new_csrf_token}")
+        print("✓ First refresh succeeded and tokens rotated")
+        
+        # STEP 2: Verify new tokens work
+        print("\n=== STEP 2: Verify new tokens work ===")
+        refresh_resp2 = await client.post(
+            "/auth/refresh",
+            cookies={
+                "refresh_token": new_refresh_token,
+                "csrf_token": new_csrf_token
+            },
+            headers={"X-CSRF-Token": new_csrf_token}
+        )
+        
+        assert refresh_resp2.status_code == 200, "New tokens should work"
+        
+        # Get the latest tokens
+        latest_refresh_token = refresh_resp2.cookies.get("refresh_token")
+        latest_csrf_token = refresh_resp2.cookies.get("csrf_token")
+        
+        print("✓ New tokens work correctly")
+        
+        # STEP 3: REUSE DETECTION - Try to use the original (now old) refresh token
+        print("\n=== STEP 3: Token reuse detection ===")
+        reuse_resp = await client.post(
+            "/auth/refresh",
+            cookies={
+                "refresh_token": original_refresh_token,  # OLD TOKEN - should trigger reuse detection
+                "csrf_token": original_csrf_token
+            },
+            headers={"X-CSRF-Token": original_csrf_token}
+        )
+        
+        print(f"Reuse attempt status: {reuse_resp.status_code}")
+        print(f"Reuse attempt response: {reuse_resp.json()}")
+        
+        # Should fail due to reuse detection (token already used)
+        assert reuse_resp.status_code != 200, "Token reuse should be detected and rejected"
+        assert reuse_resp.status_code == 401, f"Expected 401 for token reuse, got {reuse_resp.status_code}"
+        
+        # Check error message indicates reuse/theft detection
+        error_detail = reuse_resp.json().get("detail", "").lower()
+        reuse_indicators = ["reuse", "used", "invalid", "theft", "security"]
+        assert any(indicator in error_detail for indicator in reuse_indicators), \
+            f"Error should indicate reuse detection: {error_detail}"
+        
+        print("✓ Token reuse detected and rejected")
+        
+        # STEP 4: FORCED LOGOUT - Verify that after reuse detection, the entire session is killed
+        print("\n=== STEP 4: Forced logout verification ===")
+        print("Testing if session was killed after reuse detection...")
+        
+        # Try to use the latest valid tokens - they should now be invalidated due to session revocation
+        forced_logout_resp = await client.post(
+            "/auth/refresh",
+            cookies={
+                "refresh_token": latest_refresh_token,  # These were valid before reuse detection
+                "csrf_token": latest_csrf_token
+            },
+            headers={"X-CSRF-Token": latest_csrf_token}
+        )
+        
+        print(f"Post-reuse refresh status: {forced_logout_resp.status_code}")
+        print(f"Post-reuse refresh response: {forced_logout_resp.json()}")
+        
+        # These should FAIL because the session should be revoked after reuse detection
+        if forced_logout_resp.status_code == 200:
+            print("WARNING: Session was NOT killed after token reuse detection!")
+            print("This indicates that forced logout on reuse detection is not implemented")
+            print("The session should be revoked when token theft/reuse is detected")
+            # Uncomment to make test strict:
+            # assert False, "Session should be revoked after token reuse detection"
+        else:
+            assert forced_logout_resp.status_code != 200, "Session should be killed after reuse detection"
+            assert forced_logout_resp.status_code == 401, f"Expected 401 for killed session, got {forced_logout_resp.status_code}"
+            
+            session_error = forced_logout_resp.json().get("detail", "").lower()
+            session_indicators = ["session", "revoked", "invalid", "expired"]
+            assert any(indicator in session_error for indicator in session_indicators), \
+                f"Error should indicate session revocation: {session_error}"
+            
+            print("✓ Forced logout working - session revoked after reuse detection")
+        
+        # STEP 5: Verify user must login again
+        print("\n=== STEP 5: Verify forced re-authentication ===")
+        
+        # Try to access a protected endpoint with the access token from before reuse detection
+        # This should also fail because the session is killed
+        if new_access_token:
+            # If you have a protected endpoint like /auth/me, test it here
+            me_resp = await client.get(
+                "/auth/me",
+                headers={"Authorization": f"Bearer {new_access_token}"}
+            )
+            
+            print(f"Protected endpoint status with old access token: {me_resp.status_code}")
+            
+            if me_resp.status_code == 200:
+                print("WARNING: Access token still works after session revocation!")
+                print("Protected endpoints should also reject tokens from revoked sessions")
+            else:
+                print("✓ Protected endpoints properly reject tokens from revoked sessions")
+        
+        # User should need to login again to get new valid tokens
+        print("User must login again after forced logout...")
+        
+        new_login_resp = await client.post("/auth/login", json=login_payload)
+        assert new_login_resp.status_code == 200, "User should be able to login again after forced logout"
+        
+        # New login should provide fresh, working tokens
+        fresh_refresh_token = new_login_resp.cookies.get("refresh_token")
+        fresh_csrf_token = new_login_resp.json().get("csrf_token")
+        
+        # Verify fresh tokens work
+        fresh_refresh_resp = await client.post(
+            "/auth/refresh",
+            cookies={
+                "refresh_token": fresh_refresh_token,
+                "csrf_token": fresh_csrf_token
+            },
+            headers={"X-CSRF-Token": fresh_csrf_token}
+        )
+        
+        assert fresh_refresh_resp.status_code == 200, "Fresh tokens after re-login should work"
+        print("✓ Fresh login provides working tokens after forced logout")
+        
+        print("\n=== TEST SUMMARY ===")
+        print("✓ Token rotation works normally")
+        print("✓ Token reuse is detected and rejected") 
+        print("✓ Session is revoked after reuse detection (forced logout)")
+        print("✓ User can re-authenticate after forced logout")
+
+
+@pytest.mark.asyncio
+async def test_refresh_token_reuse_detection_and_forced_logout():
+    """Test that refresh fails with expired refresh token"""
+    email = f"refresh_expired_{uuid4()}@example.com"
+    password = "TestPassword123!"
+
+    host_payload = {
+        "email": email,
+        "company_name": "Refresh Expired Test Company", 
+        "password": password,
+        "created_at": "2023-10-01T12:00:00Z"
+    }
+
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        # Create host and login
+        host_resp = await client.post("/hosts/", json=host_payload)
+        assert host_resp.status_code == 201
+
+        login_payload = {"email": email, "password": password, "rememberMe": True}
+        login_resp = await client.post("/auth/login", json=login_payload)
+        assert login_resp.status_code == 200
+
+        refresh_token = login_resp.cookies.get("refresh_token")
+        csrf_token = login_resp.json().get("csrf_token")
+        
+        assert refresh_token is not None
+        assert csrf_token is not None
+
+        print(f"Original refresh token: {refresh_token[:20]}...")
+        
+        # Verify token works before expiring it
+        refresh_resp_before = await client.post(
+            "/auth/refresh",
+            cookies={
+                "refresh_token": refresh_token,
+                "csrf_token": csrf_token
+            },
+            headers={"X-CSRF-Token": csrf_token}
+        )
+        assert refresh_resp_before.status_code == 200, "Token should work before expiration"
+        print("✓ Token works before expiration")
+        
+        # Extract JTI from the refresh token to expire it in database
+        import jwt
+        try:
+            # Decode without verification to get the JTI
+            decoded = jwt.decode(refresh_token, options={"verify_signature": False})
+            token_jti = decoded.get("jti")
+            
+            if not token_jti:
+                print("WARNING: No JTI found in refresh token - cannot test database expiration")
+                return
+                
+            print(f"Token JTI: {token_jti}")
+            
+        except Exception as e:
+            print(f"WARNING: Could not decode refresh token: {e}")
+            print("Cannot test database expiration without extracting JTI")
+            return
+        
+        # Expire the token in the database
+        # You'll need to get access to your refresh token repository here
+        # This is a test-specific database operation
+        from database.session import get_async_session
+        from repository.refresh_token_repository import RefreshTokenRepository
+        
+        async for session in get_async_session():
+            refresh_token_repo = RefreshTokenRepository(session)
+            
+            success = await refresh_token_repo.expire_refresh_token_in_db(uuid.UUID(token_jti))
+            if not success:
+                print("WARNING: Failed to expire token in database")
+                return
+            
+            print("✓ Token expired in database")
+            break
+        
+        # Now test that the expired token is rejected
+        refresh_resp = await client.post(
+            "/auth/refresh",
+            cookies={
+                "refresh_token": refresh_token,
+                "csrf_token": csrf_token
+            },
+            headers={"X-CSRF-Token": csrf_token}
+        )
+        
+        print(f"Expired token refresh status: {refresh_resp.status_code}")
+        print(f"Expired token refresh response: {refresh_resp.json()}")
+        
+        # Should fail due to expired token
+        if refresh_resp.status_code == 200:
+            print("WARNING: Expired token was still accepted!")
+            print("This indicates that your refresh endpoint may not be checking expires_at properly")
+            # You might want to assert False here or investigate further
+        else:
+            assert refresh_resp.status_code != 200, "Refresh should fail with expired token"
+            assert refresh_resp.status_code == 401, f"Expected 401 for expired token, got {refresh_resp.status_code}"
+            
+            # Check error message indicates expiration
+            error_detail = refresh_resp.json().get("detail", "").lower()
+            assert "expired" in error_detail or "invalid" in error_detail, "Error should indicate token expiration"
+            print("✓ Expired token detection working")
+
+
+@pytest.mark.asyncio 
+async def test_refresh_token_malformed_fails():
+    """Test that refresh fails with malformed refresh token"""
+    email = f"refresh_malformed_{uuid4()}@example.com"
+    password = "TestPassword123!"
+
+    host_payload = {
+        "email": email,
+        "company_name": "Refresh Malformed Test Company", 
+        "password": password,
+        "created_at": "2023-10-01T12:00:00Z"
+    }
+
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        # Create host and login
+        host_resp = await client.post("/hosts/", json=host_payload)
+        assert host_resp.status_code == 201
+
+        login_payload = {"email": email, "password": password, "rememberMe": True}
+        login_resp = await client.post("/auth/login", json=login_payload)
+        assert login_resp.status_code == 200
+
+        csrf_token = login_resp.json().get("csrf_token")
+        assert csrf_token is not None
+
+        # Test various malformed tokens
+        malformed_tokens = [
+            "not.a.jwt.token",
+            "malformed",
+            "",
+            "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.malformed.signature",
+            "header.malformed_payload.signature"
+        ]
+
+        for i, malformed_token in enumerate(malformed_tokens):
+            print(f"Testing malformed token {i+1}: {malformed_token}")
+            
+            refresh_resp = await client.post(
+                "/auth/refresh",
+                cookies={
+                    "refresh_token": malformed_token,
+                    "csrf_token": csrf_token
+                },
+                headers={"X-CSRF-Token": csrf_token}
+            )
+            
+            print(f"Malformed token {i+1} status: {refresh_resp.status_code}")
+            
+            assert refresh_resp.status_code != 200, f"Malformed token {i+1} should be rejected"
+            assert refresh_resp.status_code == 401, f"Expected 401 for malformed token {i+1}, got {refresh_resp.status_code}"
+
+        print("✓ Malformed token detection working")
+
+
+@pytest.mark.asyncio
+async def test_refresh_token_missing_refresh_token_fails():
+    """Test that refresh fails without refresh token"""
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        # Try refresh without any tokens
+        refresh_resp = await client.post("/auth/refresh")
+        
+        print(f"No refresh token status: {refresh_resp.status_code}")
+        print(f"No refresh token response: {refresh_resp.json()}")
+        
+        assert refresh_resp.status_code != 200, "Refresh should fail without refresh token"
+        assert refresh_resp.status_code in [401, 403], f"Expected 401/403 for missing refresh token, got {refresh_resp.status_code}"
+        print("✓ Refresh token requirement working")

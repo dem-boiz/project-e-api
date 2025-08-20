@@ -3,14 +3,14 @@ import uuid
 from typing import Optional
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import HTTPException, status, Response, Cookie 
+from fastapi import HTTPException, Request, status, Response, Cookie 
 from passlib.context import CryptContext
 from models import Host, Session
 from schema import LoginRequestSchema
 from schema import RefreshTokensSchema
 from schema import SessionCreateSchema 
 from schema.auth_schemas import CurrentUserResponseSchema, LoginResponseSchema
-from utils.utils import create_jwt, verify_jwt, generate_csrf_token
+from utils.utils import create_jwt, verify_jwt, generate_csrf_token, verify_csrf_hash
 from repository import HostRepository, SessionRepository, RefreshTokenRepository
 from config.logging_config import get_logger
 import logging
@@ -95,10 +95,25 @@ class AuthService:
             )
         )
         logger.debug(f"Session record created with SID: {sid} for host: {host.email}")
+        # Generate a CSRF token for the client
+        csrf_token = await generate_csrf_token()
+        logger.debug(f"Generated CSRF token for host: {login_data.email}")
+        remember_me = login_data.rememberMe
+        # ALSO set CSRF token as a cookie (non-httponly so JS can read it)
+        response.set_cookie(
+            key="csrf_token",
+            value=csrf_token,
+            httponly=False,  # JavaScript needs to read this
+            secure=True if ENV == "PROD" else False,
+            samesite="none" if ENV == "PROD" else "lax",
+            max_age=30*24*3600 if remember_me else None,
+        )
+
+        logger.debug(f"CSRF token cookie set for host: {login_data.email}")
         # Create refresh token repo 
         refresh_token_repo = RefreshTokenRepository(self.db)
         access_token = await create_jwt(user_id, session_id=sid_str, remember_me=login_data.rememberMe)
-        refresh_token = await create_jwt(user_id, session_id=sid_str, remember_me=login_data.rememberMe, refresh_token_repo=refresh_token_repo, type='refresh')
+        refresh_token = await create_jwt(user_id, session_id=sid_str, remember_me=login_data.rememberMe, refresh_token_repo=refresh_token_repo, type='refresh', csrf=csrf_token)
 
         logger.debug(f"JWT tokens created for host: {host.email}")
         LoginResponse = {
@@ -113,7 +128,7 @@ class AuthService:
             "refresh_token": refresh_token,
         }
 
-        remember_me = login_data.rememberMe
+        
 
         logger.debug(f"Setting refresh token cookie for host: {login_data.email}")
         response.set_cookie(
@@ -127,21 +142,7 @@ class AuthService:
             path="/auth/refresh"
         )
 
-        # Generate a CSRF token for the client
-        csrf_token = await generate_csrf_token()
-        logger.debug(f"Generated CSRF token for host: {login_data.email}")
-
-        # ALSO set CSRF token as a cookie (non-httponly so JS can read it)
-        response.set_cookie(
-            key="csrf_token",
-            value=csrf_token,
-            httponly=False,  # JavaScript needs to read this
-            secure=True if ENV == "PROD" else False,
-            samesite="none" if ENV == "PROD" else "lax",
-            max_age=30*24*3600 if remember_me else None,
-        )
-
-        logger.debug(f"CSRF token cookie set for host: {login_data.email}")
+        
         logger.debug(f"Login successful for host: {login_data.email}")
         # Build the Pydantic response including CSRF token in the body
         login_response_model = LoginResponseSchema(
@@ -156,7 +157,8 @@ class AuthService:
 
     async def refresh_access_token_service(self, 
                                    refresh_token: str | None, 
-                                   response: Response
+                                   response: Response,
+                                   request: Request
                                    ) -> RefreshTokensSchema:
         """Generate a new access & refresh token for the host"""
         
@@ -233,6 +235,69 @@ class AuthService:
         # Look up the refresh token in the database   
         existing_refresh_token = await self.refresh_token_repo.get_refresh_token_by_jti(jti=jti)
 
+        if existing_refresh_token is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        # Check if token has been revoked
+        if existing_refresh_token.revoked_at is not None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Refresh token has been revoked",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        # Check if token has already been used (reuse detection)
+        if existing_refresh_token.used_at is not None:
+            logger.warning(f"Refresh token reuse detected for JTI: {jti}")
+            
+            # Revoke the session immediately due to potential token theft
+            try:
+                await self.session_repo.revoke_all_active_sessions_by_user_id(
+                    uuid.UUID(decoded_token["sub"])
+                )
+                logger.info(f"Session revoked due to token reuse for user: {decoded_token['sub']}")
+            except Exception as e:
+                logger.error(f"Failed to revoke session after token reuse: {e}")
+            
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Refresh token reuse detected",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+         # Check if token has expired 
+        if existing_refresh_token.expires_at and existing_refresh_token.expires_at <= datetime.now(timezone.utc):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Refresh token has expired",
+                headers={"WWW-Authenticate": "Bearer"},
+    ) 
+        # Verify the csrf hash
+        existing_csrf_hash = existing_refresh_token.csrf_hash 
+        logger.info(f"CSRF Hash: {existing_refresh_token.csrf_hash}")
+        csrf_token = request.cookies.get("csrf_token")
+        logger.info(f"Original CSRF_Token: {csrf_token}")
+
+        if not csrf_token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="CSRF token missing",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        valid_csrf = verify_csrf_hash(csrf_token, existing_csrf_hash)
+        logger.info(f"Valid CSRF: {valid_csrf}")
+
+        if not valid_csrf:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid CSRF token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         # If no record found, reject the request 
         if not existing_refresh_token:
             logger.warning("Refresh token not found in database.")
@@ -261,11 +326,13 @@ class AuthService:
         )
         # TODO: set the sessions.revboked_at to now 
 
+        # Rotate CSRF token
+        new_csrf_token = await generate_csrf_token()
         
         # Generate new access + refresh tokens
         logger.debug(f"Generating new access token (& refresh token) for host ID: {user_id}. remember_me optionset to '{remember_me}'")
         access_token = await create_jwt(user_id, session_id, remember_me=remember_me, refresh_token_repo=self.refresh_token_repo, type='access', issuer=issuer, audience=audience)
-        refresh_token = await create_jwt(user_id, session_id, remember_me=remember_me, refresh_token_repo=self.refresh_token_repo, type='refresh', issuer=issuer, audience=audience)
+        refresh_token = await create_jwt(user_id, session_id, remember_me=remember_me, refresh_token_repo=self.refresh_token_repo, type='refresh', csrf=new_csrf_token, issuer=issuer, audience=audience)
         
         # Decode new refresh_token to get new jti 
         decoded_refresh_token = verify_jwt(refresh_token)
@@ -287,10 +354,7 @@ class AuthService:
             max_age=30*24*3600 if remember_me else None,
             path="/auth/refresh"
         )
-
-        # Rotate CSRF token
-        new_csrf_token = await generate_csrf_token()
-        logger.debug("Generated new CSRF token for refreshed session.")
+         
         # Also set new CSRF token as cookie (non-httponly)
         response.set_cookie(
             key="csrf_token",
@@ -300,6 +364,7 @@ class AuthService:
             samesite="none" if ENV == "PROD" else "lax",
             max_age=30*24*3600 if remember_me else None,
         )
+        logger.debug("Generated new CSRF token for refreshed session.")
         # Return access token and new CSRF token in response body
         return {
             "access_token": access_token,
