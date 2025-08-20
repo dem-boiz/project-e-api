@@ -15,9 +15,12 @@ class OTP(Base):
     __tablename__ = "otps"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    email = Column(String, nullable=False)
+    email = Column(String, nullable=True)
+    label = Column(String, nullable=True)
     event_id = Column(UUID(as_uuid=True), ForeignKey("events.id", ondelete="CASCADE"), nullable=False)
     otp_code = Column(String, unique=True, nullable=False)
     expires_at = Column(DateTime, nullable=False)
     used = Column(Boolean, default=False)
     created_at = Column(DateTime, server_default=func.now())
+    used_at = Column(DateTime, nullable=True)
+    issued_by_host_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
