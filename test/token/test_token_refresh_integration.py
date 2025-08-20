@@ -435,3 +435,77 @@ async def test_refresh_token_expired_fails():
             error_detail = refresh_resp.json().get("detail", "").lower()
             assert "expired" in error_detail or "invalid" in error_detail, "Error should indicate token expiration"
             print("✓ Expired token detection working")
+
+# Test JTI Revocation through global logout
+@pytest.mark.asyncio
+async def test_refresh_token_global_logout_revokes_tokens():
+    """Test that global logout properly revokes refresh tokens making them unusable"""
+    email = f"refresh_global_revoke_{uuid4()}@example.com"
+    password = "TestPassword123!"
+
+    host_payload = {
+        "email": email,
+        "company_name": "Refresh Global Revoke Test Company", 
+        "password": password,
+        "created_at": "2023-10-01T12:00:00Z"
+    }
+
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        # Create host and login
+        host_resp = await client.post("/hosts/", json=host_payload)
+        assert host_resp.status_code == 201
+
+        login_payload = {"email": email, "password": password, "rememberMe": True}
+        login_resp = await client.post("/auth/login", json=login_payload)
+        assert login_resp.status_code == 200
+
+        refresh_token = login_resp.cookies.get("refresh_token")
+        csrf_token = login_resp.json().get("csrf_token")
+        
+        assert refresh_token is not None
+        assert csrf_token is not None
+
+        print(f"Refresh token before global logout: {refresh_token[:20]}...")
+        
+        # Verify token works before global logout
+        refresh_resp_before = await client.post(
+            "/auth/refresh",
+            cookies={
+                "refresh_token": refresh_token,
+                "csrf_token": csrf_token
+            },
+            headers={"X-CSRF-Token": csrf_token}
+        )
+        assert refresh_resp_before.status_code == 200, "Token should work before global logout"
+        print("Token works before global logout")
+        
+        # Perform global logout (should revoke all refresh tokens for this user)
+        global_logout_resp = await client.post(
+            "/auth/global-logout",
+            cookies={"refresh_token": refresh_token}
+        )
+        assert global_logout_resp.status_code == 200, "Global logout should succeed"
+        print("Global logout completed")
+        
+        # Now test that the token is rejected after global logout
+        refresh_resp_after = await client.post(
+            "/auth/refresh",
+            cookies={
+                "refresh_token": refresh_token,
+                "csrf_token": csrf_token
+            },
+            headers={"X-CSRF-Token": csrf_token}
+        )
+        
+        print(f"Post-global-logout refresh status: {refresh_resp_after.status_code}")
+        print(f"Post-global-logout refresh response: {refresh_resp_after.json()}")
+        
+        # Should fail because global logout should have revoked all tokens
+        if refresh_resp_after.status_code == 200:
+            print("WARNING: Token still works after global logout!")
+            print("This indicates global logout may not be properly revoking refresh tokens")
+            assert False, "Token should be revoked after global logout"
+        else:
+            assert refresh_resp_after.status_code != 200, "Token should fail after global logout"
+            assert refresh_resp_after.status_code == 401, f"Expected 401 after global logout, got {refresh_resp_after.status_code}"
+            print("Global logout properly revoked refresh tokens")
