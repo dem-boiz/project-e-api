@@ -1,4 +1,7 @@
+import base64
 from datetime import datetime, timedelta
+import hmac
+import os
 from typing import Optional, List
 import hashlib
 import secrets
@@ -10,26 +13,33 @@ from config.logging_config import get_logger
 
 logger = get_logger("device_grant")
 
+DEVICE_LIMIT = os.getenv("DEVICE_GRANT_LIMIT", 5)  # Default to 5 if not set
+PEPPER = os.environ["EVENT_TOKEN_PEPPER"].encode("utf-8")
 
 class DeviceGrantService:
     
     def __init__(self, repository: DeviceGrantRepository):
         self.repository = repository
 
-    def _generate_device_token(self, device_id: uuid.UUID) -> str:
-        """Generate a secure random device token"""
-        
-        return secrets.token_urlsafe(32)
 
-    def _hash_token(self, token: str) -> str:
-        """Hash a token for secure storage"""
-        return hashlib.sha256(token.encode()).hexdigest()
+# load a long random secret from env (do NOT hardcode)
+
+    def generate_event_token(bytes_len: int = 32) -> str:
+        """Return base64url (no padding) opaque token."""
+        raw = os.urandom(bytes_len)  # 32 bytes = 256-bit
+        tok = base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
+        return tok
+
+    def hash_event_token(token: str) -> str:
+        """Deterministic HMAC-SHA256 over the token with a server-side pepper."""
+        mac = hmac.new(PEPPER, token.encode("utf-8"), hashlib.sha256).digest()
+        return base64.urlsafe_b64encode(mac).decode("ascii")
+
 
     async def issue_device_grant(
         self, 
         event_id: uuid.UUID,
         device_id: uuid.UUID,
-        expires_in_hours: int = 24,
         created_from_otp_id: Optional[uuid.UUID] = None
     ) -> tuple[DeviceGrant, str]:
         """
@@ -39,19 +49,16 @@ class DeviceGrantService:
         logger.debug(f"Issuing device grant for event: {event_id}")
         
         # Generate token and hash it
-        raw_token = self._generate_device_token(device_id)
-        token_hash = self._hash_token(raw_token)
-        
-        # Calculate expiration
-        now = datetime.utcnow()
-        expires_at = now + timedelta(hours=expires_in_hours)
-        
+        raw_token = self.generate_event_token()
+        token_hash = self.hash_event_token(raw_token)
+
         # Create device grant
         device_grant = DeviceGrant(
             event_id=event_id,
+            device_id=device_id,
             token_hash=token_hash,
-            expires_at=expires_at,
-            issued_at=now,
+            expires_at=datetime.now() + timedelta(days=30),  # Default expiration
+            issued_at=datetime.now(),
             created_from_otp_id=created_from_otp_id
         )
         
@@ -61,7 +68,7 @@ class DeviceGrantService:
         
         return saved_grant, raw_token
 
-    async def validate_device_token(self, token: str) -> Optional[DeviceGrant]:
+    async def validate_device_token(self, token: str, event_id: str) -> Optional[DeviceGrant]:
         """
         Validate a device token and return the grant if valid
         Checks: token exists, not expired, not revoked
@@ -69,16 +76,17 @@ class DeviceGrantService:
         logger.debug("Validating device token")
         
         # Hash the provided token
-        token_hash = self._hash_token(token)
+        token_hash = self.hash_event_token(token)
         
         # Get the grant
         device_grant = await self.repository.get_by_token_hash(token_hash)
+
         if not device_grant:
             logger.warning("Device token not found")
             return None
         
         # Check if expired
-        if device_grant.expires_at < datetime.utcnow():
+        if device_grant.expires_at < datetime.now():
             logger.warning(f"Device token expired: {device_grant.id}")
             return None
         
@@ -87,6 +95,10 @@ class DeviceGrantService:
             logger.warning(f"Device token revoked: {device_grant.id}")
             return None
         
+        if event_id != device_grant.event_id:
+            logger.warning("Device token does not match event")
+            return None
+
         logger.debug(f"Device token validated successfully: {device_grant.id}")
         return device_grant
 
@@ -127,7 +139,7 @@ class DeviceGrantService:
     async def get_active_grants_for_event(self, event_id: uuid.UUID) -> List[DeviceGrant]:
         """Get all active (non-expired, non-revoked) grants for an event"""
         all_grants = await self.repository.get_all_by_event_id(event_id)
-        now = datetime.utcnow()
+        now = datetime.now()
         
         active_grants = [
             grant for grant in all_grants
@@ -135,6 +147,19 @@ class DeviceGrantService:
         ]
         
         logger.debug(f"Found {len(active_grants)} active grants for event: {event_id}")
+        return active_grants
+
+    async def get_active_grants_for_device(self, device_id: str) -> List[DeviceGrant]:
+        """Get all active (non-expired, non-revoked) grants for a device"""
+        all_grants = await self.repository.get_all_by_device_id(device_id)
+        now = datetime.now()
+
+        active_grants = [
+            grant for grant in all_grants
+            if grant.expires_at > now and grant.revoked_at is None
+        ]
+
+        logger.debug(f"Found {len(active_grants)} active grants for device: {device_id}")
         return active_grants
 
     async def cleanup_expired_grants(self) -> int:
@@ -170,3 +195,7 @@ class DeviceGrantService:
         
         logger.info(f"Extended device grant {device_grant_id} by {additional_hours} hours")
         return True
+
+    async def device_hit_limit(self, device_id: str) -> bool:
+        active_grants = await self.get_active_grants_for_device(device_id)
+        return len(active_grants) >= DEVICE_LIMIT

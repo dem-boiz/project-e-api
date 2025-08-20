@@ -3,6 +3,7 @@ from jose import jwt, JWTError
 from jose.exceptions import ExpiredSignatureError, JWTClaimsError
 from fastapi import Header, Cookie, HTTPException, status, Depends
 from config import SECRET_KEY, ALGORITHM, JWT_ACCESS_LIFESPAN, JWT_REFRESH_LIFESPAN
+import os, base64, hmac, hashlib
 from repository import RefreshTokenRepository
 from schema import RefreshTokenCreateSchema
 from datetime import datetime, timedelta, timezone
@@ -221,3 +222,4 @@ async def generate_csrf_token(length: int = 32) -> str:
         str: URL-safe base64 encoded token.
     """
     return secrets.token_urlsafe(length)
+

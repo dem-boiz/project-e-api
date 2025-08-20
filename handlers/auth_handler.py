@@ -2,11 +2,17 @@ import traceback
 import uuid
 import secrets
 
+from uuid import uuid4
 from config.logging_config import get_logger
 from fastapi.security import HTTPAuthorizationCredentials
 from schema import CurrentUserResponseSchema, LoginRequestSchema, LoginResponseSchema, RefreshResponseSchema
 from services import AuthService
 from fastapi import HTTPException, Request, Response, status 
+from schema import CurrentUserResponse, LoginRequest, LoginResponse, RefreshResponse
+from services import AuthService, GuestDeviceService
+from fastapi import HTTPException, Response, status
+
+
 from config import ENV
 from utils.utils import verify_jwt, generate_csrf_token
 from repository import RefreshTokenRepository
@@ -62,4 +68,30 @@ async def kill_session_handler(service: AuthService, sid: uuid.UUID):
             status_code=404,
             detail="No active tokens found for the given session ID"
         )
+    
+async def handle_refresh_device_token(
+        device_id: str | None,
+        response: Response
+    ):
+    if not device_id:
+        uuid = str(uuid4())
+        logger.warning(f"No device ID provided, generated new UUID: {uuid}")
+        device_id = uuid
+
+    # Update last seen timestamp, or create if a new device
+    await GuestDeviceService.touch_guest_device(device_id)
+
+    # Set device ID in cookie (persistent httponly)
+    response.set_cookie(
+        key="device_id",
+        value=device_id,
+        httponly=True,
+        secure=IS_PROD,
+        samesite="lax",
+        max_age=30*24*3600,
+        path="/api/auth/device/refresh"
+    )
+
+    logger.debug("Device token refreshed successfully")
+    return {"message": "Device token refreshed successfully"}
 

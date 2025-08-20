@@ -1,20 +1,26 @@
 import uuid
 from typing import Optional
-from fastapi import HTTPException
+from fastapi import HTTPException, logger
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime
+from datetime import datetime, timedelta
 
+from config.logging_config import get_logger
+from models.device_grant import DeviceGrant
 from repository import EventRepository
 from models import Event 
 from schema import EventCreateSchema, EventUpdateSchema
-from services import OTPService
+from services import OTPService, DeviceGrantService
+from utils.utils import generate_event_token, hash_event_token
 
 #TODO: add logging
+
+
+logger = get_logger("api.events")
 class EventService:
     def __init__(self, db: AsyncSession):
         self.repo = EventRepository(db)
 
-    async def create_event_service(self, event_data: EventCreateSchema) -> Event:
+    async def create_event(self, event_data: EventCreateSchema) -> Event:
         # TODO refactor this code to only raise an error if the duplicate event is for the same host
         # Check if an event with the same name already exists here:
         existing = await self.repo.get_event_by_name(event_data.name)   
@@ -66,7 +72,7 @@ class EventService:
         # If all checks pass, create the event
         return await self.repo.create_event(event_data)
     
-    async def get_event_by_id_service(self, event_id: uuid.UUID) -> Event:
+    async def get_event_by_id(self, event_id: uuid.UUID) -> Event:
         # Check if the event exists
         event = await self.repo.get_event_by_id(event_id)
         if not event:
@@ -74,7 +80,11 @@ class EventService:
         
         return event
     
-    async def get_event_by_name_service(self, name: str) -> Event:
+
+    async def get_events_by_ids(self, event_ids: list[str]) -> list[Event]:
+        return await self.repo.get_events_by_ids(event_ids)
+
+    async def get_event_by_name(self, name: str) -> Event:
         # Check if the event exists
         event = await self.repo.get_event_by_name(name)
         if not event:
@@ -82,10 +92,10 @@ class EventService:
         
         return event
     
-    async def get_all_events_service(self) -> list[Event]:
+    async def get_all_events(self) -> list[Event]:
         return await self.repo.get_all_events()
     
-    async def update_event_service(self, event_id: uuid.UUID, data: EventUpdateSchema) -> Event:
+    async def update_event(self, event_id: uuid.UUID, data: EventUpdateSchema) -> Event:
         # Check if the event exists
         event = await self.repo.get_event_by_id(event_id)
         if not event:
@@ -97,7 +107,7 @@ class EventService:
         
         return await self.repo.update_event(event_id, data)
     
-    async def delete_event_service(self, event_id: uuid.UUID) -> bool:
+    async def delete_event(self, event_id: uuid.UUID) -> bool:
         # Check if the event exists
         event = await self.repo.get_event_by_id(event_id)
         if not event:
@@ -109,9 +119,11 @@ class EventService:
         # TODO: Implement the logic to check for duplicate events
         return False
 
-    async def join_event(self, x_otp: str, event_id: str, device_id: str) -> Event:
+    async def join_event(self, x_otp: str, device_id: str) -> tuple[DeviceGrant, str]:
+        event_id = await OTPService.validate_otp(x_otp)
+        if await DeviceGrantService.device_hit_limit(device_id):
+            logger.warning(f"Device {device_id} has hit the maximum event limit.")
+            raise HTTPException(status_code=403, detail="Device has hit the maximum event limit.")
 
-        isValid = await OTPService.validate_otp(event_id, x_otp)
-        if not isValid:
-            raise HTTPException(status_code=400, detail="Unable to validate OTP")
-        return await self.repo.join_event(event_id, device_id)
+        grant, token = await DeviceGrantService.issue_device_grant(event_id, device_id, x_otp)
+        return grant, token

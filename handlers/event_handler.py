@@ -1,23 +1,74 @@
+import os
+from fastapi import Response
 from schema import EventCreateSchema, EventUpdateSchema
-from services import EventService 
+from services import EventService, DeviceGrantService
+from config.logging_config import get_logger
+
+
+IS_PROD = os.getenv("ENV") == "PROD"
+
+logger = get_logger("api.events")   
 
 async def create_event_handler(data: EventCreateSchema, service: EventService):
-    return await service.create_event_service(data)
+    return await service.create_event(data)
 
 async def get_events_handler(service: EventService):
-    return await service.get_all_events_service()
+    return await service.get_all_events()
 
 async def delete_event_handler(service: EventService, event_id: str):
-    return await service.delete_event_service(event_id)
+    return await service.delete_event(event_id)
 
 async def patch_event_handler(service: EventService, event_id: str, data: EventUpdateSchema):
-    return await service.update_event_service(event_id, data)
+    return await service.update_event(event_id, data)
 
 async def get_event_by_id_handler(event_id: str, service: EventService):
-    return await service.get_event_by_id_service(event_id)
+    return await service.get_event_by_id(event_id)
 
 async def get_event_by_name_handler(name: str, service: EventService):
-    return await service.get_event_by_name_service(name)
+    return await service.get_event_by_name(name)
 
-async def join_event_handler(otp: str, service: EventService):
-    return await service.join_event(otp)
+async def join_event_handler(otp: str, service: EventService, device_id: str, response: Response):
+    grant, token = await service.join_event(otp, device_id)
+
+    cookieName = f'event_{grant.event_id}_token'
+    response.set_cookie(
+        key=cookieName, 
+        value=token,
+        path='/',
+        httponly=True,
+        secure=IS_PROD,
+        samesite="lax",
+        max_age=30*24*3600  # 30 days
+    )
+
+    return {"message": "Joined event successfully"}
+
+async def get_my_events_handler(cookies: dict, service: EventService):
+    event_ids = []
+    for key, value in cookies.items():
+        if key.startswith("event_") and key.endswith("_token"):
+            # parse event id from cookie name (format is event_<event_id>_token)
+            event_id = key[len("event_"):-len("_token")]
+            event_ids.append(event_id)
+
+
+            # This is a an event access cookie, verify the token
+
+ 
+
+            device_grant = await DeviceGrantService.validate_device_token(value, event_id)
+
+    
+
+
+
+    if not event_ids:
+        logger.warning("No valid event IDs found in cookies")
+        return []
+    
+    logger.debug(f"Found a total of {len(event_ids)} event IDs in cookies")
+
+    event_info = await service.get_events_by_ids(event_ids)
+
+
+    return event_info
