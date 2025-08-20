@@ -1,4 +1,5 @@
 import os
+import uuid
 from config.logging_config import get_logger
 from fastapi import APIRouter, Depends, status, Security, Response, Cookie, Header, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -8,7 +9,7 @@ from models import host
 from services import AuthService, HostService
 from schema import LoginRequestSchema, LoginResponseSchema, CurrentUserResponseSchema, RefreshResponseSchema
 from utils import verify_csrf_token
-from handlers.auth_handler import refresh_token_handler, get_me_handler, login_handler, logout_handler, global_logout_handler
+from handlers.auth_handler import refresh_token_handler, get_me_handler, login_handler, logout_handler, global_logout_handler, kill_session_handler
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 security = HTTPBearer()
@@ -56,7 +57,14 @@ async def global_logout(
 ): 
     logger.info("Processing global logout request")
     return await global_logout_handler(service=service, refresh_token=refresh_token)
-
+# Kill session endpoint
+@router.get("/kill-session/{sid}", status_code=status.HTTP_200_OK)
+async def kill_session(
+    sid: uuid.UUID, 
+    auth_service: AuthService = Depends(get_auth_service)
+):
+    return await kill_session_handler(service=auth_service, sid=sid)
+    
 @router.get("/me", response_model=CurrentUserResponseSchema, status_code=status.HTTP_200_OK)
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Security(security),

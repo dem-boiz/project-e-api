@@ -33,7 +33,7 @@ class RefreshTokenRepository:
         await self.RefreshToken.refresh(new_token)
         return RefreshTokenSchema(
             jti=new_token.jti,
-            user_id=new_token.user_id,
+            user_id=str(new_token.user_id),
             sid=new_token.sid,
             expires_at=new_token.expires_at,
             issued_at=new_token.issued_at,
@@ -141,3 +141,22 @@ class RefreshTokenRepository:
             await self.RefreshToken.rollback()
             logger.error(f"Failed to delete refresh tokens for user_id {user_id}: {e}")
             return False
+        
+    
+    async def revoke_tokens_by_sid(self, sid: uuid.UUID) -> int:
+        """Revoke all refresh tokens with the given session ID (sid)."""
+        try:
+            result = await self.RefreshToken.execute(
+                update(RefreshToken)
+                .where(RefreshToken.sid == sid)
+                .values(
+                    revoked_at=func.now()
+                )
+            )
+            # Commit the transaction
+            await self.RefreshToken.commit()
+            
+            # Return the number of rows affected
+            return result.rowcount
+        except Exception:
+            return 0

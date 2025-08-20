@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, ConfigDict
 
 class RefreshTokenBaseSchema(BaseModel):
     """Base refresh token model with common fields"""
-    user_id: UUID = Field(..., description="User ID for quick lookup and auditing")
+    user_id: str = Field(..., description="User ID for quick lookup and auditing")
     expires_at: datetime = Field(..., description="Refresh token TTL - cleanup job target")
     parent_jti: Optional[UUID] = Field(None, description="Previous refresh token in rotation chain")
     jti: UUID = Field(..., description="Unique identifier for the current refresh token (JWT ID)")
@@ -16,7 +16,7 @@ class RefreshTokenBaseSchema(BaseModel):
 
 class RefreshTokenCreateSchema(RefreshTokenBaseSchema):
     """Model for creating a new refresh token"""
-    sid: UUID = Field(..., description="Session ID - binds token to its session")
+    sid: str = Field(..., description="Session ID - binds token to its session")
     csrf_hash: Optional[bytes] = Field(None, description="Hash of CSRF secret for double-submit protection")
     issued_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Token creation timestamp")
     model_config = ConfigDict(

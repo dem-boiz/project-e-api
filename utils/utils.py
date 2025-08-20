@@ -1,3 +1,4 @@
+import traceback
 from jose import jwt, JWTError 
 from jose.exceptions import ExpiredSignatureError, JWTClaimsError
 from fastapi import Header, Cookie, HTTPException, status, Depends
@@ -53,7 +54,7 @@ async def create_jwt(userId: str,
     # Create comprehensive payload with all required claims
     payload = {
         "sub": userId,                           # Subject (user ID)
-        "sid": session_id,                       # Session ID (for session-wide control)
+        "sid": str(session_id),                       # Session ID (for session-wide control)
         "jti": str(uuid.uuid4()),               # Token ID (unique per token issuance)
         "iat": int(now.timestamp()),            # Issued at (epoch seconds)
         "exp": int((now + lifespan).timestamp()), # Expiry (epoch seconds)
@@ -73,8 +74,8 @@ async def create_jwt(userId: str,
         # Create refresh token database record
         token_data = RefreshTokenCreateSchema(
             jti=payload["jti"],
-            user_id=uuid.UUID(userId),
-            sid=uuid.UUID(session_id),
+            user_id=str(userId),
+            sid=str(session_id),
             expires_at=now + lifespan,
             issued_at=now,
             csrf_hash=csrtf_hash
@@ -172,7 +173,9 @@ def verify_jwt(token: str, expected_issuer="your-app", expected_audience="your-a
     
     except Exception as e:
         logger.error(f"Unexpected error during JWT verification: {e}")
+        logger.error(f"Full stack trace:\\n{traceback.format_exc()}")
         raise HTTPException(status_code=401, detail="Token verification failed")
+    
 def verify_csrf_token(
     x_csrf_token: str = Header(None, alias="X-CSRF-Token"),
     csrf_token: str = Cookie(None, alias="csrf_token")

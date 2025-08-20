@@ -1,4 +1,5 @@
 from datetime import datetime, timezone, timedelta
+import traceback
 import uuid
 from typing import Optional
 from fastapi.security import HTTPAuthorizationCredentials
@@ -307,6 +308,22 @@ class AuthService:
             "csrf_token": new_csrf_token
         }
         
+    async def kill_session_service(self, 
+                                   sid: uuid.UUID) -> bool:
+        
+        '''Kill session given the SID'''
+         
+        logger.info(f"Killing session for {sid}")
+
+        session_invalidated = await self.session_repo.invalidate_session(sid)
+        if session_invalidated is None or session_invalidated is False:
+            logger.warning("Session not invalidated.") 
+            raise HTTPException(
+                status_code=404,
+                detail="No active tokens found for the given session ID"
+            )
+        logger.info("Session tokens successfully revoked")
+        return True 
 
     async def logout_user_service(self, 
                           response: Response,

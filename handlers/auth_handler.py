@@ -1,3 +1,5 @@
+import traceback
+import uuid
 from config.logging_config import get_logger
 from fastapi.security import HTTPAuthorizationCredentials
 from schema import CurrentUserResponseSchema, LoginRequestSchema, LoginResponseSchema, RefreshResponseSchema
@@ -40,3 +42,19 @@ async def logout_handler(response: Response,
 async def global_logout_handler(service: AuthService, 
                                refresh_token: str | None):
     return await service.global_logout_service(refresh_token=refresh_token)
+
+async def kill_session_handler(service: AuthService, sid: uuid.UUID):
+    """Kill a session by revoking all refresh tokens associated with the session ID."""
+   
+    revoked_count = await service.kill_session_service(sid)
+    
+    if revoked_count > 0:
+        return {
+            "message": f"Session killed successfully. Revoked {revoked_count} token(s).",
+            "revoked_count": revoked_count
+        }
+    else:
+        raise HTTPException(
+            status_code=404,
+            detail="No active tokens found for the given session ID"
+        )

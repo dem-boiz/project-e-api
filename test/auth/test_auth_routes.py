@@ -1,3 +1,5 @@
+import uuid
+import jwt
 import pytest
 from fastapi.testclient import TestClient
 from main import app
@@ -16,6 +18,119 @@ if sys.platform == "win32":
 
 client = TestClient(app)
 
+# Kill Session Tests
+@pytest.mark.asyncio
+async def test_kill_session_revokes_all_tokens():
+    """Test that /kill-session/{sid} revokes all tokens for a session"""
+    email = f"kill_session_{uuid4()}@example.com"
+    password = "TestPassword123!"
+
+    # Create host first
+    host_payload = {
+        "email": email,
+        "company_name": "Kill Session Test Company", 
+        "password": password,
+        "created_at": "2023-10-01T12:00:00Z"
+    }
+
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        # Create host
+        host_resp = await client.post("/hosts/", json=host_payload)
+        assert host_resp.status_code == 201
+
+        # Login to get tokens and session ID
+        login_payload = {"email": email, "password": password, "rememberMe": True}
+        login_resp = await client.post("/auth/login", json=login_payload)
+        assert login_resp.status_code == 200
+        
+        # DEBUG: Print what we got from login
+        print(f"Login response body: {login_resp.json()}")
+        print(f"Login cookies: {dict(login_resp.cookies)}")
+
+        refresh_cookie = login_resp.cookies.get("refresh_token")
+        assert refresh_cookie is not None
+        
+        # Get session ID from login response (assuming it's returned)
+        login_data = login_resp.json()
+        # Extract session ID from refresh token JWT
+        try:
+            # Decode without verification to get payload (for testing only)
+            decoded_token = jwt.decode(refresh_cookie, options={"verify_signature": False})
+            sid = decoded_token.get("sid")
+            print(f"Extracted session ID from token: {sid}")
+        except Exception as e:
+            print(f"Failed to decode refresh token: {e}")
+            assert False, "Could not extract session ID from refresh token"
+        
+        assert sid is not None, "No session ID found in refresh token"
+        
+        # Convert to UUID if it's a string
+        if isinstance(sid, str):
+            sid = uuid.UUID(sid)
+        
+        
+        if not sid:
+            print("WARNING: No session ID in login response!")
+            # You might need to extract it differently or add it to your login response
+            assert False, "No session ID in login response"
+        
+        # Verify refresh token works before killing session
+        csrf_token = login_data.get("csrf_token")
+        csrf_cookie = login_resp.cookies.get("csrf_token") or csrf_token
+        
+        refresh_resp = await client.post(
+            "/auth/refresh",
+            cookies={
+                "refresh_token": refresh_cookie,
+                "csrf_token": csrf_cookie
+            },
+            headers={"X-CSRF-Token": csrf_cookie}
+        )
+        assert refresh_resp.status_code == 200
+        print("Refresh token works before kill session")
+        
+        # Kill the session
+        kill_resp = await client.get(f"/auth/kill-session/{sid}")
+        
+        # DEBUG: Print kill session response
+        print(f"Kill session response: {kill_resp.json()}")
+        
+        assert kill_resp.status_code == 200
+        kill_data = kill_resp.json()
+        assert "revoked_count" in kill_data
+        assert kill_data["revoked_count"] > 0
+        print(f"Successfully revoked {kill_data['revoked_count']} token(s)")
+        
+        # Verify refresh token no longer works after killing session
+        dead_refresh_resp = await client.post(
+            "/auth/refresh",
+            cookies={
+                "refresh_token": refresh_cookie,
+                "csrf_token": csrf_cookie
+            },
+            headers={"X-CSRF-Token": csrf_cookie}
+        )
+        
+        # Should fail now that tokens are revoked
+        assert dead_refresh_resp.status_code in [401, 403]  # Unauthorized or Forbidden
+        print("Refresh token correctly fails after session kill")
+
+
+@pytest.mark.asyncio
+async def test_kill_session_nonexistent_sid():
+    """Test that /kill-session/{sid} returns 404 for non-existent session ID"""
+    fake_sid = uuid4()  # Generate a random UUID that won't exist
+    
+    async with AsyncClient(base_url="http://localhost:8000") as client:
+        kill_resp = await client.get(f"/auth/kill-session/{fake_sid}")
+        
+        # DEBUG: Print response
+        print(f"Kill non-existent session response: {kill_resp.json()}")
+        
+        assert kill_resp.status_code == 404
+        error_data = kill_resp.json()
+        assert "detail" in error_data
+        assert "No active tokens found" in error_data["detail"]
 
 @pytest.mark.asyncio
 async def test_get_current_user_route_no_token():
@@ -102,7 +217,7 @@ async def test_refresh_token_rotates_access_and_csrf():
             print(f"Error: {refresh_resp.json()}")
         
         assert refresh_resp.status_code == 200
- 
+
 
 @pytest.mark.asyncio
 async def test_logout_without_refresh_token():

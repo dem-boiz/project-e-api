@@ -1,3 +1,4 @@
+from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.exc import NoResultFound
@@ -91,7 +92,7 @@ class SessionRepository:
         """Invalidate (deactivate) a specific session."""
         session_record = await self.get_session_by_sid(session_id)
         if session_record is None:
-            raise "No session found"
+            return False
         if session_record: 
             session_record.revoked_at = datetime.now(timezone.utc)
             await self.session.commit()
