@@ -1,11 +1,13 @@
 import uuid
 from typing import Optional
+from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 
 from repository import EventRepository
 from models import Event 
 from schema import EventCreateSchema, EventUpdateSchema
+from services import OTPService
 
 #TODO: add logging
 class EventService:
@@ -106,3 +108,10 @@ class EventService:
     async def has_duplicate_event(self, event_data: EventCreateSchema) -> bool:
         # TODO: Implement the logic to check for duplicate events
         return False
+
+    async def join_event(self, x_otp: str, event_id: str, device_id: str) -> Event:
+
+        isValid = await OTPService.validate_otp(event_id, x_otp)
+        if not isValid:
+            raise HTTPException(status_code=400, detail="Unable to validate OTP")
+        return await self.repo.join_event(event_id, device_id)

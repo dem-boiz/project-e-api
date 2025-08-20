@@ -1,6 +1,14 @@
 from fastapi import APIRouter, Depends, status, Security, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from handlers import create_event_handler, delete_event_handler, get_events_handler, patch_event_handler, get_event_by_id_handler, get_event_by_name_handler
+from handlers import (
+    create_event_handler, 
+    delete_event_handler, 
+    get_events_handler, 
+    patch_event_handler, 
+    get_event_by_id_handler, 
+    get_event_by_name_handler,
+    join_event_handler
+)               
 from database.session import get_async_session
 
 from services import EventService, AuthService
@@ -190,4 +198,14 @@ async def update_event(
     logger.info(f"Updating event: {event_id}")
     result = await patch_event_handler(service, event_id, data)
     logger.info(f"Event updated successfully: {event_id}")
-    return
+    return result
+
+@router.post("/{event_id}/join")
+async def join_event(
+    event_id: str,
+    service: EventService = Depends(get_event_service)
+):
+    """Join an event - requires authentication and event existence verification"""
+    logger.info(f"Joining event: {event_id}")
+    result = await join_event_handler(service, event_id)
+    return result
