@@ -173,6 +173,7 @@ def verify_jwt(token: str, expected_issuer="your-app", expected_audience="your-a
     except Exception as e:
         logger.error(f"Unexpected error during JWT verification: {e}")
         raise HTTPException(status_code=401, detail="Token verification failed")
+    
 def verify_csrf_token(
     x_csrf_token: str = Header(None, alias="X-CSRF-Token"),
     csrf_token: str = Cookie(None, alias="csrf_token")
