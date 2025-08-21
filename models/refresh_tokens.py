@@ -1,5 +1,5 @@
 from datetime import datetime
-from tkinter import Text
+from sqlalchemy import Text
 from sqlalchemy import Column, DateTime, ForeignKey, Index, LargeBinary, CheckConstraint
 from models import Session
 from sqlalchemy.dialects.postgresql import UUID, INET
