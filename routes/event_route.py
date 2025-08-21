@@ -149,17 +149,17 @@ async def update_event(
     logger.info(f"Event updated successfully: {event_id}")
     return result
 
-@router.get("/{event_id}/invite-otp")
-async def get_event_invite_otp(
+@router.post("/{event_id}/invite")
+async def post_event_invite_otp(
     event_data: tuple[str, EventUpdateSchema, Host] = Depends(verify_event_ownership_for_modification),
     service: OTPService = Depends(get_otp_service),
 ):
-    """Get the invite OTP for an event - requires authentication and ownership verification"""
+    """Create and return the invite OTP for an event - requires authentication and ownership verification"""
     event_id, data, current_host = event_data
     logger.info(f"Getting invite OTP for event: {event_id}")
     result = await service.generate_otp(event_id, data, current_host.id)
     logger.info(f"Retrieved invite OTP for event: {event_id}")
-    return result
+    return result["otp_code"]
 
 @router.post("/join/{otp}")
 async def join_event(
