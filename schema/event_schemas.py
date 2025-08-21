@@ -15,3 +15,7 @@ class EventUpdateSchema(BaseModel):
     datetime: Optional[str] = None
     host_id: Optional[UUID] = None
     description: Optional[str] = None
+
+class EventInviteSchema(BaseModel):
+    email: str
+    label: str
