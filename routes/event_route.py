@@ -12,12 +12,14 @@ from handlers import (
 )               
 from database.session import get_async_session
 
+from routes.otp_route import get_otp_service
 from services import EventService, AuthService
 from repository.event_repository import EventRepository
 from schema.event_schemas import EventCreateSchema, EventUpdateSchema
 from sqlalchemy.ext.asyncio import AsyncSession
 from models import Host
 from config.logging_config import get_logger
+from services import OTPService
 
 
 # Initialize logger
@@ -108,7 +110,7 @@ async def verify_event_ownership_for_delete(
         )
 
 # Dependency to verify host authorization for event updates
-async def verify_event_ownership_for_update(
+async def verify_event_ownership_for_modification(
     event_id: str,
     data: EventUpdateSchema,
     current_host: Host = Depends(get_current_host),
@@ -133,7 +135,7 @@ async def verify_event_ownership_for_update(
                 detail="You cannot change the host of an event to a different host"
             )
         
-        return event_id, data
+        return event_id, data, current_host
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -183,7 +185,7 @@ async def get_events(service: EventService = Depends(get_event_service)):
 
 @router.patch("/{event_id}", status_code=204, dependencies=[Depends(validate_token_parent_session)])
 async def update_event(
-    event_data: tuple[str, EventUpdateSchema] = Depends(verify_event_ownership_for_update),
+    event_data: tuple[str, EventUpdateSchema, Host] = Depends(verify_event_ownership_for_modification),
     service: EventService = Depends(get_event_service)
 ):
     """Update an event - requires authentication and ownership verification"""
@@ -191,6 +193,18 @@ async def update_event(
     logger.info(f"Updating event: {event_id}")
     result = await patch_event_handler(service, event_id, data)
     logger.info(f"Event updated successfully: {event_id}")
+    return result
+
+@router.get("/{event_id}/invite-otp")
+async def get_event_invite_otp(
+    event_data: tuple[str, EventUpdateSchema, Host] = Depends(verify_event_ownership_for_modification),
+    service: OTPService = Depends(get_otp_service),
+):
+    """Get the invite OTP for an event - requires authentication and ownership verification"""
+    event_id, data, current_host = event_data
+    logger.info(f"Getting invite OTP for event: {event_id}")
+    result = await service.generate_otp(event_id, data, current_host.id)
+    logger.info(f"Retrieved invite OTP for event: {event_id}")
     return result
 
 @router.post("/join/{otp}")

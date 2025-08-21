@@ -49,26 +49,18 @@ async def get_my_events_handler(cookies: dict, service: EventService):
         if key.startswith("event_") and key.endswith("_token"):
             # parse event id from cookie name (format is event_<event_id>_token)
             event_id = key[len("event_"):-len("_token")]
-            event_ids.append(event_id)
 
-
-            # This is a an event access cookie, verify the token
-
- 
-
-            device_grant = await DeviceGrantService.validate_device_token(value, event_id)
-
-    
-
-
+            # This is a an event access cookie, we validate the token by using it to retrieve
+            # the associated device grant and checking its validity
+            # The device grant is then returned.
+            if await DeviceGrantService.validate_device_token(value, event_id):
+                event_ids.append(event_id)
 
     if not event_ids:
         logger.warning("No valid event IDs found in cookies")
         return []
     
     logger.debug(f"Found a total of {len(event_ids)} event IDs in cookies")
-
     event_info = await service.get_events_by_ids(event_ids)
-
 
     return event_info
