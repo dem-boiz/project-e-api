@@ -10,9 +10,21 @@ import secrets
 import uuid
 from typing import Optional
 import os
+from passlib.context import CryptContext
+# Password hashing context
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 from config.logging_config import get_logger
 
 logger = get_logger("auth")
+def hash_crsf(password: str) -> str:
+        """Hash a password using bcrypt"""
+        logger.debug("Hashing password")
+        return pwd_context.hash(password)
+
+def verify_csrf_hash(plain_password: str, hashed_password: str) -> bool:
+    """Verify a password against its hash"""
+    logger.debug("Verifying password")
+    return pwd_context.verify(plain_password, hashed_password) 
 
 
 ISSUER = os.getenv("ISSUER", "SERVER")
@@ -25,7 +37,8 @@ async def create_jwt(userId: str,
                      session_id: str, 
                      remember_me,
                      refresh_token_repo: Optional['RefreshTokenRepository'] = None,
-                     type="access", 
+                     type="access",
+                     csrf: str = None,
                      issuer=ISSUER, 
                      audience=AUDIENCE):
     """
@@ -68,7 +81,7 @@ async def create_jwt(userId: str,
         if refresh_token_repo is None:
             raise ValueError("RefreshTokenRepository not provided for storing refresh token")
         
-        csrtf_hash = str(uuid.uuid4()).replace("-", "")
+        csrt_hash = hash_crsf(csrf)
 
         # Create refresh token database record
         token_data = RefreshTokenCreateSchema(
@@ -77,7 +90,7 @@ async def create_jwt(userId: str,
             sid=str(session_id),
             expires_at=now + lifespan,
             issued_at=now,
-            csrf_hash=csrtf_hash
+            csrf_hash=csrt_hash
         )
 
         try:
