@@ -184,55 +184,21 @@ class AuthService:
             raise e
         
         # Get JTI from the token
-        jti = decoded_token.get("jti")
-        if not jti:
-            logger.warning("Refresh token has no JTI (JWT ID) claim.")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid refresh token",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+        jti = decoded_token.get("jti")  
 
         # Get user ID from the token
-        user_id = decoded_token.get("sub")
-        if not user_id:
-            logger.warning("Refresh token has no user ID (sub) claim.")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid refresh token",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+        user_id = decoded_token.get("sub") 
+
         # Validate session ID
-        session_id = decoded_token.get("sid")
-        if not session_id:
-            logger.warning("Refresh token has no session ID (sid) claim.")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid refresh token",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        
+        session_id = decoded_token.get("sid") 
+
         # Validate remember_me flag'
         remember_me = decoded_token.get("rm", False)
-        if not isinstance(remember_me, bool):   
-            logger.warning("Refresh token has invalid remember_me claim.")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid refresh token",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
+        
         # Validate issuer and audience
         issuer = decoded_token.get("iss")   
         audience = decoded_token.get("aud")
-        if not issuer or not audience:
-            logger.warning("Refresh token has missing issuer or audience claims.")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid refresh token",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        
+         
         # Look up the refresh token in the database   
         existing_refresh_token = await self.refresh_token_repo.get_refresh_token_by_jti(jti=jti)
 
@@ -447,23 +413,9 @@ class AuthService:
         
         # Get JTI from the token
         jti = decoded_token.get("jti")
-        if not jti:
-            logger.warning("Refresh token has no JTI (JWT ID) claim.")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid refresh token",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
         
         # Validate session ID
         session_id = decoded_token.get("sid")
-        if not session_id:
-            logger.warning("Refresh token has no session ID (sid) claim.")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid refresh token",
-                headers={"WWW-Authenticate": "Bearer"},
-            ) 
         
         # Invalidate session in db
         logger.info(f"Checking for sid: {session_id}")
@@ -564,20 +516,13 @@ class AuthService:
 
         # Get user ID from the token
         user_id = decoded_token.get("sub")
-        if not user_id:
-            logger.warning("Refresh token has no user ID (sub) claim.")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid refresh token",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
 
         # Revoke in the repository
         sessions_revoked = await self.session_repo.revoke_all_active_sessions_by_user_id(uuid.UUID(user_id))
 
         # Remove refresh token records from db 
-        tokens_revoked = await self.refresh_token_repo.delete_all_refresh_tokens_by_user_id(uuid.UUID(user_id))
+        #tokens_revoked = await self.refresh_token_repo.delete_all_refresh_tokens_by_user_id(uuid.UUID(user_id))
 
-        logger.info(f"Global logout for user {user_id}: sessions_revoked={sessions_revoked}, tokens_revoked={tokens_revoked}")
+        logger.info(f"Global logout for user {user_id}: sessions_revoked={sessions_revoked}")
 
         return {"message": "All sessions and tokens revoked successfully"}

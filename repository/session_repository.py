@@ -96,6 +96,7 @@ class SessionRepository:
         if session_record: 
             session_record.revoked_at = datetime.now(timezone.utc)
             await self.session.commit()
+            await self.session.refresh(session_record)
             return True
         return False 
 
