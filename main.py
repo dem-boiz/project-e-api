@@ -5,6 +5,8 @@ from config.logging_config import setup_logging, get_logger
 setup_logging()
 logger = get_logger("app")
 
+IS_DEV = os.getenv("RAILWAY_ENVIRONMENT") is None
+
 from fastapi import FastAPI
 from routes.user_route import router as user_router
 from routes.base_route import router as base_router
@@ -15,7 +17,8 @@ from routes.auth_route import router as auth_router
 from fastapi.middleware.cors import CORSMiddleware
 from routes.user_event_access_route import router as user_event_access_router
 from middleware.request_logging import RequestLoggingMiddleware
-from models import User, Session
+import uvicorn
+
 logger.info("Starting FastAPI application initialization")
 
 allowed_origins = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000").split(",")
@@ -47,3 +50,16 @@ app.include_router(user_event_access_router)
 
 logger.info("All routers registered successfully")
 logger.info("FastAPI application setup complete")
+
+if __name__ == "__main__":
+    logger.info("Running FastAPI application (IPV4 & IPV6) with uvicorn...")
+    uvicorn.run(
+        app,
+        host=["::", "0.0.0.0"],  # listen on IPv6 and IPv4 dual stack
+        port=int(os.getenv("PORT", 8080)),
+        proxy_headers=True,
+        forwarded_allow_ips="*",
+        reload=IS_DEV  # set True only for local dev hot-reload
+    )
+
+
