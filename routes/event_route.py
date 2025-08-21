@@ -35,7 +35,7 @@ async def get_current_host(
 ) -> Host:
     """Get the current authenticated host from JWT token"""
     token = credentials.credentials
-    return await auth_service.get_current_host(token)
+    return await auth_service.get_current_host_service(token)
 
 # Dependency to verify host authorization for event creation
 async def verify_host_authorization(
@@ -49,6 +49,23 @@ async def verify_host_authorization(
             detail="You can only create events for your own host account"
         )
     return data
+
+
+async def validate_token_parent_session(
+    credentials: HTTPAuthorizationCredentials = Security(security),
+    auth_service: AuthService = Depends(get_auth_service)
+): 
+    """ validate token parent session by checking that it hasnt been revoked"""
+    isActive = await auth_service.validate_session_is_active(credentials.credentials)
+
+    if isActive == False:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="session expired"
+        )
+    
+    return 
+
 
 # Dependency to verify host authorization for event deletion
 async def verify_event_ownership_for_delete(
@@ -118,8 +135,8 @@ async def verify_event_ownership_for_update(
             detail=f"Error occured. {e}"
         )
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
-@router.post("", status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED, dependencies=[Depends(validate_token_parent_session)])
+@router.post("", status_code=status.HTTP_201_CREATED, dependencies=[Depends(validate_token_parent_session)])
 async def create_event(
     data: EventCreateSchema = Depends(verify_host_authorization), 
     service: EventService = Depends(get_event_service)
@@ -130,7 +147,7 @@ async def create_event(
     logger.info(f"Event created successfully: {data.name}")
     return result
 
-@router.delete("/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{event_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(validate_token_parent_session)])
 async def delete_event(
     event_id: str = Depends(verify_event_ownership_for_delete),
     service: EventService = Depends(get_event_service)
@@ -163,7 +180,7 @@ async def get_event_by_name(name: str, service: EventService = Depends(get_event
     logger.info(f"Event retrieved by name: {name}")
     return result
 
-@router.patch("/{event_id}")
+@router.patch("/{event_id}", status_code=204, dependencies=[Depends(validate_token_parent_session)])
 async def update_event(
     event_data: tuple[str, EventUpdateSchema] = Depends(verify_event_ownership_for_update),
     service: EventService = Depends(get_event_service)
@@ -173,4 +190,4 @@ async def update_event(
     logger.info(f"Updating event: {event_id}")
     result = await patch_event_handler(service, event_id, data)
     logger.info(f"Event updated successfully: {event_id}")
-    return result
+    return

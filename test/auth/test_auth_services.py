@@ -6,7 +6,7 @@ from httpx import AsyncClient, ASGITransport
 from services import AuthService, HostService
 from database import AsyncSessionLocal
 from models import Host
-from schema import HostCreateSchema, LoginRequest
+from schema import HostCreateSchema, LoginRequestSchema
 from utils.utils import verify_jwt
 import sys
 import asyncio
@@ -143,8 +143,8 @@ async def test_login_success():
         assert created_host is not None
         
         # Test login
-        login_request = LoginRequest(email=email, password=password)
-        login_response = await authn_service.login(login_request)
+        login_request = LoginRequestSchema(email=email, password=password)
+        login_response = await authn_service.login_service(login_request)
         
         assert "access_token" in login_response
         assert login_response["token_type"] == "bearer"
@@ -166,10 +166,10 @@ async def test_login_invalid_credentials():
         authn_service = AuthService(session)
         
         # Test login with invalid credentials
-        login_request = LoginRequest(email="nonexistent@example.com", password="wrongpassword")
+        login_request = LoginRequestSchema(email="nonexistent@example.com", password="wrongpassword")
         
         with pytest.raises(Exception):  # Should raise HTTPException
-            await authn_service.login(login_request)
+            await authn_service.login_service(login_request)
 
 
 @pytest.mark.asyncio
@@ -191,12 +191,12 @@ async def test_get_current_host_success():
         )
         
         created_host = await host_service.create_host(host_create)
-        login_request = LoginRequest(email=email, password=password)
-        login_response = await authn_service.login(login_request)
+        login_request = LoginRequestSchema(email=email, password=password)
+        login_response = await authn_service.login_service(login_request)
         
         # Test get current host
         token = login_response["access_token"]
-        current_host = await authn_service.get_current_host(token)
+        current_host = await authn_service.get_current_host_service(token)
         
         assert current_host is not None
         assert current_host.email == email
@@ -215,7 +215,7 @@ async def test_get_current_host_invalid_token():
         
         # Test with invalid token
         with pytest.raises(Exception):  # Should raise HTTPException
-            await authn_service.get_current_host("invalid.jwt.token")
+            await authn_service.get_current_host_service("invalid.jwt.token")
 
 
 @pytest.mark.asyncio
@@ -229,7 +229,7 @@ async def test_get_current_host_invalid_uuid():
         invalid_token = create_jwt("not-a-valid-uuid")
         
         with pytest.raises(Exception):  # Should raise HTTPException due to invalid UUID
-            await authn_service.get_current_host(invalid_token)
+            await authn_service.get_current_host_service(invalid_token)
 
 
 @pytest.mark.asyncio
@@ -244,7 +244,7 @@ async def test_get_current_host_nonexistent_host():
         fake_token = create_jwt(fake_uuid)
         
         with pytest.raises(Exception):  # Should raise HTTPException due to host not found
-            await authn_service.get_current_host(fake_token)
+            await authn_service.get_current_host_service(fake_token)
 
 
 @pytest.mark.asyncio 
@@ -271,8 +271,8 @@ async def test_authn_service_integration():
         assert created_host.password_hash is None  # Should be sanitized in response
         
         # Step 2: Login
-        login_request = LoginRequest(email=email, password=password)
-        login_response = await authn_service.login(login_request)
+        login_request = LoginRequestSchema(email=email, password=password)
+        login_response = await authn_service.login_service(login_request)
         
         assert "access_token" in login_response
         assert login_response["token_type"] == "bearer"
@@ -280,7 +280,7 @@ async def test_authn_service_integration():
         
         # Step 3: Get current user using JWT
         token = login_response["access_token"]
-        current_host = await authn_service.get_current_host(token)
+        current_host = await authn_service.get_current_host_service(token)
         
         assert current_host.email == email
         assert current_host.company_name == "Integration Test Company"

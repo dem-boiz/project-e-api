@@ -1,14 +1,15 @@
 import os
+import uuid
 from config.logging_config import get_logger
-from fastapi import APIRouter, Depends, status, Security, Response, Cookie, Header, HTTPException
+from fastapi import APIRouter, Depends, Request, status, Security, Response, Cookie, Header, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.session import get_async_session
 from models import host
 from services import AuthService, HostService
-from schema import LoginRequest, LoginResponse, CurrentUserResponse, RefreshResponse
+from schema import LoginRequestSchema, LoginResponseSchema, CurrentUserResponseSchema, RefreshResponseSchema
 from utils import verify_csrf_token
-from handlers.auth_handler import handle_refresh_token, handle_get_me, handle_login, handle_logout
+from handlers.auth_handler import refresh_token_handler, get_me_handler, login_handler, logout_handler, global_logout_handler, kill_session_handler
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 security = HTTPBearer()
@@ -22,15 +23,15 @@ async def get_auth_service(session: AsyncSession = Depends(get_async_session)) -
 async def get_host_service(session: AsyncSession = Depends(get_async_session)) -> HostService:
     return HostService(session)
 
-@router.post("/login", response_model=LoginResponse, status_code=status.HTTP_200_OK)
+@router.post("/login", response_model=LoginResponseSchema, status_code=status.HTTP_200_OK)
 async def login(
-    login_data: LoginRequest,
+    login_data: LoginRequestSchema,
     response: Response,
     service: AuthService = Depends(get_auth_service),
 ):
     """Login endpoint for hosts"""
     logger.info(f"Login attempt for email: {login_data.email}")
-    result = await handle_login(login_data, response, service)
+    result = await login_handler(login_data, response, service)
     logger.info(f"Login successful for email: {login_data.email}")
     # prevent browsers from caching tokens
     response.headers["Cache-Control"] = "no-store"
@@ -42,37 +43,55 @@ async def login(
 @router.post("/logout", status_code=status.HTTP_200_OK)
 async def logout(
     response: Response,
-    service: AuthService = Depends(get_auth_service),
-):
-    """Logout endpoint with CSRF protection"""
-    logger.info("CSRF token verified. Processing logout request")
-    return await handle_logout(response)
+    refresh_token: str | None = Cookie(default=None),
+    service: AuthService = Depends(get_auth_service)
+): 
+    logger.info("Processing logout request")
+    return await logout_handler(response=response, service=service, refresh_token=refresh_token)
 
-@router.get("/me", response_model=CurrentUserResponse, status_code=status.HTTP_200_OK)
+# Global logout endpoint
+@router.post("/global-logout", status_code=status.HTTP_200_OK)
+async def global_logout( 
+    refresh_token: str | None = Cookie(default=None),
+    service: AuthService = Depends(get_auth_service)
+): 
+    logger.info("Processing global logout request")
+    return await global_logout_handler(service=service, refresh_token=refresh_token)
+
+# Kill session endpoint
+@router.post("/kill-session/{sid}", status_code=status.HTTP_200_OK)
+async def kill_session(
+    sid: uuid.UUID, 
+    auth_service: AuthService = Depends(get_auth_service)
+):
+    return await kill_session_handler(service=auth_service, sid=sid)
+    
+@router.get("/me", response_model=CurrentUserResponseSchema, status_code=status.HTTP_200_OK)
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Security(security),
     service: AuthService = Depends(get_auth_service)
 ):
     """Get current authenticated user"""
     logger.debug(f"Getting current user for token: {credentials.credentials}")
-    result = await handle_get_me(credentials, service)
+    result = await get_me_handler(credentials, service)
     logger.debug(f"Current user retrieved: {result.email}")
     return result
 
 
 @router.post("/refresh", 
-             response_model=RefreshResponse, 
+             response_model=RefreshResponseSchema, 
              status_code=status.HTTP_200_OK, 
              dependencies =[Depends(verify_csrf_token)]) # CSRF protection
 async def refresh_token(
     response: Response,
+    request: Request,
     refresh_token: str | None = Cookie(default=None),
     service: AuthService = Depends(get_auth_service) 
-) -> RefreshResponse:
+) -> RefreshResponseSchema:
     """Refresh JWT token and rotate CSRF token"""
     logger.debug("Refreshing JWT token for host")
-    
-    result = await handle_refresh_token(refresh_token, service, response)
+    logger.debug(f"Received refresh token: {refresh_token}")
+    result = await refresh_token_handler(refresh_token, service, response, request)
     
     logger.debug("New access token and CSRF token generated")
     return result

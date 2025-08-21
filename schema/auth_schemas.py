@@ -1,12 +1,12 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 
-class LoginRequest(BaseModel):
+class LoginRequestSchema(BaseModel):
     email: EmailStr
     password: str
     rememberMe: bool
 
-class LoginResponse(BaseModel):
+class LoginResponseSchema(BaseModel):
     access_token: str
     token_type: str = "bearer"
     email: EmailStr
@@ -15,24 +15,24 @@ class LoginResponse(BaseModel):
     id: str
     csrf_token: Optional[str] = None  # CSRF token for CSRF protection
 
-class LoginServiceResponse(BaseModel):
-    response_body: LoginResponse
+class LoginServiceResponseSchema(BaseModel):
+    response_body: LoginResponseSchema
     refresh_token: str
 
-class RefreshResponse(BaseModel):
+class RefreshResponseSchema(BaseModel):
     access_token: str
     token_type: str = "bearer"
     class Config:
         from_attributes = True
 
-class RefreshTokens(BaseModel):
+class RefreshTokensSchema(BaseModel):
     access_token: str
     refresh_token: str
 
     class Config:
         from_attributes = True
 
-class CurrentUserResponse(BaseModel):
+class CurrentUserResponseSchema(BaseModel):
     email: EmailStr
     name: str
     host_id: Optional[str] = None

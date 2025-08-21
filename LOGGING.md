@@ -47,7 +47,7 @@ from config.logging_config import get_logger
 
 logger = get_logger("auth")
 
-async def login(self, login_data: LoginRequest):
+async def login(self, login_data: LoginRequestSchema):
     logger.info(f"Login attempt for email: {login_data.email}")
     # ... login logic
     logger.info(f"Login successful for host: {host.id}")
