@@ -15,7 +15,7 @@ from database.session import get_async_session
 from routes.otp_route import get_otp_service
 from services import EventService, AuthService
 from repository.event_repository import EventRepository
-from schema.event_schemas import EventCreateSchema, EventUpdateSchema
+from schema import EventCreateSchema, EventUpdateSchema, EventInviteSchema
 from sqlalchemy.ext.asyncio import AsyncSession
 from models import Host
 from config.logging_config import get_logger
@@ -166,7 +166,7 @@ async def create_event(
 
 @router.delete("/{event_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(validate_token_parent_session)])
 async def delete_event(
-    event_id: str = Depends(verify_event_ownership_for_delete),
+    event_id: str = Depends(verify_event_ownership_for_modification),
     service: EventService = Depends(get_event_service)
 ):
     """Delete an event - requires authentication and ownership verification"""
@@ -197,7 +197,7 @@ async def update_event(
 
 @router.post("/{event_id}/invite")
 async def post_event_invite_otp(
-    event_data: tuple[str, EventUpdateSchema, Host] = Depends(verify_event_ownership_for_modification),
+    event_data: tuple[str, EventInviteSchema, Host] = Depends(verify_event_ownership_for_modification),
     service: OTPService = Depends(get_otp_service),
 ):
     """Create and return the invite OTP for an event - requires authentication and ownership verification"""
