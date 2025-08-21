@@ -72,6 +72,7 @@ class DeviceGrantService:
         """
         Validate a device token and return the grant if valid
         Checks: token exists, not expired, not revoked
+        Returns True if valid, False otherwise
         """
         logger.debug("Validating device token")
         
@@ -83,24 +84,24 @@ class DeviceGrantService:
 
         if not device_grant:
             logger.warning("Device token not found")
-            return None
+            return False
         
         # Check if expired
         if device_grant.expires_at < datetime.now():
             logger.warning(f"Device token expired: {device_grant.id}")
-            return None
+            return False
         
         # Check if revoked
         if device_grant.revoked_at is not None:
             logger.warning(f"Device token revoked: {device_grant.id}")
-            return None
+            return False
         
         if event_id != device_grant.event_id:
             logger.warning("Device token does not match event")
-            return None
+            return False
 
         logger.debug(f"Device token validated successfully: {device_grant.id}")
-        return device_grant
+        return True
 
     async def revoke_device_grant(self, device_grant_id: uuid.UUID) -> bool:
         """Revoke a device grant by setting revoked_at timestamp"""

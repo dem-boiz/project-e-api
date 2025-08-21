@@ -24,15 +24,19 @@ class OTPService:
         assert hasattr(db, "execute"), "db is not an AsyncSession"
         self.repo = OTPRepository(db) 
     
-    async def generate_otp(self, otp_data: OTPCreateRequest) -> OTP:
+    async def generate_otp(self, otp_data: OTPCreateRequest, host_id: str) -> OTP:
         otp_code = await generate_unique_otp_code(self.repo)
-        expires_at = datetime.utcnow() + timedelta(minutes=10)
+        expires_at = datetime.now() + timedelta(minutes=10) # TODO: set this to an env variable?
 
         otp_object = OTP(
             email=otp_data.email,
+            label=otp_data.label,
             event_id=otp_data.event_id,
             otp_code=otp_code,
-            expires_at=expires_at)
+            expires_at=expires_at,
+            created_at=datetime.now(),
+            issued_by_host_id=host_id
+            )
         await self.repo.create_otp(otp_object) 
         return otp_object
     

@@ -10,6 +10,8 @@ class OTPVerifyResponse(BaseModel):
 class OTPCreateRequest(BaseModel):
     email: EmailStr
     event_id: uuid.UUID
+    label: Optional[str] = None
+    
 
 class OTPVerifyRequest(BaseModel):
     otp_code: str
