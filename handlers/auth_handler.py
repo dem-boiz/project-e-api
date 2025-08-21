@@ -60,3 +60,4 @@ async def kill_session_handler(service: AuthService, sid: uuid.UUID):
             status_code=404,
             detail="No active tokens found for the given session ID"
         )
+
