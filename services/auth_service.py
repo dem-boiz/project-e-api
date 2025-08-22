@@ -105,9 +105,11 @@ class AuthService:
             key="csrf_token",
             value=csrf_token,
             httponly=False,  # JavaScript needs to read this
-            secure=True if ENV == "PROD" else False,
-            samesite="none" if ENV == "PROD" else "lax",
+            secure=IS_PROD,
+            samesite="lax",
             max_age=30*24*3600 if remember_me else None,
+            domain=None,  # Set domain only in production (once we have api and client on same domain we need to switch this)
+            path="/"  # Available on all paths
         )
 
         logger.debug(f"CSRF token cookie set for host: {login_data.email}")
@@ -136,11 +138,10 @@ class AuthService:
             key="refresh_token",
             value=LoginResponse["refresh_token"],
             httponly=True,
-
-            secure=True if ENV == "PROD" else False,
-            samesite="none" if ENV == "PROD" else "lax",
+            secure=IS_PROD,
+            samesite="lax",
             max_age=30*24*3600 if remember_me else None,
-            path="/auth/refresh"
+            path="/api/auth/refresh"
         )
 
         
@@ -323,24 +324,28 @@ class AuthService:
         remember_me = decoded_token["rm"]
         # Set updated refresh token as HTTP-only cookie
         logger.debug(f"Setting cookie for refresh token with ENV '{ENV}'")
+
         response.set_cookie(
             key="refresh_token",
             value=new_refresh_token,
             httponly=True,
-            secure=True if ENV == "PROD" else False,
-            samesite="none" if ENV == "PROD" else "lax",
+            secure=IS_PROD,
+            samesite="lax",
             max_age=30*24*3600 if remember_me else None,
-            path="/auth/refresh"
+            path="/api/auth/refresh"
         )
+                                       
          
         # Also set new CSRF token as cookie (non-httponly)
         response.set_cookie(
             key="csrf_token",
             value=new_csrf_token,
             httponly=False,  # JS needs to read this
-            secure=True if ENV == "PROD" else False,
-            samesite="none" if ENV == "PROD" else "lax",
+            secure=IS_PROD,
+            samesite="lax",
             max_age=30*24*3600 if remember_me else None,
+            domain=None,
+            path="/" 
         )
         logger.debug("Generated new CSRF token for refreshed session.")
         # Return access token and new CSRF token in response body
@@ -383,19 +388,20 @@ class AuthService:
         # Delete refresh token cookie
         response.delete_cookie(
             key="refresh_token",
-            path="/auth/refresh",
+            path="/api/auth/refresh",
             httponly=True,
-            secure=is_prod,
-            samesite="none" if is_prod else "lax"
+            secure=IS_PROD,
+            samesite="lax"
         )
 
         # Delete CSRF token cookie
         response.delete_cookie(
             key="csrf_token",
-            path="/",
             httponly=False,
-            secure=is_prod,
-            samesite="none" if is_prod else "lax"
+            secure=IS_PROD,
+            samesite="lax",
+            domain=None,
+            path="/"
         )
         # Only try to invalidate server-side tokens if refresh token exists
         if refresh_token is None:
