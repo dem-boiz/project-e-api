@@ -141,7 +141,7 @@ class AuthService:
             secure=IS_PROD,
             samesite="lax",
             max_age=30*24*3600 if remember_me else None,
-            path="/api/auth/refresh"
+            path="/api/auth"
         )
 
         
