@@ -332,7 +332,7 @@ class AuthService:
             secure=IS_PROD,
             samesite="lax",
             max_age=30*24*3600 if remember_me else None,
-            path="/api/auth/refresh"
+            path="/api/auth"
         )
                                        
          
@@ -382,12 +382,11 @@ class AuthService:
         # Example: remove token from a session store
         # await self.session_repo.delete_by_user_id(current_user.id)
         """Handle logout by deleting access, refresh, and CSRF cookies"""
-        is_prod = ENV == "PROD"
         logger.info("Logging out user, clearing cookies")
         # Delete refresh token cookie
         response.delete_cookie(
             key="refresh_token",
-            path="/api/auth/refresh",
+            path="/api/auth",
             httponly=True,
             secure=IS_PROD,
             samesite="lax"
