@@ -353,7 +353,6 @@ class AuthService:
             "access_token": access_token,
             "token_type": "bearer",
             "csrf_token": new_csrf_token,
-            "refresh_token": refresh_token
         }
         
     async def kill_session_service(self, 
