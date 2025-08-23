@@ -36,9 +36,11 @@ async def login_handler(
     return await service.login_service(login_data=login_data, response=response)
 
 
-async def logout_handler(response: Response, 
-                        service:AuthService, 
-                        refresh_token: str | None):
+async def logout_handler(
+        response: Response, 
+        service:AuthService, 
+        refresh_token: str | None
+    ):
     return await service.logout_user_service(response=response, refresh_token=refresh_token)
     
 async def global_logout_handler(service: AuthService, 

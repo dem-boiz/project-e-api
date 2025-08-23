@@ -40,7 +40,10 @@ async def login(
     return result
     
 
-@router.post("/logout", status_code=status.HTTP_200_OK)
+@router.post("/logout", 
+    status_code=status.HTTP_200_OK,
+    dependencies =[Depends(verify_csrf_token)]
+)
 async def logout(
     response: Response,
     refresh_token: str | None = Cookie(default=None),
