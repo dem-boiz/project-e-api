@@ -415,9 +415,7 @@ class AuthService:
         except HTTPException as e:
             logger.error(f"Refresh token verification failed: {e.detail}")
             raise e
-        
-        # Get JTI from the token
-        jti = decoded_token.get("jti")
+
         
         # Validate session ID
         session_id = decoded_token.get("sid")
