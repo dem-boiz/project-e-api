@@ -25,6 +25,11 @@ class RefreshResponseSchema(BaseModel):
     class Config:
         from_attributes = True
 
+class RefreshDeviceResponseSchema(BaseModel):
+    message: str
+    class Config:
+        from_attributes = True
+
 class RefreshTokensSchema(BaseModel):
     access_token: str
     refresh_token: str

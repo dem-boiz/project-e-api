@@ -22,9 +22,9 @@ from .user_event_access_handlers import (
 )
 
 from .auth_handler import (
-    handle_refresh_token, 
-    handle_get_me,
-    handle_login, 
-    handle_logout,
-    handle_refresh_device_token
+    refresh_token_handler, 
+    get_me_handler,
+    login_handler, 
+    logout_handler,
+    refresh_device_token_handler
 )

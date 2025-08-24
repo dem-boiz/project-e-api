@@ -1,5 +1,4 @@
 import os
-import uuid
 from config.logging_config import get_logger
 from fastapi import APIRouter, Depends, Request, status, Security, Response, Cookie, Header, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -7,13 +6,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database.session import get_async_session
 from models import host
 from services import AuthService, HostService
-from schema import LoginRequestSchema, LoginResponseSchema, CurrentUserResponseSchema, RefreshResponseSchema
+from schema import (
+    LoginRequestSchema, 
+    LoginResponseSchema, 
+    CurrentUserResponseSchema, 
+    RefreshResponseSchema,
+    RefreshDeviceResponseSchema
+)
 from utils import verify_csrf_token
 from handlers import (
-    handle_refresh_token, 
-    handle_get_me, handle_login, 
-    handle_logout,
-    handle_refresh_device_token
+    refresh_token_handler, 
+    get_me_handler, 
+    logout_handler, 
+    login_handler,
+    refresh_device_token_handler
 )
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
@@ -45,35 +51,16 @@ async def login(
     return result
     
 
-@router.post("/logout", 
-    status_code=status.HTTP_200_OK,
-    dependencies =[Depends(verify_csrf_token)]
-)
+@router.post("/logout", status_code=status.HTTP_200_OK)
 async def logout(
     response: Response,
     refresh_token: str | None = Cookie(default=None),
-    service: AuthService = Depends(get_auth_service)
-): 
-    logger.info("Processing logout request")
-    return await logout_handler(response=response, service=service, refresh_token=refresh_token)
-
-# Global logout endpoint
-@router.post("/global-logout", status_code=status.HTTP_200_OK)
-async def global_logout( 
-    refresh_token: str | None = Cookie(default=None),
-    service: AuthService = Depends(get_auth_service)
-): 
-    logger.info("Processing global logout request")
-    return await global_logout_handler(service=service, refresh_token=refresh_token)
-
-# Kill session endpoint
-@router.post("/kill-session/{sid}", status_code=status.HTTP_200_OK)
-async def kill_session(
-    sid: uuid.UUID, 
-    auth_service: AuthService = Depends(get_auth_service)
+    service: AuthService = Depends(get_auth_service),
 ):
-    return await kill_session_handler(service=auth_service, sid=sid)
-    
+    """Logout endpoint with CSRF protection"""
+    logger.info("CSRF token verified. Processing logout request")
+    return await logout_handler(response, service, refresh_token)
+
 @router.get("/me", response_model=CurrentUserResponseSchema, status_code=status.HTTP_200_OK)
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Security(security),
@@ -98,9 +85,9 @@ async def refresh_token(
 ) -> RefreshResponseSchema:
     """Refresh JWT token and rotate CSRF token"""
     logger.debug("Refreshing JWT token for host")
-    logger.debug(f"Received refresh token: {refresh_token}")
+
     result = await refresh_token_handler(refresh_token, service, response, request)
-    
+
     logger.debug("New access token and CSRF token generated")
     return result
  
@@ -111,12 +98,11 @@ async def refresh_token(
 async def refresh_device_token(
     response: Response,
     device_token: str | None = Cookie(default=None),
-    service: AuthService = Depends(get_auth_service)
-) -> RefreshResponse:
+) -> RefreshDeviceResponseSchema:
     """Refresh device JWT token and rotate CSRF token"""
     logger.debug("Refreshing device JWT token for host")
 
-    result = await handle_refresh_device_token(device_token, service, response)
+    result = await refresh_device_token_handler(device_token, response)
 
     logger.debug("New device access token and CSRF token generated")
     return result
