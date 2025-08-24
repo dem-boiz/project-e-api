@@ -428,7 +428,7 @@ class AuthService:
             raise "Session not invalidated"  
 
         # Delete all refresh tokens from the database
-        #deleted_refresh_tokens = await self.refresh_token_repo.delete_all_refresh_tokens_by_sid(sid=sid)
+        # deleted_refresh_tokens = await self.refresh_token_repo.delete_all_refresh_tokens_by_sid(sid=sid)
 
         logger.info("All cookies cleared for logout")
         return {"message": "Logged out successfully"}
