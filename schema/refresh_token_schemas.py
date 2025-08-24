@@ -17,7 +17,7 @@ class RefreshTokenBaseSchema(BaseModel):
 class RefreshTokenCreateSchema(RefreshTokenBaseSchema):
     """Model for creating a new refresh token"""
     sid: str = Field(..., description="Session ID - binds token to its session")
-    csrf_hash: Optional[bytes] = Field(None, description="Hash of CSRF secret for double-submit protection")
+    csrf_hash: str = Field('', description="Hash of CSRF secret for double-submit protection")
     issued_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Token creation timestamp")
     model_config = ConfigDict(
         json_encoders={
@@ -40,7 +40,7 @@ class RefreshTokenSchema(RefreshTokenBaseSchema):
     issued_at: datetime = Field(..., description="Token issuance timestamp")
     used_at: Optional[datetime] = Field(None, description="Set when token is rotated - if seen again indicates reuse/theft")
     revoked_at: Optional[datetime] = Field(None, description="Explicit server revocation timestamp")
-    csrf_hash: Optional[bytes] = Field(None, description="Hash of CSRF secret for double-submit protection")
+    csrf_hash: str = Field('', description="Hash of CSRF secret for double-submit protection")
 
     model_config = ConfigDict(
         from_attributes=True,
@@ -80,7 +80,7 @@ class RefreshTokenRotation(BaseModel):
     old_jti: UUID = Field(..., description="JTI of token being rotated")
     new_jti: UUID = Field(..., description="JTI of new token")
     new_expires_at: datetime = Field(..., description="Expiration of new token")
-    csrf_hash: Optional[bytes] = Field(None, description="CSRF hash for new token")
+    csrf_hash: str = Field('', description="CSRF hash for new token")
 
     model_config = ConfigDict(
         json_encoders={

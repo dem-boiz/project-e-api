@@ -30,18 +30,25 @@ def verify_csrf_hash(plain_password: str, hashed_password: str) -> bool:
 
 ISSUER = os.getenv("ISSUER", "SERVER")
 AUDIENCE = os.getenv('AUDIENCE', "CLIENT")
+
+
+# Is this needed?
 def generate_otp():
     import random
     return str(random.randint(100000, 999999))
-# TODO:  # What should the issuer and audience be? 
-async def create_jwt(userId: str,
-                     session_id: str, 
-                     remember_me,
-                     refresh_token_repo: Optional['RefreshTokenRepository'] = None,
-                     type="access",
-                     csrf: str = None,
-                     issuer=ISSUER, 
-                     audience=AUDIENCE):
+
+
+
+def create_jwt(
+    userId: str,
+    jti: uuid.UUID,
+    now: datetime,
+    lifespan: timedelta,
+    session_id: str, 
+    remember_me,
+    issuer=ISSUER, 
+    audience=AUDIENCE
+):
     """
     Create a JWT token with comprehensive claims for security and session management.
     
@@ -56,55 +63,106 @@ async def create_jwt(userId: str,
     Returns:
         str: Encoded JWT token
     """
-    # Determine token lifespan
-    if type == "access":
-        lifespan = timedelta(hours=JWT_ACCESS_LIFESPAN)
-    else:
-        lifespan = timedelta(days=30) if remember_me else timedelta(hours=JWT_REFRESH_LIFESPAN)
-    
-    # Current time for issued-at
-    now = datetime.now(timezone.utc)
-    
+
+    if SECRET_KEY is None:
+        logger.error("SECRET_KEY is not set")
+        raise ValueError("Fatal JWT Error: Missing SECRET_KEY.")
+
     # Create comprehensive payload with all required claims
     payload = {
         "sub": userId,                           # Subject (user ID)
         "sid": str(session_id),                       # Session ID (for session-wide control)
-        "jti": str(uuid.uuid4()),               # Token ID (unique per token issuance)
+        "jti": str(jti),                               # Token ID (unique per token issuance)
         "iat": int(now.timestamp()),            # Issued at (epoch seconds)
         "exp": int((now + lifespan).timestamp()), # Expiry (epoch seconds)
         "iss": issuer,                          # Issuer
         "aud": audience,                        # Audience
         "typ": type,                            # Token type ("access" or "refresh")
-        "rm": remember_me if type == "refresh" else None  # Remember Me flag for refresh tokens
+        "rm": remember_me if remember_me else None  # Remember Me flag for refresh tokens
     }  
 
-    if type == "refresh":
-        if refresh_token_repo is None:
-            raise ValueError("RefreshTokenRepository not provided for storing refresh token")
-        
-        csrt_hash = hash_crsf(csrf)
-
-        # Create refresh token database record
-        token_data = RefreshTokenCreateSchema(
-            jti=payload["jti"],
-            user_id=str(userId),
-            sid=str(session_id),
-            expires_at=now + lifespan,
-            issued_at=now,
-            csrf_hash=csrt_hash
-        )
-
-        try:
-            await refresh_token_repo.create_refresh_token(token_data)
-        except Exception as e:
-            logger.error(f"Error storing refresh token in database: {e}")
-            raise HTTPException(status_code=500, detail="Internal server error")
         
     logger.debug(f"Creating {type} JWT for user {userId}, session {session_id}, remember_me={remember_me}")
-    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM), jti
 
 
 
+async def create_access_token(
+    userId: str,
+    session_id: str, 
+    remember_me,
+    issuer=ISSUER, 
+    audience=AUDIENCE
+):
+    lifespan = timedelta(hours=JWT_ACCESS_LIFESPAN)
+    now = datetime.now(timezone.utc)
+    jti = uuid.uuid4()
+    result = create_jwt(
+        userId=userId,
+        now=now,
+        lifespan=lifespan,
+        session_id=session_id,
+        jti=jti,
+        remember_me=remember_me,
+        issuer=issuer,
+        audience=audience
+    )
+    return jti
+
+async def create_refresh_token(
+    userId: str,
+    session_id: str, 
+    remember_me,
+    refresh_token_repo: Optional['RefreshTokenRepository'] = None,
+    csrf: str | None = None,
+    issuer=ISSUER, 
+    audience=AUDIENCE,
+    replaced_by_jti: uuid.UUID | None = None,
+    parent_jti: uuid.UUID | None = None
+):
+    lifespan = timedelta(days=30) if remember_me else timedelta(hours=JWT_REFRESH_LIFESPAN)
+    now = datetime.now(timezone.utc)
+
+
+
+    if refresh_token_repo is None:
+        raise ValueError("RefreshTokenRepository not provided for storing refresh token")
+        
+    if csrf is None:
+        raise ValueError("CSRF token is required for refresh token")
+
+    csrf_hash = hash_crsf(csrf)
+    jti = uuid.uuid4()
+    encoded_token = create_jwt(
+        userId=userId,
+        jti=jti,
+        now=now,
+        lifespan=lifespan,
+        session_id=session_id,
+        remember_me=remember_me,
+        issuer=issuer,
+        audience=audience
+    )
+
+    # Create refresh token database record
+    token_data = RefreshTokenCreateSchema(
+        jti=jti,
+        user_id=str(userId),
+        sid=str(session_id),
+        expires_at=now + lifespan,
+        issued_at=now,
+        csrf_hash=csrf_hash,
+        replaced_by_jti=replaced_by_jti,
+        parent_jti=parent_jti
+    )
+
+    try:
+        await refresh_token_repo.create_refresh_token(token_data)
+    except Exception as e:
+        logger.error(f"Error storing refresh token in database: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+    return encoded_token
 
 def verify_jwt(token: str, expected_issuer=ISSUER, expected_audience=AUDIENCE, token_type=None):
     """
@@ -122,6 +180,11 @@ def verify_jwt(token: str, expected_issuer=ISSUER, expected_audience=AUDIENCE, t
     Raises:
         HTTPException: Various 401 errors for different validation failures
     """
+
+    if SECRET_KEY is None:
+        logger.error("SECRET_KEY is not set")
+        raise ValueError("Fatal JWT Error: Missing SECRET_KEY.")
+
     try:
         # Decode with comprehensive validation
         payload = jwt.decode(
@@ -175,7 +238,6 @@ def verify_jwt(token: str, expected_issuer=ISSUER, expected_audience=AUDIENCE, t
         logger.warning(f"JWT token has expired: {e}")
         raise HTTPException(status_code=401, detail="Token has expired")
     
-     
     except JWTClaimsError as e:
         logger.warning(f"JWT claims validation failed: {e}")
         raise HTTPException(status_code=401, detail="Invalid token claims")
@@ -183,7 +245,7 @@ def verify_jwt(token: str, expected_issuer=ISSUER, expected_audience=AUDIENCE, t
     except JWTError as e:
         logger.warning(f"Invalid JWT token: {e}")
         raise HTTPException(status_code=401, detail="Invalid token")
-    
+
     except Exception as e:
         logger.error(f"Unexpected error during JWT verification: {e}")
         logger.error(f"Full stack trace:\\n{traceback.format_exc()}")

@@ -3,6 +3,7 @@ import traceback
 import uuid
 from typing import Optional
 from fastapi.security import HTTPAuthorizationCredentials
+from sqlalchemy import false
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, Request, status, Response, Cookie 
 from passlib.context import CryptContext
@@ -490,8 +491,11 @@ class AuthService:
         decoded_token = verify_jwt(token)
         parent_session = await self.session_repo.get_session_by_sid(decoded_token["sid"])
         
-        return parent_session.revoked_at == None or parent_session.revoked_at <= decoded_token["iat"]
-        
+        if parent_session is None:
+            return False
+        if parent_session.revoked_at == None or parent_session.revoked_at <= decoded_token["iat"]:
+            return True
+        return False
 
         
 
