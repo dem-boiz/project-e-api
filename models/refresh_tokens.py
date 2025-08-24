@@ -1,5 +1,4 @@
 from datetime import datetime
-from sqlalchemy import Text
 from sqlalchemy import Column, DateTime, ForeignKey, Index, LargeBinary, CheckConstraint
 from models import Session
 from sqlalchemy.dialects.postgresql import UUID, INET
@@ -7,6 +6,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import uuid
+from sqlalchemy.orm import Mapped, mapped_column
 
 Base = declarative_base()
 
@@ -18,27 +18,27 @@ class RefreshToken(Base):
     __tablename__ = 'refresh_tokens'
     
     # Primary key: Refresh token id from JWT. Must be unique.
-    jti = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    jti: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     
     # Foreign key: Binds token to its session.
-    sid = Column(UUID(as_uuid=True), ForeignKey(Session.__table__.c.sid), nullable=False)
-    
+    sid: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey(Session.__table__.c.sid), nullable=False)
+
     # User ID: Quick lookup/auditing by user.
-    user_id = Column(UUID(as_uuid=True), nullable=False)
-    
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+
     # Timestamp fields for token lifecycle tracking
-    issued_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
-    expires_at = Column(DateTime(timezone=True), nullable=False)
-    used_at = Column(DateTime(timezone=True), nullable=True)  # Set when token is **rotated**. If seen again → **reuse/theft**.
-    revoked_at = Column(DateTime(timezone=True), nullable=True)  # Explicit server revocation (rare, but nice to have).
-    
+    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)  # Set when token is **rotated**. If seen again → **reuse/theft**.
+    revoked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)  # Explicit server revocation (rare, but nice to have).
+
     # Rotation chain tracking
-    parent_jti = Column(UUID(as_uuid=True), nullable=True)  # Previous refresh token in rotation chain.
-    replaced_by_jti = Column(UUID(as_uuid=True), nullable=True)  # Next token in chain.
-    
+    parent_jti: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=True)  # Previous refresh token in rotation chain.
+    replaced_by_jti: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=True)  # Next token in chain.
+
     # CSRF protection: Hash of CSRF secret bound to this refresh token (double-submit check).
-    csrf_hash = Column(LargeBinary, nullable=True)
-    
+    csrf_hash: Mapped[str] = mapped_column(LargeBinary, nullable=True)
+
     # Relationship to session
     #session = relationship("Session", back_populates="refresh_tokens")
     
@@ -67,7 +67,7 @@ class RefreshToken(Base):
     @property
     def is_expired(self):
         """Check if the refresh token has expired"""
-        return datetime.utcnow() > self.expires_at
+        return datetime.now() > self.expires_at
 
     @property
     def is_used(self):

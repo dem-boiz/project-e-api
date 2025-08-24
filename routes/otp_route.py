@@ -32,13 +32,3 @@ async def delete_otp_by_code(
     service: OTPService = Depends(get_otp_service),
 ):
     return await delete_otp_handler(otp_code, service)
-
-# Verify OTP by code  
-@router.post("/verify", response_model=OTPVerifyResponse)
-async def verify_code(
-    otp_code: str = Body(..., embed=True),
-    email: EmailStr = Body(..., embed=True),
-    event_id: str = Body(..., embed=True),
-    service: OTPService = Depends(get_otp_service),
-):
-    return await verify_otp_handler(otp_code, email, event_id, service)

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status, Security, HTTPException, Request
+from fastapi import APIRouter, Depends, Response, status, Security, HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from handlers import (
     create_event_handler, 
@@ -13,6 +13,7 @@ from handlers import (
 from database.session import get_async_session
 
 from routes.otp_route import get_otp_service
+from schema.otp_schemas import OTPCreateRequest
 from services import EventService, AuthService
 from repository.event_repository import EventRepository
 from schema import EventCreateSchema, EventUpdateSchema, EventInviteSchema
@@ -20,8 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from models import Host
 from config.logging_config import get_logger
 from services import OTPService
-
-
+import uuid
 # Initialize logger
 logger = get_logger("api.events")
 
@@ -81,15 +81,14 @@ async def validate_token_parent_session(
 
 # Dependency to verify host authorization for event deletion
 async def verify_event_ownership_for_delete(
-    event_id: str,
+    event_id: uuid.UUID,
     current_host: Host = Depends(get_current_host),
     service: EventService = Depends(get_event_service)
-) -> str:
+) -> uuid.UUID:
     """Verify that the authenticated host owns the event they want to delete"""
     import uuid
     try:
-        event_uuid = uuid.UUID(event_id)
-        event = await service.get_event_by_id(event_uuid)
+        event = await service.get_event_by_id(event_id=event_id)
 
         if event.host_id != current_host.id:
             logger.warning(f"Host {current_host.id} attempted to delete event {event_id} they do not own.")
@@ -111,16 +110,14 @@ async def verify_event_ownership_for_delete(
 
 # Dependency to verify host authorization for event updates
 async def verify_event_ownership_for_modification(
-    event_id: str,
+    event_id: uuid.UUID,
     data: EventUpdateSchema,
     current_host: Host = Depends(get_current_host),
     service: EventService = Depends(get_event_service)
-) -> tuple[str, EventUpdateSchema]:
+) -> tuple[uuid.UUID, EventUpdateSchema, Host]:
     """Verify that the authenticated host owns the event they want to update"""
-    import uuid
     try:
-        event_uuid = uuid.UUID(event_id)
-        event = await service.get_event_by_id(event_uuid)
+        event = await service.get_event_by_id(event_id=event_id)
 
         if event.host_id != current_host.id:
             raise HTTPException(
@@ -148,10 +145,6 @@ async def verify_event_ownership_for_modification(
         )
 
 
-
-async def validate_otp(otp: str, service: EventService = Depends(get_event_service)):
-    return await service.validate_otp(otp)
-
 @router.post("/", status_code=status.HTTP_201_CREATED, dependencies=[Depends(validate_token_parent_session)])
 @router.post("", status_code=status.HTTP_201_CREATED, dependencies=[Depends(validate_token_parent_session)])
 async def create_event(
@@ -166,7 +159,7 @@ async def create_event(
 
 @router.delete("/{event_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(validate_token_parent_session)])
 async def delete_event(
-    event_id: str = Depends(verify_event_ownership_for_modification),
+    event_id: uuid.UUID = Depends(verify_event_ownership_for_modification),
     service: EventService = Depends(get_event_service)
 ):
     """Delete an event - requires authentication and ownership verification"""
@@ -185,11 +178,11 @@ async def get_events(service: EventService = Depends(get_event_service)):
 
 @router.patch("/{event_id}", status_code=204, dependencies=[Depends(validate_token_parent_session)])
 async def update_event(
-    event_data: tuple[str, EventUpdateSchema, Host] = Depends(verify_event_ownership_for_modification),
+    event_data: tuple[uuid.UUID, EventUpdateSchema, Host] = Depends(verify_event_ownership_for_modification),
     service: EventService = Depends(get_event_service)
 ):
     """Update an event - requires authentication and ownership verification"""
-    event_id, data = event_data
+    event_id, data, get_current_host = event_data
     logger.info(f"Updating event: {event_id}")
     result = await patch_event_handler(service, event_id, data)
     logger.info(f"Event updated successfully: {event_id}")
@@ -197,24 +190,36 @@ async def update_event(
 
 @router.post("/{event_id}/invite")
 async def post_event_invite_otp(
-    event_data: tuple[str, EventInviteSchema, Host] = Depends(verify_event_ownership_for_modification),
+    event_data: tuple[uuid.UUID, EventInviteSchema, Host] = Depends(verify_event_ownership_for_modification),
     service: OTPService = Depends(get_otp_service),
 ):
     """Create and return the invite OTP for an event - requires authentication and ownership verification"""
     event_id, data, current_host = event_data
     logger.info(f"Getting invite OTP for event: {event_id}")
-    result = await service.generate_otp(event_id, data, current_host.id)
+    otp_create_request = OTPCreateRequest(
+        email=data.email,
+        event_id=event_id,
+        label=data.label
+    )
+    result = await service.generate_otp(otp_create_request, current_host.id)
     logger.info(f"Retrieved invite OTP for event: {event_id}")
     return result["otp_code"]
 
 @router.post("/join/{otp}")
 async def join_event(
     otp: str,
+    response: Response,
     service: EventService = Depends(get_event_service)
 ):
     """Join an event - requires authentication and event existence verification"""
     logger.info(f"Joining event with otp: {otp}")
-    result = await join_event_handler(otp, service)
+    
+    result = await join_event_handler(
+        otp, 
+        service,
+        device_id="TEST",
+        response=response
+    )
     return result
 
 @router.get("/my-events")

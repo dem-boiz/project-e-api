@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import Sequence, select
 from models.guest_device import GuestDevice
-from typing import Optional, List
+from typing import Optional, Sequence
 import uuid
 
 
@@ -23,7 +23,7 @@ class GuestDeviceRepository:
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
-    async def get_all(self) -> List[GuestDevice]:
+    async def get_all(self) -> Sequence[GuestDevice]:
         """Get all guest devices"""
         query = select(GuestDevice)
         result = await self.db.execute(query)

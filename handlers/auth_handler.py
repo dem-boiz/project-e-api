@@ -1,4 +1,5 @@
 
+
 import uuid
 from config.logging_config import get_logger
 from fastapi.security import HTTPAuthorizationCredentials
@@ -12,10 +13,9 @@ from schema import (
 from services import AuthService
 from fastapi import HTTPException, Request, Response
 from services import AuthService, GuestDeviceService
-
+from typing import cast
 
 from config import ENV
-from utils.utils import verify_jwt, generate_csrf_token
 from repository import RefreshTokenRepository
 
 logger = get_logger("auth")
@@ -28,7 +28,10 @@ async def refresh_token_handler(
     response: Response, 
     request: Request
 ) -> RefreshResponseSchema:
-    return await service.refresh_access_token_service(refresh_token=refresh_token, response=response, request=request)
+    return cast(
+        RefreshResponseSchema,
+        await service.refresh_access_token_service(refresh_token=refresh_token, response=response, request=request)
+    )
 
 
 async def get_me_handler(credentials: HTTPAuthorizationCredentials, service: AuthService) -> CurrentUserResponseSchema:
@@ -71,13 +74,12 @@ async def kill_session_handler(service: AuthService, sid: uuid.UUID):
         )
 
 async def refresh_device_token_handler(
-        device_id: str | None,
+        device_id: uuid.UUID | None,
         response: Response
     ) -> RefreshDeviceResponseSchema:
     if not device_id:
-        uuid = str(uuid.uuid4())
-        logger.warning(f"No device ID provided, generated new UUID: {uuid}")
-        device_id = uuid
+        device_id = uuid.uuid4()
+        logger.warning(f"No device ID provided, generated new UUID: {device_id}")
 
     # Update last seen timestamp, or create if a new device
     await GuestDeviceService.touch_guest_device(device_id) # type: ignore
@@ -85,7 +87,7 @@ async def refresh_device_token_handler(
     # Set device ID in cookie (persistent httponly)
     response.set_cookie(
         key="device_id",
-        value=device_id,
+        value=str(device_id),
         httponly=True,
         secure=IS_PROD,
         samesite="lax",

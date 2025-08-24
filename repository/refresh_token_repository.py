@@ -6,7 +6,7 @@ from models import RefreshToken
 from schema import RefreshTokenSchema, RefreshTokenCreateSchema
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional 
+from typing import Sequence 
 from sqlalchemy import update, func
 import logging
 
@@ -39,7 +39,9 @@ class RefreshTokenRepository:
             issued_at=new_token.issued_at,
             used_at=new_token.used_at,
             revoked_at=new_token.revoked_at,
-            csrf_hash=new_token.csrf_hash
+            csrf_hash=new_token.csrf_hash,
+            parent_jti=None,
+            replaced_by_jti=None
         )
     
     async def get_refresh_token_by_jti(self, jti: str) -> RefreshToken | None:
@@ -127,7 +129,7 @@ class RefreshTokenRepository:
         except Exception:
             return False      
         
-    async def get_all_refresh_tokens_by_sid(self, session_id: uuid.UUID) -> list[RefreshToken]:
+    async def get_all_refresh_tokens_by_sid(self, session_id: uuid.UUID) -> Sequence[RefreshToken]:
         try:
             result = await self.RefreshToken.execute(select(RefreshToken).where(
                 RefreshToken.sid == session_id
@@ -173,7 +175,7 @@ class RefreshTokenRepository:
             logger.error(f"Failed to delete refresh tokens for user_id {user_id}: {e}")
             return False
         
-    
+
     async def revoke_tokens_by_sid(self, sid: uuid.UUID) -> int:
         """Revoke all refresh tokens with the given session ID (sid)."""
         try:

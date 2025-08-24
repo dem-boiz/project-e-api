@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, Sequence
 import uuid
 
 from models.guest_device import GuestDevice
@@ -81,7 +81,7 @@ class GuestDeviceService:
                 detail="Failed to retrieve guest device"
             )
 
-    async def get_all_guest_devices(self) -> List[GuestDevice]:
+    async def get_all_guest_devices(self) -> Sequence[GuestDevice]:
         """
         Get all guest devices with error handling
         """

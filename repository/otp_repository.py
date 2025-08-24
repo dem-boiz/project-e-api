@@ -1,3 +1,4 @@
+from typing import Sequence
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.exc import NoResultFound
@@ -27,7 +28,7 @@ class OTPRepository:
         except NoResultFound:
             return None
 
-    async def get_otp_where(self, **kwargs) -> list[OTP]:
+    async def get_otp_where(self, **kwargs) -> Sequence[OTP]:
         """Retrieve OTP records matching the given criteria."""
         query = select(OTP)
         for key, value in kwargs.items():

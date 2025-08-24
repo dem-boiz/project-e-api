@@ -1,4 +1,5 @@
 import os
+import uuid
 from fastapi import Response
 from schema import EventCreateSchema, EventUpdateSchema
 from services import EventService, DeviceGrantService
@@ -15,19 +16,19 @@ async def create_event_handler(data: EventCreateSchema, service: EventService):
 async def get_events_handler(service: EventService):
     return await service.get_all_events()
 
-async def delete_event_handler(service: EventService, event_id: str):
+async def delete_event_handler(service: EventService, event_id: uuid.UUID):
     return await service.delete_event(event_id)
 
-async def patch_event_handler(service: EventService, event_id: str, data: EventUpdateSchema):
+async def patch_event_handler(service: EventService, event_id: uuid.UUID, data: EventUpdateSchema):
     return await service.update_event(event_id, data)
 
-async def get_event_by_id_handler(event_id: str, service: EventService):
+async def get_event_by_id_handler(event_id: uuid.UUID, service: EventService):
     return await service.get_event_by_id(event_id)
 
 async def get_event_by_name_handler(name: str, service: EventService):
     return await service.get_event_by_name(name)
 
-async def join_event_handler(otp: str, service: EventService, device_id: str, response: Response):
+async def join_event_handler(otp: str, service: EventService, device_id: uuid.UUID, response: Response):
     grant, token = await service.join_event(otp, device_id)
 
     cookieName = f'event_{grant.event_id}_token'
@@ -53,7 +54,7 @@ async def get_my_events_handler(cookies: dict, service: EventService):
             # This is a an event access cookie, we validate the token by using it to retrieve
             # the associated device grant and checking its validity
             # The device grant is then returned.
-            if await DeviceGrantService.validate_device_token(value, event_id):
+            if await DeviceGrantService.validate_device_token(value, event_id): # type: ignore
                 event_ids.append(event_id)
 
     if not event_ids:

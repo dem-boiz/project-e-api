@@ -1,8 +1,8 @@
 import uuid
-from typing import Optional
-from fastapi import HTTPException, logger
+from typing import Sequence
+from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from config.logging_config import get_logger
 from models.device_grant import DeviceGrant
@@ -10,7 +10,6 @@ from repository import EventRepository
 from models import Event 
 from schema import EventCreateSchema, EventUpdateSchema
 from services import OTPService, DeviceGrantService
-from utils.utils import generate_event_token, hash_event_token
 
 #TODO: add logging
 
@@ -81,7 +80,7 @@ class EventService:
         return event
     
 
-    async def get_events_by_ids(self, event_ids: list[str]) -> list[Event]:
+    async def get_events_by_ids(self, event_ids: list[uuid.UUID]) -> Sequence[Event]:
         return await self.repo.get_events_by_ids(event_ids)
 
     async def get_event_by_name(self, name: str) -> Event:
@@ -92,7 +91,7 @@ class EventService:
         
         return event
     
-    async def get_all_events(self) -> list[Event]:
+    async def get_all_events(self) -> Sequence[Event]:
         return await self.repo.get_all_events()
     
     async def update_event(self, event_id: uuid.UUID, data: EventUpdateSchema) -> Event:
@@ -106,7 +105,7 @@ class EventService:
             setattr(event, key, value)
         
         return await self.repo.update_event(event_id, data)
-    
+
     async def delete_event(self, event_id: uuid.UUID) -> bool:
         # Check if the event exists
         event = await self.repo.get_event_by_id(event_id)
@@ -119,9 +118,9 @@ class EventService:
         # TODO: Implement the logic to check for duplicate events
         return False
 
-    async def join_event(self, x_otp: str, device_id: str) -> tuple[DeviceGrant, str]:
-        event_id = await OTPService.validate_otp(x_otp)
-        if await DeviceGrantService.device_hit_limit(device_id):
+    async def join_event(self, x_otp: str, device_id: uuid.UUID) -> tuple[DeviceGrant, str]:
+        event_id = await OTPService.validate_otp(x_otp) # type: ignore
+        if await DeviceGrantService.device_hit_limit(device_id): # type: ignore
             logger.warning(f"Device {device_id} has hit the maximum event limit.")
             raise HTTPException(status_code=403, detail="Device has hit the maximum event limit.")
 

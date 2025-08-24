@@ -1,3 +1,4 @@
+import uuid
 from fastapi import Depends, status, HTTPException
 from services import OTPService
 from schema import OTPCreateRequest, OTPResponse , OTPVerifyResponse
@@ -16,11 +17,9 @@ async def delete_otp_handler(otp_request: str, service: OTPService) -> OTPRespon
 
 async def verify_otp_handler(
     otp_code: str,            
-    email: str,
-    event_id: str,
     service: OTPService,
 ) -> OTPVerifyResponse:
-    verified = await service.verify_otp(email=email, event_id=event_id, otp_code=otp_code)
+    verified = await service.validate_otp(otp_code=otp_code)
     if not verified:
         raise HTTPException(status_code=400, detail="OTP could not be verified")
 

@@ -12,7 +12,7 @@ from schema import LoginRequestSchema
 from schema import RefreshTokensSchema
 from schema import SessionCreateSchema 
 from schema.auth_schemas import CurrentUserResponseSchema, LoginResponseSchema
-from utils.utils import create_jwt, verify_jwt, generate_csrf_token, verify_csrf_hash
+from utils.utils import create_access_token, create_refresh_token, verify_jwt, generate_csrf_token, verify_csrf_hash
 from repository import HostRepository, SessionRepository, RefreshTokenRepository
 from config.logging_config import get_logger
 import logging
@@ -88,7 +88,7 @@ class AuthService:
         
 
         # Create Session record in DB
-        session_record = await self.session_repo.create_session(
+        await self.session_repo.create_session(
             session_data=SessionCreateSchema(
                 sid=sid,
                 user_id=host.id,
@@ -116,9 +116,18 @@ class AuthService:
         logger.debug(f"CSRF token cookie set for host: {login_data.email}")
         # Create refresh token repo 
         refresh_token_repo = RefreshTokenRepository(self.db)
-        access_token = await create_jwt(user_id, session_id=sid_str, remember_me=login_data.rememberMe)
-        refresh_token = await create_jwt(user_id, session_id=sid_str, remember_me=login_data.rememberMe, refresh_token_repo=refresh_token_repo, type='refresh', csrf=csrf_token)
-
+        access_token = await create_access_token(
+            user_id, 
+            session_id=sid_str, 
+            remember_me=login_data.rememberMe
+        )
+        refresh_token = await create_refresh_token(
+            user_id, 
+            session_id=sid_str, 
+            remember_me=login_data.rememberMe, 
+            refresh_token_repo=refresh_token_repo, 
+            csrf=csrf_token
+        )
         logger.debug(f"JWT tokens created for host: {host.email}")
         LoginResponse = {
             "response_body": {
@@ -196,11 +205,8 @@ class AuthService:
 
         # Validate remember_me flag'
         remember_me = decoded_token.get("rm", False)
-        
-        # Validate issuer and audience
-        issuer = decoded_token.get("iss")   
-        audience = decoded_token.get("aud")
-         
+
+
         # Look up the refresh token in the database   
         existing_refresh_token = await self.refresh_token_repo.get_refresh_token_by_jti(jti=jti)
 
@@ -297,7 +303,7 @@ class AuthService:
         # Validate that the session is active
         parent_session = await self.session_repo.get_session_by_sid(sid=uuid.UUID(session_id))
         logger.info(f"parent session: {parent_session.revoked_at}")
-        if parent_session.revoked_at is not None and parent_session.revoked_at >= decoded_token.get("iat"):
+        if not parent_session or parent_session.revoked_at is not None and parent_session.revoked_at >= decoded_token.get("iat"):
             logger.warning("The parent session for this refresh token is no longer active. Rejecting request")
             raise HTTPException(
                 status_code=403,
@@ -305,16 +311,31 @@ class AuthService:
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-
         # Rotate CSRF token
         new_csrf_token = await generate_csrf_token()
-        
+        user_id_str = str(user_id)
+        session_id_str = str(session_id)
         # Generate new access + refresh tokens
         logger.debug(f"Generating new access token (& refresh token) for host ID: {user_id}. remember_me optionset to '{remember_me}'")
-        access_token = await create_jwt(user_id, session_id, remember_me=remember_me, refresh_token_repo=self.refresh_token_repo, type='access', issuer=issuer, audience=audience)
-        refresh_token = await create_jwt(user_id, session_id, remember_me=remember_me, refresh_token_repo=self.refresh_token_repo, type='refresh', csrf=new_csrf_token, issuer=issuer, audience=audience)
-        
-        # Decode new refresh_token to get new jti 
+        access_token = await create_access_token(
+            user_id=user_id_str, 
+            session_id=session_id_str, 
+            remember_me=remember_me, 
+        )
+        refresh_token = await create_refresh_token(
+            user_id=user_id_str, 
+            session_id=session_id_str, 
+            remember_me=remember_me, 
+            refresh_token_repo=self.refresh_token_repo, 
+            csrf=new_csrf_token,
+            parent_jti=jti,
+            replaced_by_jti=None
+        )
+
+
+        # TODO: Either also update replaced_by_jti in the parent refresh token, or remove that field from the db model. 
+
+        # Decode new refresh_token to get new jti
         decoded_refresh_token = verify_jwt(refresh_token)
         new_jti = decoded_refresh_token["jti"]
         # If valid, set existing token to used
@@ -356,8 +377,7 @@ class AuthService:
             "csrf_token": new_csrf_token,
         }
         
-    async def kill_session_service(self, 
-                                   sid: uuid.UUID) -> bool:
+    async def kill_session_service(self, sid: uuid.UUID) -> bool:
         
         '''Kill session given the SID'''
          

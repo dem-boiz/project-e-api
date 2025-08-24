@@ -1,3 +1,4 @@
+from typing import Sequence
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.exc import NoResultFound
@@ -28,7 +29,7 @@ class EventRepository:
         await self.session.refresh(new_event)
         return new_event
 
-    async def get_all_events(self) -> list[Event]:
+    async def get_all_events(self) -> Sequence[Event]:
         result = await self.session.execute(select(Event))
         events = result.scalars().all()
         return events
@@ -40,7 +41,6 @@ class EventRepository:
         event = result.scalar_one_or_none()
 
         return event
-    
     async def get_event_by_id(self, event_id: uuid.UUID):
         result = await self.session.execute(
             select(Event).where(Event.id == event_id)
@@ -48,15 +48,14 @@ class EventRepository:
         event = result.scalar_one_or_none()
 
         return event
-    
-    async def get_events_by_ids(self, event_ids: list[uuid.UUID]) -> list[Event]:
+    async def get_events_by_ids(self, event_ids: list[uuid.UUID]) -> Sequence[Event]:
         result = await self.session.execute(
             select(Event).where(Event.id.in_(event_ids))
         )
         events = result.scalars().all()
         return events
 
-    async def delete_event(self, event_id: str) -> bool:
+    async def delete_event(self, event_id: uuid.UUID) -> bool:
         try:
             result = await self.session.execute(select(Event).where(Event.id == event_id))
             event = result.scalar_one()
@@ -66,7 +65,7 @@ class EventRepository:
         except NoResultFound:
             return False
         
-    async def update_event(self, event_id: str, data: EventUpdateSchema) -> Event | None:
+    async def update_event(self, event_id: uuid.UUID, data: EventUpdateSchema) -> Event | None:
         try:
             result = await self.session.execute(select(Event).where(Event.id == event_id))
             event = result.scalar_one()

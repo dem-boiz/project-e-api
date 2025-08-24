@@ -73,12 +73,11 @@ class HostRepository:
             return host
         except NoResultFound:
             return None
-        
+
     async def update_host(self, host_id: uuid.UUID, data: HostUpdateSchema) -> Optional[Host]:
         try:
             result = await self.session.execute(select(Host).where(Host.id == host_id))
             host = result.scalar_one()
-
             # Update only fields provided (not None)
             if data.email is not None:
                 host.email = data.email

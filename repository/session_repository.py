@@ -7,7 +7,7 @@ from models import Session
 from schema import SessionReadSchema, SessionCreateSchema 
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional 
+from typing import Sequence
 from sqlalchemy import update, func 
 import uuid
 import logging
@@ -20,7 +20,6 @@ class SessionRepository:
     async def create_session(self, session_data: SessionCreateSchema) -> SessionReadSchema:
 
         """Create and store a new Session record."""
-        
         new_session = Session(
             sid=session_data.sid,   
             user_id=session_data.user_id,
@@ -56,7 +55,7 @@ class SessionRepository:
         except NoResultFound:
             return None 
 
-    async def get_active_sessions_by_user(self, user_id: uuid.UUID) -> List[Session]:
+    async def get_active_sessions_by_user(self, user_id: uuid.UUID) -> Sequence[Session]:
         """Retrieve all active sessions for a specific user."""
         result = await self.session.execute(
             select(Session).where(
@@ -66,7 +65,7 @@ class SessionRepository:
         )
         return result.scalars().all()
 
-    async def get_all_sessions_by_user(self, user_id: uuid.UUID) -> List[Session]:
+    async def get_all_sessions_by_user(self, user_id: uuid.UUID) -> Sequence[Session]:
         """Retrieve all sessions (active and inactive) for a specific user."""
         result = await self.session.execute(
             select(Session).where(
@@ -75,7 +74,7 @@ class SessionRepository:
         )
         return result.scalars().all()
 
-    async def update_session_activity(self, session_id: str, last_seen_at: datetime = None) -> Session | None:
+    async def update_session_activity(self, session_id: uuid.UUID, last_seen_at: datetime = None) -> Session | None:
         """Update the last_seen_at timestamp for a session."""
         if last_seen_at is None:
             last_seen_at = datetime.now(timezone.utc)
@@ -141,7 +140,7 @@ class SessionRepository:
             
         return count
 
-    async def get_sessions_by_ip(self, ip: str, user_id: uuid.UUID = None) -> List[Session]:
+    async def get_sessions_by_ip(self, ip: str, user_id: uuid.UUID = None) -> Sequence[Session]:
         """Get sessions by device info, optionally filtered by user."""
         query = select(Session).where(Session.ip == ip)
         
@@ -151,7 +150,7 @@ class SessionRepository:
         result = await self.session.execute(query.order_by(Session.created_at.desc()))
         return result.scalars().all()
 
-    async def extend_session_expiry(self, session_id: str, extension_hours: int = 24) -> Session | None:
+    async def extend_session_expiry(self, session_id: uuid.UUID, extension_hours: int = 24) -> Session | None:
         """Extend the expiry time of a session."""
         session_record = await self.get_session_by_sid(session_id)
         if session_record:
@@ -171,7 +170,7 @@ class SessionRepository:
         result = await self.session.execute(query)
         return len(result.scalars().all())
 
-    async def get_recent_sessions(self, user_id: uuid.UUID, limit: int = 10) -> List[Session]:
+    async def get_recent_sessions(self, user_id: uuid.UUID, limit: int = 10) -> Sequence[Session]:
         """Get the most recent sessions for a user."""
         result = await self.session.execute(
             select(Session).where(

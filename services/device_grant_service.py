@@ -24,13 +24,13 @@ class DeviceGrantService:
 
 # load a long random secret from env (do NOT hardcode)
 
-    def generate_event_token(bytes_len: int = 32) -> str:
+    def generate_event_token(self, bytes_len: int = 32) -> str:
         """Return base64url (no padding) opaque token."""
         raw = os.urandom(bytes_len)  # 32 bytes = 256-bit
         tok = base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
         return tok
 
-    def hash_event_token(token: str) -> str:
+    def hash_event_token(self, token: str) -> str:
         """Deterministic HMAC-SHA256 over the token with a server-side pepper."""
         mac = hmac.new(PEPPER, token.encode("utf-8"), hashlib.sha256).digest()
         return base64.urlsafe_b64encode(mac).decode("ascii")
@@ -40,7 +40,7 @@ class DeviceGrantService:
         self, 
         event_id: uuid.UUID,
         device_id: uuid.UUID,
-        created_from_otp_id: Optional[uuid.UUID] = None
+        created_from_otp_id: Optional[str] = None
     ) -> tuple[DeviceGrant, str]:
         """
         Issue a new device grant for an event
@@ -68,7 +68,7 @@ class DeviceGrantService:
         
         return saved_grant, raw_token
 
-    async def validate_device_token(self, token: str, event_id: str) -> Optional[DeviceGrant]:
+    async def validate_device_token(self, token: str, event_id: uuid.UUID) -> bool:
         """
         Validate a device token and return the grant if valid
         Checks: token exists, not expired, not revoked
@@ -150,7 +150,7 @@ class DeviceGrantService:
         logger.debug(f"Found {len(active_grants)} active grants for event: {event_id}")
         return active_grants
 
-    async def get_active_grants_for_device(self, device_id: str) -> List[DeviceGrant]:
+    async def get_active_grants_for_device(self, device_id: uuid.UUID) -> List[DeviceGrant]:
         """Get all active (non-expired, non-revoked) grants for a device"""
         all_grants = await self.repository.get_all_by_device_id(device_id)
         now = datetime.now()
@@ -197,6 +197,6 @@ class DeviceGrantService:
         logger.info(f"Extended device grant {device_grant_id} by {additional_hours} hours")
         return True
 
-    async def device_hit_limit(self, device_id: str) -> bool:
+    async def device_hit_limit(self, device_id: uuid.UUID) -> bool:
         active_grants = await self.get_active_grants_for_device(device_id)
         return len(active_grants) >= DEVICE_LIMIT

@@ -1,6 +1,7 @@
 import random
 import string
 from datetime import datetime, timedelta
+import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 from models.otp import OTP
 from models.event import Event
@@ -24,7 +25,11 @@ class OTPService:
         assert hasattr(db, "execute"), "db is not an AsyncSession"
         self.repo = OTPRepository(db) 
     
-    async def generate_otp(self, otp_data: OTPCreateRequest, host_id: str) -> OTP:
+    async def generate_otp(
+        self, 
+        otp_data: OTPCreateRequest, 
+        host_id: uuid.UUID
+    ) -> OTP:
         otp_code = await generate_unique_otp_code(self.repo)
         expires_at = datetime.now() + timedelta(minutes=10) # TODO: set this to an env variable?
 
@@ -46,7 +51,7 @@ class OTPService:
             raise HTTPException(status_code=404, detail="OTP not found")
         return True
 
-    async def validate_otp(self, otp_code: str) -> bool:
+    async def validate_otp(self, otp_code: str) -> uuid.UUID:
         """Validate the OTP code for a specific event by checking its existence and status."""
         results = await self.repo.get_otp_where(
             otp_code=otp_code,

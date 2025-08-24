@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from models.device_grant import DeviceGrant
-from typing import Optional, List
+from typing import Optional, Sequence
 import uuid
 
 
@@ -29,14 +29,14 @@ class DeviceGrantRepository:
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
-    async def get_all_by_event_id(self, event_id: uuid.UUID) -> List[DeviceGrant]:
+    async def get_all_by_event_id(self, event_id: uuid.UUID) -> Sequence[DeviceGrant]:
         """Get all device grants for an event"""
         query = select(DeviceGrant).where(DeviceGrant.event_id == event_id)
         result = await self.db.execute(query)
         return result.scalars().all()
 
 
-    async def get_all_by_device_id(self, device_id: uuid.UUID) -> List[DeviceGrant]:
+    async def get_all_by_device_id(self, device_id: uuid.UUID) -> Sequence[DeviceGrant]:
         """Get all device grants for a specific device"""
         query = select(DeviceGrant).where(DeviceGrant.device_id == device_id)
         result = await self.db.execute(query)

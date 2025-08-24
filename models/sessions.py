@@ -7,6 +7,7 @@ from sqlalchemy.sql import func
 from models import Host
 import uuid
 from sqlalchemy.schema import ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column
 Base = declarative_base()
 
 
@@ -18,22 +19,22 @@ class Session(Base):
     __tablename__ = 'sessions'
     
     # Primary key: unique session identifier embedded in JWT
-    sid = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    sid: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     # TODO: Should Host be used or User? 
     # Foreign key to users table
-    user_id = Column(UUID(as_uuid=True), ForeignKey(Host.__table__.c.id), nullable=False)
-    
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey(Host.__table__.c.id), nullable=False)
+
     # Timestamp fields for session lifecycle tracking
-    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
-    last_seen_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
-    
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
     # Instant logout flag: if set, any token with iat <= revoked_at is invalid
-    revoked_at = Column(DateTime(timezone=True), nullable=True)
-    
+    revoked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+
     # Optional fields for security and analytics
-    user_agent = Column(Text, nullable=True)
-    ip = Column(INET, nullable=True)
-    
+    user_agent: Mapped[str] = mapped_column(Text, nullable=True)
+    ip: Mapped[str] = mapped_column(INET, nullable=True)
+
     # Relationships
     #user = relationship("User") 
     #user = relationship("User", back_populates="sessions")

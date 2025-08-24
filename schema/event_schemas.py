@@ -3,11 +3,11 @@ from pydantic import BaseModel
 from typing import Optional
 
 class EventCreateSchema(BaseModel):
-    name: str | None = None
-    location: str | None = None
-    datetime: str | None = None
+    name: str
+    location: str
+    datetime: str
     host_id: UUID
-    description: str | None = None
+    description: str
 
 class EventUpdateSchema(BaseModel):
     name: Optional[str] = None

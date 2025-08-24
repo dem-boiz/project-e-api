@@ -16,17 +16,21 @@ from passlib.context import CryptContext
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 from config.logging_config import get_logger
 
+PEPPER = os.environ["EVENT_TOKEN_PEPPER"].encode("utf-8")
+
 logger = get_logger("auth")
-def hash_crsf(password: str) -> str:
-        """Hash a password using bcrypt"""
-        logger.debug("Hashing password")
-        return pwd_context.hash(password)
 
-def verify_csrf_hash(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its hash"""
-    logger.debug("Verifying password")
-    return pwd_context.verify(plain_password, hashed_password) 
+def hash_crsf(token: str) -> str:
+    """Hash a token using HMAC and SHA-256"""
+    logger.debug("Hashing token")
+    mac = hmac.new(PEPPER, token.encode("utf-8"), hashlib.sha256).digest()
+    return base64.urlsafe_b64encode(mac).decode("ascii")
 
+def verify_csrf_hash(plain_token: str, hashed_token: str) -> bool:
+    """Verify a token against its hash"""
+    logger.debug("Verifying token")
+    hashed_new_token = hmac.new(PEPPER, plain_token.encode("utf-8"), hashlib.sha256).digest()
+    return hashed_new_token == base64.urlsafe_b64decode(hashed_token)
 
 ISSUER = os.getenv("ISSUER", "SERVER")
 AUDIENCE = os.getenv('AUDIENCE', "CLIENT")
@@ -37,10 +41,8 @@ def generate_otp():
     import random
     return str(random.randint(100000, 999999))
 
-
-
 def create_jwt(
-    userId: str,
+    user_id: str,
     jti: uuid.UUID,
     now: datetime,
     lifespan: timedelta,
@@ -70,7 +72,7 @@ def create_jwt(
 
     # Create comprehensive payload with all required claims
     payload = {
-        "sub": userId,                           # Subject (user ID)
+        "sub": user_id,                           # Subject (user ID)
         "sid": str(session_id),                       # Session ID (for session-wide control)
         "jti": str(jti),                               # Token ID (unique per token issuance)
         "iat": int(now.timestamp()),            # Issued at (epoch seconds)
@@ -81,14 +83,14 @@ def create_jwt(
         "rm": remember_me if remember_me else None  # Remember Me flag for refresh tokens
     }  
 
-        
-    logger.debug(f"Creating {type} JWT for user {userId}, session {session_id}, remember_me={remember_me}")
+
+    logger.debug(f"Creating {type} JWT for user {user_id}, session {session_id}, remember_me={remember_me}")
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM), jti
 
 
 
 async def create_access_token(
-    userId: str,
+    user_id: str,
     session_id: str, 
     remember_me,
     issuer=ISSUER, 
@@ -97,8 +99,9 @@ async def create_access_token(
     lifespan = timedelta(hours=JWT_ACCESS_LIFESPAN)
     now = datetime.now(timezone.utc)
     jti = uuid.uuid4()
-    result = create_jwt(
-        userId=userId,
+
+    return create_jwt(
+        user_id=user_id,
         now=now,
         lifespan=lifespan,
         session_id=session_id,
@@ -107,18 +110,17 @@ async def create_access_token(
         issuer=issuer,
         audience=audience
     )
-    return jti
 
 async def create_refresh_token(
-    userId: str,
+    user_id: str,
     session_id: str, 
-    remember_me,
+    remember_me: bool,
     refresh_token_repo: Optional['RefreshTokenRepository'] = None,
     csrf: str | None = None,
-    issuer=ISSUER, 
-    audience=AUDIENCE,
     replaced_by_jti: uuid.UUID | None = None,
-    parent_jti: uuid.UUID | None = None
+    parent_jti: uuid.UUID | None = None,
+    issuer=ISSUER, 
+    audience=AUDIENCE
 ):
     lifespan = timedelta(days=30) if remember_me else timedelta(hours=JWT_REFRESH_LIFESPAN)
     now = datetime.now(timezone.utc)
@@ -134,7 +136,7 @@ async def create_refresh_token(
     csrf_hash = hash_crsf(csrf)
     jti = uuid.uuid4()
     encoded_token = create_jwt(
-        userId=userId,
+        user_id=user_id,
         jti=jti,
         now=now,
         lifespan=lifespan,
@@ -147,8 +149,8 @@ async def create_refresh_token(
     # Create refresh token database record
     token_data = RefreshTokenCreateSchema(
         jti=jti,
-        user_id=str(userId),
-        sid=str(session_id),
+        user_id=user_id,
+        sid=session_id,
         expires_at=now + lifespan,
         issued_at=now,
         csrf_hash=csrf_hash,
@@ -164,7 +166,7 @@ async def create_refresh_token(
 
     return encoded_token
 
-def verify_jwt(token: str, expected_issuer=ISSUER, expected_audience=AUDIENCE, token_type=None):
+def verify_jwt(token: str | None, expected_issuer=ISSUER, expected_audience=AUDIENCE, token_type=None):
     """
     Verifies the JWT token by decoding it and validating all claims.
     
@@ -180,6 +182,14 @@ def verify_jwt(token: str, expected_issuer=ISSUER, expected_audience=AUDIENCE, t
     Raises:
         HTTPException: Various 401 errors for different validation failures
     """
+
+    if not token:
+        logger.warning("Missing JWT token.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing JWT token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     if SECRET_KEY is None:
         logger.error("SECRET_KEY is not set")

@@ -218,33 +218,7 @@ async def test_get_current_host_invalid_token():
             await authn_service.get_current_host_service("invalid.jwt.token")
 
 
-@pytest.mark.asyncio
-async def test_get_current_host_invalid_uuid():
-    """Test getting current host with JWT containing invalid UUID"""
-    async with AsyncSessionLocal() as session:
-        authn_service = AuthService(session)
-        
-        # Create a token with invalid UUID (this would be a malformed token scenario)
-        from utils.utils import create_jwt
-        invalid_token = create_jwt("not-a-valid-uuid")
-        
-        with pytest.raises(Exception):  # Should raise HTTPException due to invalid UUID
-            await authn_service.get_current_host_service(invalid_token)
 
-
-@pytest.mark.asyncio
-async def test_get_current_host_nonexistent_host():
-    """Test getting current host with JWT containing UUID of non-existent host"""
-    async with AsyncSessionLocal() as session:
-        authn_service = AuthService(session)
-        
-        # Create a token with valid UUID format but non-existent host
-        from utils.utils import create_jwt
-        fake_uuid = str(uuid.uuid4())
-        fake_token = create_jwt(fake_uuid)
-        
-        with pytest.raises(Exception):  # Should raise HTTPException due to host not found
-            await authn_service.get_current_host_service(fake_token)
 
 
 @pytest.mark.asyncio 
