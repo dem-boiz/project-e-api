@@ -9,7 +9,8 @@ from models.device_grant import DeviceGrant
 from repository import EventRepository
 from models import Event 
 from schema import EventCreateSchema, EventUpdateSchema
-from services import OTPService, DeviceGrantService
+import services.otp_service
+import services.device_grant_service
 
 #TODO: add logging
 
@@ -119,10 +120,10 @@ class EventService:
         return False
 
     async def join_event(self, x_otp: str, device_id: uuid.UUID) -> tuple[DeviceGrant, str]:
-        event_id = await OTPService.validate_otp(x_otp) # type: ignore
-        if await DeviceGrantService.device_hit_limit(device_id): # type: ignore
+        event_id = await services.otp_service.OTPService.validate_otp(x_otp) # type: ignore
+        if await services.device_grant_service.DeviceGrantService.device_hit_limit(device_id): # type: ignore
             logger.warning(f"Device {device_id} has hit the maximum event limit.")
             raise HTTPException(status_code=403, detail="Device has hit the maximum event limit.")
 
-        grant, token = await DeviceGrantService.issue_device_grant(event_id, device_id, x_otp) # type: ignore
+        grant, token = await services.device_grant_service.DeviceGrantService.issue_device_grant(event_id, device_id, x_otp) # type: ignore
         return grant, token

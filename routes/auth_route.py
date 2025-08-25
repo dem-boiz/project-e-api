@@ -1,4 +1,5 @@
 import os
+import uuid
 from config.logging_config import get_logger
 from fastapi import APIRouter, Depends, Request, status, Security, Response, Cookie, Header, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -93,11 +94,11 @@ async def refresh_token(
  
 
 @router.post("/device/refresh",
-             status_code=status.HTTP_204_NO_CONTENT
+             status_code=status.HTTP_200_OK
              )
 async def refresh_device_token(
     response: Response,
-    device_token: str | None = Cookie(default=None),
+    device_token: uuid.UUID | None = Cookie(default=None),
 ) -> RefreshDeviceResponseSchema:
     """Refresh device JWT token and rotate CSRF token"""
     logger.debug("Refreshing device JWT token for host")

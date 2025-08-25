@@ -16,11 +16,11 @@ from passlib.context import CryptContext
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 from config.logging_config import get_logger
 
-PEPPER = os.environ["EVENT_TOKEN_PEPPER"].encode("utf-8")
+PEPPER = os.getenv("CSRF_TOKEN_PEPPER", secrets.token_hex(32)).encode("utf-8")
 
 logger = get_logger("auth")
 
-def hash_crsf(token: str) -> str:
+def hash_csrf(token: str) -> str:
     """Hash a token using HMAC and SHA-256"""
     logger.debug("Hashing token")
     mac = hmac.new(PEPPER, token.encode("utf-8"), hashlib.sha256).digest()
@@ -133,7 +133,7 @@ async def create_refresh_token(
     if csrf is None:
         raise ValueError("CSRF token is required for refresh token")
 
-    csrf_hash = hash_crsf(csrf)
+    csrf_hash = hash_csrf(csrf)
     jti = uuid.uuid4()
     encoded_token = create_jwt(
         user_id=user_id,

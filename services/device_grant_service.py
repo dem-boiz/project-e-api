@@ -14,7 +14,7 @@ from config.logging_config import get_logger
 logger = get_logger("device_grant")
 
 DEVICE_LIMIT = os.getenv("DEVICE_GRANT_LIMIT", 5)  # Default to 5 if not set
-PEPPER = os.environ["EVENT_TOKEN_PEPPER"].encode("utf-8")
+PEPPER = os.getenv("EVENT_TOKEN_PEPPER", secrets.token_hex(32)).encode("utf-8")
 
 class DeviceGrantService:
     
