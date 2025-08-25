@@ -131,7 +131,7 @@ class SessionRepository:
         
         count = 0
         for session_record in expired_sessions:
-            session_record.is_active = False
+            session_record.is_active = False # TODO: check with simon... is_active is a property that returns 'revokedAt is None', is this correct?
             session_record.last_seen_at = datetime.now(timezone.utc)
             count += 1
             
@@ -139,16 +139,6 @@ class SessionRepository:
             await self.session.commit()
             
         return count
-
-    async def get_sessions_by_ip(self, ip: str, user_id: uuid.UUID = None) -> Sequence[Session]:
-        """Get sessions by device info, optionally filtered by user."""
-        query = select(Session).where(Session.ip == ip)
-        
-        if user_id:
-            query = query.where(Session.user_id == user_id)
-            
-        result = await self.session.execute(query.order_by(Session.created_at.desc()))
-        return result.scalars().all()
 
     async def extend_session_expiry(self, session_id: uuid.UUID, extension_hours: int = 24) -> Session | None:
         """Extend the expiry time of a session."""

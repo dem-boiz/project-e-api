@@ -199,4 +199,4 @@ class DeviceGrantService:
 
     async def device_hit_limit(self, device_id: uuid.UUID) -> bool:
         active_grants = await self.get_active_grants_for_device(device_id)
-        return len(active_grants) >= DEVICE_LIMIT
+        return len(active_grants) >= int(DEVICE_LIMIT)

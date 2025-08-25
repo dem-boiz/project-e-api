@@ -1,3 +1,4 @@
+from typing import Sequence
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.exc import NoResultFound
@@ -57,6 +58,6 @@ class UserRepository:
         await self.session.commit()
         return True
     
-    async def list_users(self) -> list[User]:
+    async def list_users(self) -> Sequence[User]:
             result = await self.session.execute(select(User))
             return result.scalars().all()

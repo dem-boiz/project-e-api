@@ -124,5 +124,5 @@ class EventService:
             logger.warning(f"Device {device_id} has hit the maximum event limit.")
             raise HTTPException(status_code=403, detail="Device has hit the maximum event limit.")
 
-        grant, token = await DeviceGrantService.issue_device_grant(event_id, device_id, x_otp)
+        grant, token = await DeviceGrantService.issue_device_grant(event_id, device_id, x_otp) # type: ignore
         return grant, token

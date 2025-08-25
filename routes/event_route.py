@@ -86,7 +86,6 @@ async def verify_event_ownership_for_delete(
     service: EventService = Depends(get_event_service)
 ) -> uuid.UUID:
     """Verify that the authenticated host owns the event they want to delete"""
-    import uuid
     try:
         event = await service.get_event_by_id(event_id=event_id)
 
@@ -97,14 +96,14 @@ async def verify_event_ownership_for_delete(
                 detail="You can only delete events that you own"
             )
         return event_id
-    except ValueError:
+    except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid event ID format"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
         )
     except Exception as e:
         raise HTTPException(
-            status_code=e.status_code if hasattr(e, 'status_code') else status.HTTP_404_NOT_FOUND,
+            status_code=getattr(e, 'status_code', status.HTTP_404_NOT_FOUND),
             detail=f"Error occured. {e}"
         )
 
@@ -140,7 +139,7 @@ async def verify_event_ownership_for_modification(
         )
     except Exception as e:
         raise HTTPException(
-            status_code=e.status_code if hasattr(e, 'status_code') else status.HTTP_404_NOT_FOUND,
+            status_code=getattr(e, 'status_code', status.HTTP_404_NOT_FOUND),
             detail=f"Error occured. {e}"
         )
 
@@ -217,7 +216,7 @@ async def join_event(
     result = await join_event_handler(
         otp, 
         service,
-        device_id="TEST",
+        device_id="THIS IS A TEST DEVICE ID", # type: ignore
         response=response
     )
     return result

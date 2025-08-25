@@ -52,7 +52,7 @@ class Session(Base):
         return f"<Session(sid={self.sid}, user_id={self.user_id}, created_at={self.created_at})>"
 
     @property
-    def is_active(self):
+    def is_active(self) -> bool:
         """Check if session is active (not revoked)"""
         return self.revoked_at is None
 

@@ -85,7 +85,7 @@ def create_jwt(
 
 
     logger.debug(f"Creating {type} JWT for user {user_id}, session {session_id}, remember_me={remember_me}")
-    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM), jti
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
 

@@ -203,12 +203,12 @@ class AuthService:
         # Validate session ID
         session_id = decoded_token.get("sid") 
 
-        # Validate remember_me flag'
+        # Validate remember_me flag
         remember_me = decoded_token.get("rm", False)
 
 
         # Look up the refresh token in the database   
-        existing_refresh_token = await self.refresh_token_repo.get_refresh_token_by_jti(jti=jti)
+        existing_refresh_token = await self.refresh_token_repo.get_refresh_token_by_jti(jti=str(jti))
 
         if existing_refresh_token is None:
             raise HTTPException(
@@ -302,8 +302,13 @@ class AuthService:
 
         # Validate that the session is active
         parent_session = await self.session_repo.get_session_by_sid(sid=uuid.UUID(session_id))
-        logger.info(f"parent session: {parent_session.revoked_at}")
-        if not parent_session or parent_session.revoked_at is not None and parent_session.revoked_at >= decoded_token.get("iat"):
+        iat = decoded_token.get("iat")
+
+        if not parent_session or (
+            parent_session.revoked_at is not None 
+            and iat is not None 
+            and parent_session.revoked_at >= datetime.fromtimestamp(iat, tz=timezone.utc)
+        ):
             logger.warning("The parent session for this refresh token is no longer active. Rejecting request")
             raise HTTPException(
                 status_code=403,
@@ -340,7 +345,7 @@ class AuthService:
         new_jti = decoded_refresh_token["jti"]
         # If valid, set existing token to used
         logger.info(f"Marking token as used {str(jti)}")
-        marked_record = await self.refresh_token_repo.mark_refresh_token_as_used(old_jti=jti, new_jti=new_jti)
+        marked_record = await self.refresh_token_repo.mark_refresh_token_as_used(old_jti=uuid.UUID(jti), new_jti=new_jti)
         logger.info(f"Marked token success: {str(marked_record)}")
         new_refresh_token = refresh_token
         remember_me = decoded_token["rm"]
@@ -371,11 +376,10 @@ class AuthService:
         )
         logger.debug("Generated new CSRF token for refreshed session.")
         # Return access token and new CSRF token in response body
-        return {
-            "access_token": access_token,
-            "token_type": "bearer",
-            "csrf_token": new_csrf_token,
-        }
+        return RefreshTokensSchema(
+            access_token=access_token,
+            csrf_token=new_csrf_token,
+        )
         
     async def kill_session_service(self, sid: uuid.UUID) -> bool:
         
@@ -446,7 +450,8 @@ class AuthService:
         sid = uuid.UUID(session_id)
         session_invalidated = await self.session_repo.invalidate_session(session_id=sid)
         if session_invalidated is False: 
-            raise "Session not invalidated"  
+            logger.error(f"Session \"{sid}\" failed to be invalidated")
+            raise Exception("Session not invalidated")
 
         # Delete all refresh tokens from the database
         # deleted_refresh_tokens = await self.refresh_token_repo.delete_all_refresh_tokens_by_sid(sid=sid)

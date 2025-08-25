@@ -32,7 +32,8 @@ class RefreshDeviceResponseSchema(BaseModel):
 
 class RefreshTokensSchema(BaseModel):
     access_token: str
-    refresh_token: str
+    csrf_token: str
+    token_type: str = "bearer"
 
     class Config:
         from_attributes = True
