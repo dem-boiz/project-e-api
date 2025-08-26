@@ -14,13 +14,18 @@ from schema import (
     RefreshResponseSchema,
     RefreshDeviceResponseSchema
 )
+
+
 from utils import verify_csrf_token
 from handlers import (
     refresh_token_handler, 
     get_me_handler, 
     logout_handler, 
     login_handler,
-    refresh_device_token_handler
+    refresh_device_token_handler,
+    global_logout_handler,
+    kill_session_handler
+
 )
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
@@ -107,3 +112,21 @@ async def refresh_device_token(
 
     logger.debug("New device access token and CSRF token generated")
     return result 
+
+
+# Global logout endpoint
+@router.post("/global-logout", status_code=status.HTTP_200_OK)
+async def global_logout( 
+    refresh_token: str | None = Cookie(default=None),
+    service: AuthService = Depends(get_auth_service)
+): 
+    logger.info("Processing global logout request")
+    return await global_logout_handler(service=service, refresh_token=refresh_token)
+
+# Kill session endpoint
+@router.post("/kill-session/{sid}", status_code=status.HTTP_200_OK)
+async def kill_session(
+    sid: uuid.UUID, 
+    auth_service: AuthService = Depends(get_auth_service)
+):
+    return await kill_session_handler(service=auth_service, sid=sid)

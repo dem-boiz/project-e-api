@@ -153,7 +153,7 @@ async def create_event(
     """Create a new event - requires authentication and host authorization"""
     logger.info(f"Creating new event: {data.name} for host: {data.host_id}")
     result = await create_event_handler(data, service)
-    logger.info(f"Event created successfully: {data.name}")
+    logger.info(f"Event created successfully: {data.name}") 
     return result
 
 @router.delete("/{event_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(validate_token_parent_session)])

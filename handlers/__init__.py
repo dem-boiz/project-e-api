@@ -26,5 +26,8 @@ from .auth_handler import (
     get_me_handler,
     login_handler, 
     logout_handler,
-    refresh_device_token_handler
+    refresh_device_token_handler,
+    global_logout_handler,
+    kill_session_handler
+
 )
