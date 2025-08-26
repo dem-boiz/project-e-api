@@ -4,17 +4,14 @@ import hmac
 import os
 from typing import Optional, List
 import hashlib
-import secrets
 import uuid
 
+from config import EVENT_TOKEN_PEPPER, DEVICE_LIMIT
 from models.device_grant import DeviceGrant
 from repository.device_grant_repository import DeviceGrantRepository
 from config.logging_config import get_logger
 
 logger = get_logger("device_grant")
-
-DEVICE_LIMIT = os.getenv("DEVICE_GRANT_LIMIT", 5)  # Default to 5 if not set
-PEPPER = os.getenv("EVENT_TOKEN_PEPPER", secrets.token_hex(32)).encode("utf-8")
 
 class DeviceGrantService:
     
@@ -32,7 +29,7 @@ class DeviceGrantService:
 
     def hash_event_token(self, token: str) -> str:
         """Deterministic HMAC-SHA256 over the token with a server-side pepper."""
-        mac = hmac.new(PEPPER, token.encode("utf-8"), hashlib.sha256).digest()
+        mac = hmac.new(EVENT_TOKEN_PEPPER, token.encode("utf-8"), hashlib.sha256).digest()
         return base64.urlsafe_b64encode(mac).decode("ascii")
 
 

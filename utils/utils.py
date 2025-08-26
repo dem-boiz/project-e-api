@@ -2,7 +2,13 @@ import traceback
 from jose import jwt, JWTError 
 from jose.exceptions import ExpiredSignatureError, JWTClaimsError
 from fastapi import Header, Cookie, HTTPException, status, Depends
-from config import SECRET_KEY, ALGORITHM, JWT_ACCESS_LIFESPAN, JWT_REFRESH_LIFESPAN
+from config import (
+    SECRET_KEY,
+    ALGORITHM,
+    JWT_ACCESS_LIFESPAN,
+    JWT_REFRESH_LIFESPAN,
+    CSRF_PEPPER,
+)
 import os, base64, hmac, hashlib
 from repository import RefreshTokenRepository
 from schema import RefreshTokenCreateSchema
@@ -16,20 +22,19 @@ from passlib.context import CryptContext
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 from config.logging_config import get_logger
 
-PEPPER = os.getenv("CSRF_TOKEN_PEPPER", secrets.token_hex(32)).encode("utf-8")
 
 logger = get_logger("auth")
 
 def hash_csrf(token: str) -> str:
     """Hash a token using HMAC and SHA-256"""
     logger.debug("Hashing token")
-    mac = hmac.new(PEPPER, token.encode("utf-8"), hashlib.sha256).digest()
+    mac = hmac.new(CSRF_PEPPER, token.encode("utf-8"), hashlib.sha256).digest()
     return base64.urlsafe_b64encode(mac).decode("ascii")
 
 def verify_csrf_hash(plain_token: str, hashed_token: str) -> bool:
     """Verify a token against its hash"""
     logger.debug("Verifying token")
-    hashed_new_token = hmac.new(PEPPER, plain_token.encode("utf-8"), hashlib.sha256).digest()
+    hashed_new_token = hmac.new(CSRF_PEPPER, plain_token.encode("utf-8"), hashlib.sha256).digest()
     return hashed_new_token == base64.urlsafe_b64decode(hashed_token)
 
 ISSUER = os.getenv("ISSUER", "SERVER")
@@ -46,10 +51,11 @@ def create_jwt(
     jti: uuid.UUID,
     now: datetime,
     lifespan: timedelta,
-    session_id: str, 
+    session_id: str,
+    type:str,
     remember_me,
     issuer=ISSUER, 
-    audience=AUDIENCE
+    audience=AUDIENCE,
 ):
     """
     Create a JWT token with comprehensive claims for security and session management.
@@ -105,10 +111,11 @@ async def create_access_token(
         now=now,
         lifespan=lifespan,
         session_id=session_id,
+        type="access",
         jti=jti,
         remember_me=remember_me,
         issuer=issuer,
-        audience=audience
+        audience=audience,
     )
 
 async def create_refresh_token(
@@ -141,6 +148,7 @@ async def create_refresh_token(
         now=now,
         lifespan=lifespan,
         session_id=session_id,
+        type="refresh",
         remember_me=remember_me,
         issuer=issuer,
         audience=audience

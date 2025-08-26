@@ -106,4 +106,4 @@ async def refresh_device_token(
     result = await refresh_device_token_handler(device_token, response)
 
     logger.debug("New device access token and CSRF token generated")
-    return result
+    return result 
