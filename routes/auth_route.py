@@ -23,7 +23,7 @@ from handlers import (
     logout_handler, 
     login_handler,
     refresh_device_token_handler,
-    global_logout_handler,
+    global_logout_handler, 
     kill_session_handler
 
 )

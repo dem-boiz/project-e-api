@@ -9,11 +9,11 @@ from database.session import get_async_session
 async def create_otp_handler(otp_request: OTPCreateRequest, service: OTPService) -> OTPResponse:
     return await service.generate_otp(otp_request)
 
-async def delete_otp_handler(otp_request: str, service: OTPService) -> OTPResponse:
+async def delete_otp_handler(otp_request: str, service: OTPService) -> bool:
     deleted = await service.delete_otp(otp_request)
     if not deleted:
         raise HTTPException(status_code=404, detail="OTP not found")
-    return {"message": "OTP deleted successfully"} 
+    return deleted
 
 async def verify_otp_handler(
     otp_code: str,            

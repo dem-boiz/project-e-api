@@ -198,9 +198,10 @@ async def post_event_invite_otp(
     otp_create_request = OTPCreateRequest(
         email=data.email,
         event_id=event_id,
-        label=data.label
+        label=data.label,
+        host_id=current_host.id
     )
-    result = await service.generate_otp(otp_create_request, current_host.id)
+    result = await service.generate_otp(otp_create_request)
     logger.info(f"Retrieved invite OTP for event: {event_id}")
     return result["otp_code"]
 

@@ -27,8 +27,7 @@ class OTPService:
     
     async def generate_otp(
         self, 
-        otp_data: OTPCreateRequest, 
-        host_id: uuid.UUID
+        otp_data: OTPCreateRequest 
     ) -> OTP:
         otp_code = await generate_unique_otp_code(self.repo)
         expires_at = datetime.now() + timedelta(minutes=10) # TODO: set this to an env variable?
@@ -40,7 +39,7 @@ class OTPService:
             otp_code=otp_code,
             expires_at=expires_at,
             created_at=datetime.now(),
-            issued_by_host_id=host_id
+            issued_by_host_id=otp_data.host_id
             )
         await self.repo.create_otp(otp_object) 
         return otp_object

@@ -11,6 +11,7 @@ class OTPCreateRequest(BaseModel):
     email: EmailStr
     event_id: uuid.UUID
     label: Optional[str] = None
+    host_id: uuid.UUID
     
 
 class OTPVerifyRequest(BaseModel):
@@ -26,7 +27,7 @@ class OTPResponse(BaseModel):
     otp_code: str
     expires_at: datetime
     used: bool
-    created_at: datetime
+    created_at: datetime 
 
     class Config:
         from_attributes = True
