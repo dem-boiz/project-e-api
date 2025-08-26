@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, DateTime, ForeignKey, Index, LargeBinary, CheckConstraint
+from sqlalchemy import Column, DateTime, ForeignKey, Index, LargeBinary, CheckConstraint, Text
 from models import Session
 from sqlalchemy.dialects.postgresql import UUID, INET
 from sqlalchemy.ext.declarative import declarative_base
@@ -37,7 +37,7 @@ class RefreshToken(Base):
     replaced_by_jti: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=True)  # Next token in chain.
 
     # CSRF protection: Hash of CSRF secret bound to this refresh token (double-submit check).
-    csrf_hash: Mapped[str] = mapped_column(LargeBinary, nullable=True)
+    csrf_hash: Mapped[str] = mapped_column(Text, nullable=True)
 
     # Relationship to session
     #session = relationship("Session", back_populates="refresh_tokens")
