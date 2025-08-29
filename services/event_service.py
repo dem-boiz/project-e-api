@@ -72,7 +72,7 @@ class EventService:
         
 
         # If all checks pass, create the event
-        return await self.repo.create_event(event_data)
+        return await self.repo.create_event(event_data, host_id)
     
     async def get_event_by_id(self, event_id: uuid.UUID) -> Event:
         # Check if the event exists

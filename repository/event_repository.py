@@ -10,7 +10,7 @@ class EventRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def create_event(self, event: EventCreateSchema) -> Event:
+    async def create_event(self, event: EventCreateSchema, host_id: uuid.UUID) -> Event:
         # Clean the datetime string and parse it
         #parsed_datetime = datetime.fromisoformat(event.datetime.replace('Z', '+00:00'))
         
@@ -20,7 +20,7 @@ class EventRepository:
             description=event.description,
             date_time=datetime.fromisoformat(event.datetime),
             location=event.location,
-            host_id=event.host_id
+            host_id=host_id
         )
 
         self.session.add(new_event)
@@ -78,8 +78,6 @@ class EventRepository:
                 event.location = data.location
             if data.datetime is not None:
                 event.date_time = datetime.fromisoformat(data.datetime)
-            if data.host_id is not None:
-                event.host_id = data.host_id
 
             await self.session.commit()
             await self.session.refresh(event)
