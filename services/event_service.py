@@ -10,7 +10,8 @@ from repository import EventRepository
 from models import Event 
 from repository.host_repository import HostRepository
 from schema import EventCreateSchema, EventUpdateSchema
-from services import DeviceGrantService, InviteService # TODO: Circular import???
+from services.device_grant_service import DeviceGrantService
+from services.invite_service import InviteService
 
 #TODO: add logging
 
