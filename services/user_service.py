@@ -46,4 +46,8 @@ class UserService:
             
 
     async def list_users(self) -> list[User]:
-        return await self.repo.list_users()
+        try: 
+            users = await self.repo.list_users()
+            return list(users)
+        except:
+            raise HTTPException(status_code=404, detail="Users not found")

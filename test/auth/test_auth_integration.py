@@ -42,9 +42,7 @@ async def test_jwt_token_creation_and_verification():
     # Verify JWT token
     decoded_user = verify_jwt(token)
     assert decoded_user == test_data
-
-
-
+ 
 
 
 @pytest.mark.asyncio

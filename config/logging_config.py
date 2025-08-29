@@ -160,6 +160,6 @@ def setup_logging():
     logger.info(f"Logs directory: {logs_dir}")
     logger.info("="*50)
 
-def get_logger(name: str = None):
+def get_logger(name: str | None):
     """Get a logger instance for the specified name"""
     return logging.getLogger(name)
