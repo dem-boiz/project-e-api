@@ -1,8 +1,7 @@
 from sqlalchemy import (
-    Column,
-    Boolean,
     DateTime,
     ForeignKey,
+    Text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -21,5 +20,5 @@ class UserEventAccess(Base):
     invite_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("invites.id", ondelete="SET NULL"), nullable=True)
     revoked_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
     granted_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
-
+    type: Mapped[str] = mapped_column(Text, nullable=True)
     # Optional relationships for easier access

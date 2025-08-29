@@ -6,7 +6,9 @@ from .event_handler import (
     get_event_by_id_handler,
     get_event_by_name_handler,
     join_event_handler,
-    get_my_events_handler
+    get_my_events_handler,
+    get_event_guests_handler,
+    get_event_pending_invites_handler
 )
 from .user_handlers import (
     create_user_handler, get_user_by_id_handler, hard_delete_user_handler, get_user_by_email_handler

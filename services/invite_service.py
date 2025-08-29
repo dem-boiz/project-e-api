@@ -79,9 +79,9 @@ class InviteService:
         return invite
 
 
-    async def get_invites_by_event(self, event_id: uuid.UUID) -> Sequence[Invite]:
+    async def get_pending_invites_by_event(self, event_id: uuid.UUID) -> Sequence[Invite]:
         invites = await self.repo.get_invites_by_event_id(event_id)
-        return invites
+        return [invite for invite in invites if invite.used_at is None]
 
 
     async def validate_invite(self, invite_code: str) -> Invite:

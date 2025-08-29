@@ -1,3 +1,4 @@
+from datetime import datetime
 from fastapi import APIRouter, Depends, Response, status, Security, HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from handlers import (
@@ -5,8 +6,8 @@ from handlers import (
     delete_event_handler, 
     get_events_handler, 
     patch_event_handler, 
-    get_event_by_id_handler, 
-    get_event_by_name_handler,
+    get_event_guests_handler,
+    get_event_pending_invites_handler,
     get_my_events_handler,
     join_event_handler
 )               
@@ -153,6 +154,7 @@ async def update_event(
     return result
 
 
+# TODO: Update to also allow vendors to create invites
 @router.post("/{event_id}/invite")
 async def post_event_invite(
     data: InviteCreateRequest,
@@ -182,6 +184,40 @@ async def join_event(
         device_id="THIS IS A TEST DEVICE ID", # type: ignore
         response=response
     )
+    return result
+
+
+@router.get("/{event_id}/invites/pending", 
+    dependencies=[
+        Depends(validate_token_parent_session), 
+        Depends(verify_event_ownership)
+    ]
+)
+async def get_event_pending_invites(
+    event_id: uuid.UUID,
+    service: InviteService = Depends(get_invite_service)
+):
+    """Get all pending invites for a specific event - requires authentication and event existence verification"""
+    logger.info(f"Fetching pending invites for event: {event_id}")
+    result = await get_event_pending_invites_handler(event_id, service)
+    logger.info(f"Retrieved {len(result) if isinstance(result, list) else 'unknown count'} pending invites for event: {event_id}")
+    return result
+
+
+@router.get("/{event_id}/guests", 
+    dependencies=[
+        Depends(validate_token_parent_session), 
+        Depends(verify_event_ownership)
+    ]
+)
+async def get_event_guests(
+    event_id: uuid.UUID,
+    service: InviteService = Depends(get_invite_service)
+):
+    """Get all guests for a specific event - requires authentication and event existence verification"""
+    logger.info(f"Fetching guests for event: {event_id}")
+    result = await get_event_guests_handler(event_id, service)
+    logger.info(f"Retrieved {len(result) if isinstance(result, list) else 'unknown count'} guests for event: {event_id}")
     return result
 
 @router.get("/my-events")
