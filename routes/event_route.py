@@ -12,15 +12,14 @@ from handlers import (
 )               
 from database.session import get_async_session
 
-from routes.otp_route import get_otp_service
-from schema.otp_schemas import OTPCreateRequest
-from services import EventService, AuthService
-from repository.event_repository import EventRepository
-from schema import EventCreateSchema, EventUpdateSchema, EventInviteSchema
+from handlers.event_handler import create_event_invite_handler
+from schema.invite_schemas import InviteCreateRequest
+from services import EventService, AuthService, InviteService
+from schema import EventCreateSchema, EventUpdateSchema
 from sqlalchemy.ext.asyncio import AsyncSession
 from models import Host
 from config.logging_config import get_logger
-from services import OTPService
+ 
 import uuid
 # Initialize logger
 logger = get_logger("api.events")
@@ -39,6 +38,9 @@ async def get_event_service(session: AsyncSession = Depends(get_async_session))-
 # Dependency to get AuthService for authentication
 async def get_auth_service(session: AsyncSession = Depends(get_async_session)) -> AuthService:
     return AuthService(session)
+
+async def get_invite_service(session: AsyncSession = Depends(get_async_session)) -> InviteService:
+    return InviteService(session)
 
 # Dependency to get current authenticated host
 async def get_current_host(
@@ -144,6 +146,36 @@ async def verify_event_ownership_for_modification(
         )
 
 
+# Dependency to verify event ownership. unlike the previous one, this one does not require the update data.
+# TODO: Replace all usage of above method to use this one instead? 
+async def verify_event_ownership(
+    event_id: uuid.UUID,
+    current_host: Host = Depends(get_current_host),
+    service: EventService = Depends(get_event_service)
+) -> tuple[uuid.UUID, Host]:
+    """Verify that the authenticated host owns the event"""
+    try:
+        event = await service.get_event_by_id(event_id=event_id)
+
+        if event.host_id != current_host.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only update events that you own"
+            )
+    
+        return event_id, current_host
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid event ID format"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=getattr(e, 'status_code', status.HTTP_404_NOT_FOUND),
+            detail=f"Error occured. {e}"
+        )
+
+
 @router.post("/", status_code=status.HTTP_201_CREATED, dependencies=[Depends(validate_token_parent_session)])
 @router.post("", status_code=status.HTTP_201_CREATED, dependencies=[Depends(validate_token_parent_session)])
 async def create_event(
@@ -187,22 +219,20 @@ async def update_event(
     logger.info(f"Event updated successfully: {event_id}")
     return result
 
+
 @router.post("/{event_id}/invite")
-async def post_event_invite_otp(
-    event_data: tuple[uuid.UUID, EventInviteSchema, Host] = Depends(verify_event_ownership_for_modification),
-    service: OTPService = Depends(get_otp_service),
+async def post_event_invite(
+    data: InviteCreateRequest,
+    verification_data: tuple[uuid.UUID, Host] = Depends(verify_event_ownership),
+    service: InviteService = Depends(get_invite_service),
 ):
-    """Create and return the invite OTP for an event - requires authentication and ownership verification"""
-    event_id, data, current_host = event_data
-    logger.info(f"Getting invite OTP for event: {event_id}")
-    otp_create_request = OTPCreateRequest(
-        email=data.email,
-        event_id=event_id,
-        label=data.label
-    )
-    result = await service.generate_otp(otp_create_request, current_host.id)
-    logger.info(f"Retrieved invite OTP for event: {event_id}")
-    return result["otp_code"]
+    """Create and return the invite code for an event - requires authentication and ownership verification"""
+    event_id, host = verification_data
+    logger.info(f"Creating invite for event: {event_id}")
+    # Build InviteCreateRequest from EventInviteSchema and event_id
+    result = await create_event_invite_handler(data, event_id, host.id, service)
+    logger.info(f"Created invite for event: {event_id}")
+    return result
 
 @router.post("/join/{otp}")
 async def join_event(
