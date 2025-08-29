@@ -5,7 +5,7 @@ from .user import User
 from .host import Host
 from .vendor import Vendor
 from .event import Event
-from .otp import OTP
+from .invite import OTP
 from .user_event_access import UserEventAccess
 from .event_vendors import EventVendor
 from .sessions import Session

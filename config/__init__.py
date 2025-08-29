@@ -6,5 +6,6 @@ from .settings import (
     ENV,
     CSRF_PEPPER,
     EVENT_TOKEN_PEPPER,
-    DEVICE_LIMIT
+    DEVICE_LIMIT,
+    INVITE_HOUR_EXPIRY
 )

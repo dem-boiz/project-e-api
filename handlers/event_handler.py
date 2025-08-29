@@ -2,8 +2,10 @@ import os
 import uuid
 from fastapi import Response
 from schema import EventCreateSchema, EventUpdateSchema
+from schema.invite_schemas import InviteCreateRequest
 from services import EventService, DeviceGrantService
 from config.logging_config import get_logger
+from services.invite_service import InviteService
 
 
 IS_PROD = os.getenv("ENV") == "PROD"
@@ -65,3 +67,10 @@ async def get_my_events_handler(cookies: dict, service: EventService):
     event_info = await service.get_events_by_ids(event_ids)
 
     return event_info
+
+async def create_event_invite_handler(invite_data: InviteCreateRequest, event_id: uuid.UUID, host_id: uuid.UUID, service: InviteService):
+    try:
+        return await service.create_invite(invite_data, event_id, host_id)
+    except Exception as e:
+        logger.error(f"Error creating event invite: {e}")
+        return {"error": str(e)}
