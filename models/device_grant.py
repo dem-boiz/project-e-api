@@ -22,4 +22,4 @@ class DeviceGrant(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     issued_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     revoked_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
-    created_from_otp_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("otps.id", ondelete="SET NULL"), nullable=True)
+    created_from_invite_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("invites.id", ondelete="SET NULL"), nullable=True)

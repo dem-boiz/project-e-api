@@ -41,11 +41,6 @@ ISSUER = os.getenv("ISSUER", "SERVER")
 AUDIENCE = os.getenv('AUDIENCE', "CLIENT")
 
 
-# Is this needed?
-def generate_otp():
-    import random
-    return str(random.randint(100000, 999999))
-
 def create_jwt(
     user_id: str,
     jti: uuid.UUID,

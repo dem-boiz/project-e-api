@@ -18,8 +18,8 @@ class UserEventAccessRepository:
         await self.session.refresh(user_event_access)
         return UserEventAccessReadSchema(user_id=user_event_access.user_id,
                                         event_id=user_event_access.event_id,
-                                        otp_id=user_event_access.otp_id,
-                                        is_deleted=user_event_access.is_deleted,
+                                        invite_id=user_event_access.invite_id,
+                                        revoked_at=user_event_access.revoked_at,
                                         granted_at=user_event_access.granted_at)
 
     async def get_user_event_access_by_user_and_event(self, user_id: uuid.UUID, event_id: uuid.UUID) -> UserEventAccess | None:

@@ -6,7 +6,6 @@ import uuid
 from models import Event
 from schema import EventCreateSchema, EventUpdateSchema
 from datetime import datetime
-#TODO FINISH ADDING GET_EVENT METHOD AND SERVICE LAYER METHODS
 class EventRepository:
     def __init__(self, session: AsyncSession):
         self.session = session

@@ -25,8 +25,6 @@ IS_PROD = ENV == "PROD"
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 logger = get_logger("auth")
 
-# TODO: Check authentication token to ensure it's not expired.
-# For added security, check issuer, and audience (iss, aud).
 class AuthService:
     def __init__(self, db: AsyncSession):
         self.db = db

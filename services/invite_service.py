@@ -82,3 +82,13 @@ class InviteService:
     async def get_invites_by_event(self, event_id: uuid.UUID) -> Sequence[Invite]:
         invites = await self.repo.get_invites_by_event_id(event_id)
         return invites
+
+
+    async def validate_invite(self, invite_code: str) -> Invite:
+        invite = await self.repo.get_invite_by_code(invite_code)
+        if not invite:
+            raise HTTPException(status_code=404, detail="Invite not found")
+        if invite.expires_at < datetime.now():
+            raise HTTPException(status_code=400, detail="Invite has expired")
+        
+        return invite

@@ -22,7 +22,7 @@ class UserEventAccessService:
         new_access = UserEventAccess(
             user_id=user_event_access.user_id,
             event_id=user_event_access.event_id,
-            otp_id=user_event_access.otp_id,
+            invite_id=user_event_access.invite_id,
             is_deleted=False
         )
         return await self.repo.create_user_event_access(new_access)
@@ -42,16 +42,15 @@ class UserEventAccessService:
         access.is_deleted = True
         await self.repo.session.commit()
 
-    async def get_user_event_access_by_otp_id(self, otp_id: uuid.UUID) -> Optional[UserEventAccessReadSchema]:
-        """Retrieve a UserEventAccess record by otp_id."""
+    async def get_user_event_access_by_invite_id(self, invite_id: uuid.UUID) -> Optional[UserEventAccessReadSchema]:
+        """Retrieve a UserEventAccess record by invite_id."""
         try:
             result = await self.repo.session.execute(
                 select(UserEventAccess).where(
-                    UserEventAccess.otp_id == otp_id,
-                    UserEventAccess.is_deleted == False
+                    UserEventAccess.invite_id == invite_id,
                 )
             )
             access = result.scalar_one()
-            return UserEventAccessReadSchema.from_orm(access)
+            return access
         except NoResultFound:
             return None

@@ -12,8 +12,8 @@ IS_PROD = os.getenv("ENV") == "PROD"
 
 logger = get_logger("api.events")   
 
-async def create_event_handler(data: EventCreateSchema, service: EventService):
-    return await service.create_event(data)
+async def create_event_handler(data: EventCreateSchema, service: EventService, host_id: uuid.UUID):
+    return await service.create_event(data, host_id)
 
 async def get_events_handler(service: EventService):
     return await service.get_all_events()

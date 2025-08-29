@@ -10,7 +10,6 @@ IS_DEV = os.getenv("RAILWAY_ENVIRONMENT") is None
 from fastapi import FastAPI
 from routes.user_route import router as user_router
 from routes.base_route import router as base_router
-from routes.otp_route import router as otp_router
 from routes.event_route import router as event_router
 from routes.host_route import router as host_router
 from routes.auth_route import router as auth_router
@@ -41,7 +40,6 @@ app.add_middleware(
 logger.info("Setting up CORS middleware")
 
 app.include_router(user_router)
-app.include_router(otp_router)
 app.include_router(base_router)
 app.include_router(event_router)
 app.include_router(host_router)

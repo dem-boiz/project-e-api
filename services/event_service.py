@@ -10,8 +10,7 @@ from repository import EventRepository
 from models import Event 
 from repository.host_repository import HostRepository
 from schema import EventCreateSchema, EventUpdateSchema
-from schema.event_schemas import EventInviteSchema
-from services import DeviceGrantService
+from services import DeviceGrantService, InviteService # TODO: Circular import???
 
 #TODO: add logging
 
@@ -20,21 +19,11 @@ logger = get_logger("api.events")
 class EventService:
     def __init__(self, db: AsyncSession):
         self.repo = EventRepository(db)
-
-    async def create_event(self, event_data: EventCreateSchema) -> Event:
-        # TODO refactor this code to only raise an error if the duplicate event is for the same host
-        # Check if an event with the same name already exists here:
-        existing = await self.repo.get_event_by_name(event_data.name)   
-        if existing:
-            # TODO: When this is raised, the client gets a 500 response. refactor to be a 422 or 409
-            raise ValueError("Event already exists with this name.")
+        self.host_repo = HostRepository(db)
+    async def create_event(self, event_data: EventCreateSchema, host_id: uuid.UUID) -> Event:
         
         ''' # TODO: Implement the functions in repository to check these conditions
-        # Check if the host exists
-        host = await self.repo.get_user_by_id(event_data.host_id)
-        if not host:
-            raise ValueError("Host does not exist.")
-        
+    
         # Check if the host is hosting too many events
         if await self.repo.count_hosted_events(event_data.host_id) >= 5:
             raise ValueError("Host is already hosting too many events.")    
@@ -47,8 +36,20 @@ class EventService:
         # Check if the event start time is before the end time
         if event_data.start_time >= event_data.end_time:    
             raise ValueError("Event start time must be before the end time.") 
+
+
+        # TODO: When the below are raised, the client gets a 500 response. refactor to be a 422 or 409
+
         '''
+        # host validations
+        host = await self.host_repo.get_host_by_id(host_id)
+        if not host:
+            raise ValueError("Host does not exist.")
         
+        existing_event = await self.repo.get_event_by_name(event_data.name)
+        if existing_event and existing_event.host_id == host_id:
+            raise ValueError("Event already exists with this name.")
+
         # Check if the event date is in the past
         event_datetime = datetime.fromisoformat(event_data.datetime)
         now = datetime.now(event_datetime.tzinfo) if event_datetime.tzinfo else datetime.now()

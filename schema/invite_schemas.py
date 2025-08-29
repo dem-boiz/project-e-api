@@ -13,7 +13,6 @@ class InviteCreateResponse(BaseModel):
     id: uuid.UUID
     email: EmailStr
     event_id: uuid.UUID
-    otp_code: str
     expires_at: datetime
     used: bool
     created_at: datetime 

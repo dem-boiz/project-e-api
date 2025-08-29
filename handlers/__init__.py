@@ -8,9 +8,6 @@ from .event_handler import (
     join_event_handler,
     get_my_events_handler
 )
-from .otp_handlers import (
-    create_otp_handler, delete_otp_handler, verify_otp_handler
-)
 from .user_handlers import (
     create_user_handler, get_user_by_id_handler, hard_delete_user_handler, get_user_by_email_handler
 )
