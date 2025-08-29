@@ -200,6 +200,7 @@ async def get_event_pending_invites(
     """Get all pending invites for a specific event - requires authentication and event existence verification"""
     logger.info(f"Fetching pending invites for event: {event_id}")
     result = await get_event_pending_invites_handler(event_id, service)
+    logger.debug(f'Pending invites for event right before response {event_id}: {result}')
     logger.info(f"Retrieved {len(result) if isinstance(result, list) else 'unknown count'} pending invites for event: {event_id}")
     return result
 

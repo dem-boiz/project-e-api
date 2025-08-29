@@ -10,9 +10,11 @@ from repository.host_repository import HostRepository
 from schema.invite_schemas import InviteCreateRequest
 from fastapi import HTTPException
 from repository.invite_repository import InviteRepository
-
+from config.logging_config import get_logger
 
 from config import INVITE_HOUR_EXPIRY
+
+logger = get_logger("api.invites")
 
 async def generate_unique_invite_code(repo: InviteRepository, length: int = 6) -> str:
     """Generate a unique invite code not present in DB."""
@@ -81,6 +83,7 @@ class InviteService:
 
     async def get_pending_invites_by_event(self, event_id: uuid.UUID) -> Sequence[Invite]:
         invites = await self.repo.get_invites_by_event_id(event_id)
+        logger.debug(f'Pending invites for event {event_id}: {invites}')
         return [invite for invite in invites if invite.used_at is None]
 
 
