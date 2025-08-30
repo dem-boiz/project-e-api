@@ -81,11 +81,15 @@ class UserRepository:
             # Update only fields provided (not None)
             if data.email is not None:
                 user.email = data.email
-            if data.company_name is not None:
-                user.company_name = data.company_name
+            if data.name is not None:
+                user.name = data.name
             if data.password is not None: 
                 user.password_hash = pwd_context.hash(data.password)
-
+            if data.description is not None:
+                user.description = data.description
+            if data.contact_info is not None:
+                user.contact_info = data.contact_info # type: ignore
+            
             await self.session.commit()
             await self.session.refresh(user)
             return user

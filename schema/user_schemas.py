@@ -1,8 +1,8 @@
 from pydantic import BaseModel, EmailStr
-from sqlalchemy import  DateTime 
+from sqlalchemy import  JSON, DateTime 
 from uuid import UUID
 from datetime import datetime
-from typing import Optional
+from typing import Any, Dict, Optional
 
 
 class UserCreateSchema(BaseModel):
@@ -31,3 +31,5 @@ class UserUpdateSchema(BaseModel):
     email: Optional[EmailStr] = None
     name: Optional[str] = None
     password: Optional[str] = None
+    description: Optional[str] = None
+    contact_info: Optional[Dict[str, Any]] = None

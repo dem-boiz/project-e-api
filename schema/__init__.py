@@ -38,3 +38,8 @@ from .refresh_token_schemas import (
     RefreshTokenCreateSchema, 
     RefreshTokenSchema
 ) 
+
+from .event_vendors_schemas import (
+    EventVendorsCreateSchema,
+    EventVendorsReadSchema
+)
