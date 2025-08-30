@@ -76,7 +76,11 @@ async def get_event_guests_handler(event_id: uuid.UUID, service: InviteService):
     return
 
 async def create_event_invite_handler(invite_data: InviteCreateRequest, event_id: uuid.UUID, host_id: uuid.UUID, service: InviteService):
-    return await service.create_invite(invite_data, event_id, host_id)
+    invite = await service.create_invite(invite_data, event_id, host_id)
+    # Convert to dict and remove sensitive field
+    invite_dict = invite.__dict__
+    invite_dict.pop('otp_code', None)
+    return invite_dict
 
     
 

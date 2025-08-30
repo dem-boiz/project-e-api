@@ -66,6 +66,7 @@ class InviteService:
             type=invite_data.type
         )
         await self.repo.create_invite(invite_object)
+        
         return invite_object
 
     async def delete_invite(self, invite_code: str) -> bool:
