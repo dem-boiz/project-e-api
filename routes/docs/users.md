@@ -85,13 +85,13 @@ Errors
 `404 Not Found – User not found.`
 
 🧱 Models
-🔸 UserCreate
+🔸 UserCreateSchema
 ```json 
 {
   "email": "example@example.com"
 }
 ```
-🔸 UserRead
+🔸 UserReadSchema
 ```json  
 {
   "id": "uuid",

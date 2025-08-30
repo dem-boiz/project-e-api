@@ -156,18 +156,17 @@ async def test_refresh_token_rotates_access_and_csrf():
     email = f"refresh_{uuid4()}@example.com"
     password = "TestPassword123!"
 
-    # Create host first
-    host_payload = {
+    # Create user first
+    user_payload = {
         "email": email,
-        "company_name": "Refresh Test Company", 
-        "password": password,
-        "created_at": "2023-10-01T12:00:00Z"
+        "name": "Refresh Test Company", 
+        "password": password, 
     }
 
     async with AsyncClient(base_url="http://localhost:8000") as client:
-        # Create host
-        host_resp = await client.post("/hosts/", json=host_payload)
-        assert host_resp.status_code == 201
+        # Create user
+        user_resp = await client.post("/users/", json=user_payload)
+        assert user_resp.status_code == 201
 
         # Login to get tokens
         login_payload = {"email": email, "password": password, "rememberMe": True}
@@ -240,18 +239,17 @@ async def test_logout_clears_tokens_and_cookies():
     email = f"logout_{uuid4()}@example.com"
     password = "TestPassword123!"
 
-    # Create host first
-    host_payload = {
+    # Create user first
+    user_payload = {
         "email": email,
-        "company_name": "Logout Test Company", 
-        "password": password,
-        "created_at": "2023-10-01T12:00:00Z"
+        "name": "Logout Test Company", 
+        "password": password 
     }
 
     async with AsyncClient(base_url="http://localhost:8000") as client:
-        # Create host
-        host_resp = await client.post("/hosts/", json=host_payload)
-        assert host_resp.status_code == 201
+        # Create user
+        user_resp = await client.post("/users/", json=user_payload)
+        assert user_resp.status_code == 201
 
         # Login to get tokens
         login_payload = {"email": email, "password": password, "rememberMe": True}

@@ -6,13 +6,13 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.session import get_async_session
 from models import host
-from services import AuthService, HostService
+from services import AuthService, UserService
 from schema import (
     LoginRequestSchema, 
     LoginResponseSchema, 
     CurrentUserResponseSchema, 
     RefreshResponseSchema,
-    RefreshDeviceResponseSchema
+    RefreshDeviceResponseSchema 
 )
 
 
@@ -24,8 +24,7 @@ from handlers import (
     login_handler,
     refresh_device_token_handler,
     global_logout_handler, 
-    kill_session_handler
-
+    kill_session_handler  
 )
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
@@ -35,10 +34,11 @@ logger = get_logger("auth")
 # Dependency to get AuthService
 async def get_auth_service(session: AsyncSession = Depends(get_async_session)) -> AuthService:
     return AuthService(session)
-
+ 
 # Dependency to get HostService for registration
-async def get_host_service(session: AsyncSession = Depends(get_async_session)) -> HostService:
-    return HostService(session)
+async def get_user_service(session: AsyncSession = Depends(get_async_session)) -> UserService:
+    return UserService(session)
+
 
 @router.post("/login", response_model=LoginResponseSchema, status_code=status.HTTP_200_OK)
 async def login(

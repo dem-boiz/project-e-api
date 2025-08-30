@@ -6,7 +6,7 @@ from handlers import create_user_handler, get_user_by_id_handler, hard_delete_us
 from database.session import get_async_session
 from services import UserService
 from models.user import User
-from schema import UserCreate, UserRead
+from schema import UserCreateSchema, UserReadSchema
 
 router = APIRouter(prefix="/users", tags=["users"])
  
@@ -15,19 +15,20 @@ async def get_user_service(session: AsyncSession = Depends(get_async_session))->
     return UserService(session)
 
 
-@router.post("/create", response_model=UserRead, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=UserReadSchema, status_code=status.HTTP_201_CREATED)
 async def create_user(
-    user_in: UserCreate,   
+    user_in: UserCreateSchema,   
     service: UserService = Depends(get_user_service),  # ✅ NO parentheses
 ):
     return await create_user_handler(user_in, service)
+ 
 
-@router.get("/get/by-id/{user_id}", response_model=UserRead)
+@router.get("/get/by-id/{user_id}", response_model=UserReadSchema)
 async def get_user(user_id: uuid.UUID, service: UserService = Depends(get_user_service)):
     return await get_user_by_id_handler(user_id, service)
 
 
-@router.get("/get/by-email/{email}", response_model=UserRead)
+@router.get("/get/by-email/{email}", response_model=UserReadSchema)
 async def get_user_by_email(email: EmailStr, service: UserService = Depends(get_user_service)):
     return await get_user_by_email_handler(email, service)
  

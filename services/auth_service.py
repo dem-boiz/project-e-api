@@ -8,12 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, Request, status, Response, Cookie 
 from passlib.context import CryptContext
 from models import Host, Session
-from schema import LoginRequestSchema
+from schema import LoginRequestSchema, UserReadSchema
 from schema import RefreshTokensSchema
 from schema import SessionCreateSchema 
 from schema.auth_schemas import CurrentUserResponseSchema, LoginResponseSchema
 from utils.utils import create_access_token, create_refresh_token, verify_jwt, generate_csrf_token, verify_csrf_hash
-from repository import HostRepository, SessionRepository, RefreshTokenRepository
+from repository import HostRepository, SessionRepository, RefreshTokenRepository, UserRepository
 from config.logging_config import get_logger
 import logging
 from config import ENV
@@ -31,6 +31,7 @@ class AuthService:
         self.host_repo = HostRepository(db)
         self.session_repo = SessionRepository(db)
         self.refresh_token_repo = RefreshTokenRepository(db)
+        self.user_repo = UserRepository(db)
 
     def hash_password(self, password: str) -> str:
         """Hash a password using bcrypt"""
@@ -42,36 +43,26 @@ class AuthService:
         logger.debug("Verifying password")
         return pwd_context.verify(plain_password, hashed_password) 
 
-    async def authenticate_host(self, email: str, password: str) -> Optional[Host]:
+    async def authenticate_user(self, email: str, password: str) -> Optional[UserReadSchema]:
         """Authenticate a host by email and password"""
         logger.debug(f"Authentication attempt for email: {email}")
-        host = await self.host_repo.get_host_by_email(email)
-        if not host:
-            logger.warning(f"Host not found for email: {email}")
+        user = await self.user_repo.get_user_by_email(email)
+        if not user:
+            logger.warning(f"user not found for email: {email}")
             return None
         
-        if not self.verify_password(password, host.password_hash):
+        if not self.verify_password(password, user.password_hash):
             logger.warning(f"Invalid password for email: {email}")
             return None
         
-        logger.debug(f"Host authenticated successfully: {email}")
-        # Return a sanitized copy without password hash
-        sanitized_host = Host(
-            id=host.id,
-            host_number=host.host_number,
-            email=host.email,
-            company_name=host.company_name,
-            created_at=host.created_at,
-            password_hash=None
-        )
-        return sanitized_host
+        logger.debug(f"user authenticated successfully: {email}") 
+        return self.user_repo.return_schema(user)
 
-    async def login_service(self, login_data: LoginRequestSchema, response: Response) -> LoginResponseSchema:
-
+    async def login_service(self, login_data: LoginRequestSchema, response: Response) -> LoginResponseSchema: 
         """Login a host and return JWT token"""
         logger.debug(f"Login attempt for email: {login_data.email}")
-        host = await self.authenticate_host(login_data.email, login_data.password)
-        if not host:
+        user = await self.authenticate_user(login_data.email, login_data.password)
+        if not user:
             logger.error(f"Login failed for email: {login_data.email}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -80,7 +71,7 @@ class AuthService:
             )
         
         # Create JWT tokens
-        user_id = str(host.id)
+        user_id = str(user.id)
         sid = uuid.uuid4() 
         sid_str = str(sid) # New session ID for this login
         
@@ -89,15 +80,15 @@ class AuthService:
         await self.session_repo.create_session(
             session_data=SessionCreateSchema(
                 sid=sid,
-                user_id=host.id,
+                user_id=user.id,
                 created_at=datetime.now(),
                 last_seen_at=datetime.now()
             )
         )
-        logger.debug(f"Session record created with SID: {sid} for host: {host.email}")
+        logger.debug(f"Session record created with SID: {sid} for user: {user.email}")
         # Generate a CSRF token for the client
         csrf_token = await generate_csrf_token()
-        logger.debug(f"Generated CSRF token for host: {login_data.email}")
+        logger.debug(f"Generated CSRF token for user: {login_data.email}")
         remember_me = login_data.rememberMe
         # ALSO set CSRF token as a cookie (non-httponly so JS can read it)
         response.set_cookie(
@@ -111,7 +102,7 @@ class AuthService:
             path="/"  # Available on all paths
         )
 
-        logger.debug(f"CSRF token cookie set for host: {login_data.email}")
+        logger.debug(f"CSRF token cookie set for user: {login_data.email}")
         # Create refresh token repo 
         refresh_token_repo = RefreshTokenRepository(self.db)
         access_token = await create_access_token(
@@ -126,22 +117,22 @@ class AuthService:
             refresh_token_repo=refresh_token_repo, 
             csrf=csrf_token
         )
-        logger.debug(f"JWT tokens created for host: {host.email}")
+        logger.debug(f"JWT tokens created for user: {user.email}")
         LoginResponse = {
             "response_body": {
                 "access_token": access_token,
                 "token_type": "bearer",
-                "email": host.email,
-                "user_id": str(host.id),
-                "name": host.company_name,
-                "id": str(host.id)
+                "email": user.email,
+                "user_id": str(user.id),
+                "name": user.name,
+                "id": str(user.id)
             },
             "refresh_token": refresh_token,
         }
 
         
 
-        logger.debug(f"Setting refresh token cookie for host: {login_data.email}")
+        logger.debug(f"Setting refresh token cookie for user: {login_data.email}")
         response.set_cookie(
             key="refresh_token",
             value=LoginResponse["refresh_token"],
@@ -153,14 +144,14 @@ class AuthService:
         )
 
         
-        logger.debug(f"Login successful for host: {login_data.email}")
+        logger.debug(f"Login successful for user: {login_data.email}")
         # Build the Pydantic response including CSRF token in the body
         login_response_model = LoginResponseSchema(
             **LoginResponse["response_body"],
             csrf_token=csrf_token
         )
 
-        logger.debug(f"Response body prepared with CSRF token for host: {login_data.email}")
+        logger.debug(f"Response body prepared with CSRF token for user: {login_data.email}")
         return login_response_model
 
 
@@ -358,8 +349,7 @@ class AuthService:
             samesite="lax",
             max_age=30*24*3600 if remember_me else None,
             path="/api/auth"
-        )
-                                       
+        )            
          
         # Also set new CSRF token as cookie (non-httponly)
         response.set_cookie(
@@ -460,39 +450,32 @@ class AuthService:
     async def get_me_service(self, credentials:HTTPAuthorizationCredentials) -> CurrentUserResponseSchema:
         """Get current authenticated user"""
         token = credentials.credentials
-        host = await self.get_current_host_service(token)
+        host = await self.get_current_user_service(token)
         return CurrentUserResponseSchema(
             email=host.email,
             host_id=str(host.id),
-            name=host.company_name
+            name=host.name
         )
-    async def get_current_host_service(self, token: str) -> Host:
-        """Get current host from JWT token"""
+    async def get_current_user_service(self, token: str) -> UserReadSchema:
+        """Get current user from JWT token"""
         logger.debug(f"Verifying JWT token")
         try:
             decoded_token = verify_jwt(token)
             userId_str = decoded_token["sub"]
             # Convert string UUID back to UUID object
-            host_id = uuid.UUID(userId_str)
-            logger.debug(f"Token verified for host ID: {host_id}")
-            host = await self.host_repo.get_host_by_id(host_id)
-            if not host:
-                logger.warning(f"Host not found: {host_id}")
+            user_id = uuid.UUID(userId_str)
+            logger.debug(f"Token verified for user ID: {user_id}")
+            user = await self.user_repo.get_user_by_id(user_id)
+            if not user:
+                logger.warning(f"Host not found: {user_id}")
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Host not found"
+                    detail="User not found"
                 )
-            # Return a sanitized copy without password hash
-            sanitized_host = Host(
-                id=host.id,
-                host_number=host.host_number,
-                email=host.email,
-                company_name=host.company_name,
-                created_at=host.created_at,
-                password_hash=None
-            )
-            logger.debug(f"Host authenticated successfully: {sanitized_host.email}")
-            return sanitized_host
+             
+            logger.debug(f"Host authenticated successfully: {user.email}")
+            return user
+        
         except ValueError:
             # Handle invalid UUID format
             logger.error(f"Invalid token format: {token}")

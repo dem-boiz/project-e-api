@@ -7,8 +7,7 @@ from .event import Event
 from .user_event_access import UserEventAccess
 from .event_vendors import EventVendor
 from .sessions import Session
-from .refresh_tokens import RefreshToken
-
+from .refresh_tokens import RefreshToken 
 __all__ = [
     "User", 
     "Session", 
