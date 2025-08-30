@@ -208,17 +208,18 @@ async def get_event_pending_invites(
     return result
 
 
-@router.delete("/{event_id}/invites/pending", dependencies=[
+@router.delete("/{event_id}/invites/pending/{invite_id}", dependencies=[
     Depends(validate_token_parent_session),
     Depends(verify_event_ownership)
 ])
-async def delete_event_pending_invites(
+async def delete_event_pending_invite(
     event_id: uuid.UUID,
+    invite_id: uuid.UUID,
     service: InviteService = Depends(get_invite_service)
 ):
-    """Delete all pending invites for a specific event - requires authentication and event existence verification"""
-    logger.info(f"Deleting pending invites for event: {event_id}")
-    result = await delete_event_pending_invite_handler(event_id, service)
+    """Delete a pending invite for a specific event - requires authentication and event existence verification"""
+    logger.info(f"Deleting pending invite {invite_id} for event: {event_id}")
+    result = await delete_event_pending_invite_handler(event_id, invite_id, service)
     logger.info(f"Deleted {len(result) if isinstance(result, list) else 'unknown count'} pending invites for event: {event_id}")
     return result
 

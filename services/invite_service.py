@@ -88,8 +88,8 @@ class InviteService:
 
 
 
-    async def delete_pending_invite(self, event_id: uuid.UUID) -> bool:
-        deleted = await self.repo.delete_pending_invite_by_event_id(event_id)
+    async def delete_pending_invite(self, event_id: uuid.UUID, invite_id: uuid.UUID) -> bool:
+        deleted = await self.repo.delete_pending_invite_by_event_id(event_id, invite_id)
         if not deleted:
             raise HTTPException(status_code=404, detail="Pending invite not found")
         return True

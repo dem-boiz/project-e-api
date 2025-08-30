@@ -81,5 +81,5 @@ async def create_event_invite_handler(invite_data: InviteCreateRequest, event_id
     
 
 
-async def delete_event_pending_invite_handler(event_id: uuid.UUID, service: InviteService):
-    return await service.delete_pending_invite(event_id)
+async def delete_event_pending_invite_handler(event_id: uuid.UUID, invite_id: uuid.UUID, service: InviteService):
+    return await service.delete_pending_invite(event_id, invite_id)
