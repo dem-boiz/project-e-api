@@ -7,8 +7,8 @@ from typing import Optional
 class InviteCreateRequest(BaseModel):
     email: Optional[EmailStr] = None
     label: Optional[str] = None
-    type: str
-
+    accessType: str
+    deliveryMethod: str
 class InviteCreateResponse(BaseModel):
     id: uuid.UUID
     email: EmailStr

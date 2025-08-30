@@ -36,18 +36,22 @@ class InviteService:
 
     async def create_invite(self, invite_data: InviteCreateRequest, event_id: uuid.UUID, host_id: uuid.UUID) -> Invite:
         # Validate type
-        if invite_data.type not in ["guest", "vendor"]:
+        if invite_data.accessType not in ["guest", "vendor"]:
             raise HTTPException(status_code=400, detail="Invalid invite type")
-        # Vendor requires email
-        if invite_data.type == "vendor" and not invite_data.email:
-            raise HTTPException(status_code=400, detail="Vendor invite requires email")
-        # Guest requires email or label
-        if invite_data.type == "guest" and not (invite_data.email or invite_data.label):
-            raise HTTPException(status_code=400, detail="Guest invite requires email or label")
+
+        # Validate delivery method
+        if invite_data.deliveryMethod not in ["email", "link"]:
+            raise HTTPException(status_code=400, detail="Invalid delivery method")
+
+        # Validate email for email delivery
+        if invite_data.deliveryMethod is "email" and not invite_data.email:
+            raise HTTPException(status_code=400, detail="Email is required for email delivery")
+
         # Validate event exists
         event = await self.event_repo.get_event_by_id(event_id)
         if not event:
             raise HTTPException(status_code=404, detail="Event not found")
+        
         # Validate host exists
         host = await self.host_repo.get_host_by_id(host_id)
         if not host:
@@ -57,16 +61,16 @@ class InviteService:
         expires_at = datetime.now() + timedelta(hours=INVITE_HOUR_EXPIRY)
         invite_object = Invite(
             email=invite_data.email,
-            label=invite_data.label,
+            label=invite_data.label if invite_data.label else f"invite-{random.randint(1000,9999)}",
             event_id=event_id,
             otp_code=invite_code,
             expires_at=expires_at,
             created_at=datetime.now(),
             issued_by_host_id=host_id,
-            type=invite_data.type
+            type=invite_data.accessType
         )
         await self.repo.create_invite(invite_object)
-        
+
         return invite_object
 
     async def delete_invite(self, invite_code: str) -> bool:
