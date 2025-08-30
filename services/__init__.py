@@ -6,3 +6,4 @@ from .auth_service import AuthService
 from .guest_device_service import GuestDeviceService
 from .device_grant_service import DeviceGrantService
 from .invite_service import InviteService 
+from .event_vendors_service import EventVendorsService

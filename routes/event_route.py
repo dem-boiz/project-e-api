@@ -15,7 +15,7 @@ from database.session import get_async_session
 from handlers.event_handler import create_event_invite_handler
 from schema.invite_schemas import InviteCreateRequest
 from services import EventService, AuthService, InviteService
-from schema import EventCreateSchema, EventUpdateSchema
+from schema import EventCreateSchema, EventUpdateSchema, UserReadSchema
 from sqlalchemy.ext.asyncio import AsyncSession
 from models import Host
 from config.logging_config import get_logger
@@ -43,13 +43,13 @@ async def get_invite_service(session: AsyncSession = Depends(get_async_session))
     return InviteService(session)
 
 # Dependency to get current authenticated host
-async def get_current_host(
+async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Security(security),
     auth_service: AuthService = Depends(get_auth_service)
-) -> Host:
+) -> UserReadSchema:
     """Get the current authenticated host from JWT token"""
     token = credentials.credentials
-    return await auth_service.get_current_host_service(token)
+    return await auth_service.get_current_user_service(token)
 
 async def validate_token_parent_session(
     credentials: HTTPAuthorizationCredentials = Security(security),
@@ -70,7 +70,7 @@ async def validate_token_parent_session(
 # TODO: Replace all usage of above method to use this one instead? 
 async def verify_event_ownership(
     event_id: uuid.UUID,
-    current_host: Host = Depends(get_current_host),
+    current_host: Host = Depends(get_current_user),
     service: EventService = Depends(get_event_service)
 ) -> tuple[uuid.UUID, Host]:
     """Verify that the authenticated host owns the event"""
@@ -100,7 +100,7 @@ async def verify_event_ownership(
 @router.post("", status_code=status.HTTP_201_CREATED, dependencies=[Depends(validate_token_parent_session)])
 async def create_event(
     data: EventCreateSchema,
-    host: Host = Depends(get_current_host),
+    host: Host = Depends(get_current_user),
     service: EventService = Depends(get_event_service)
 ):
     """Create a new event - requires authentication and host authorization"""

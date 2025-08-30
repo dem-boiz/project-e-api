@@ -25,16 +25,16 @@ class EventVendorsService:
         return new_event_vendor
     
 
-    async def get_event_vendor_record_service(self, user_id: uuid.UUID, event_id: uuid.UUID) -> EventVendorsReadSchema:
-        logger.info(f"Getting users with user ID and event ID: {user_id} and {event_id}")
-        event_vendor = await self.event_vendors_repo.get_event_vendor(EventVendorSearchSchema(user_id=user_id, event_id=event_id))
+    async def get_event_vendor_record_service(self, data: EventVendorSearchSchema) -> EventVendorsReadSchema:
+        logger.info(f"Getting users with user ID and event ID: {data.user_id} and {data.event_id}")
+        event_vendor = await self.event_vendors_repo.get_event_vendor(EventVendorSearchSchema(user_id=data.user_id, event_id=data.event_id))
         if not event_vendor:
             raise HTTPException(status_code=404, detail="Event Vendor not found")  
         return event_vendor
     
-    async def get_vendors_for_event_service(self, event_id: uuid.UUID) -> List[EventVendorsReadSchema]:
-        logger.info(f"Getting all vendors for event: {event_id}")
-        event_vendors = await self.event_vendors_repo.get_vendors_by_event(EventVendorSearchSchema(event_id=event_id))
+    async def get_vendors_for_event_service(self, data: EventVendorSearchSchema) -> List[EventVendorsReadSchema]:
+        logger.info(f"Getting all vendors for event: {data.event_id}")
+        event_vendors = await self.event_vendors_repo.get_vendors_by_event(EventVendorSearchSchema(event_id=data.event_id))
         
         if not event_vendors:
             raise HTTPException(status_code=404, detail="Event not found") 
@@ -42,9 +42,9 @@ class EventVendorsService:
         return_list = [self.event_vendors_repo.return_schema(event_vendor) for event_vendor in event_vendors]
         return return_list
     
-    async def get_events_for_vendor_service(self, user_id: uuid.UUID) -> List[EventVendorsReadSchema]:
-        logger.info(f"Getting all events for vendor: {user_id}")
-        event_vendors = await self.event_vendors_repo.get_events_for_vendor(EventVendorSearchSchema(user_id=user_id))
+    async def get_events_for_vendor_service(self, data: EventVendorSearchSchema) -> List[EventVendorsReadSchema]:
+        logger.info(f"Getting all events for vendor: {data.user_id}")
+        event_vendors = await self.event_vendors_repo.get_events_for_vendor(EventVendorSearchSchema(user_id=data.user_id))
         
         if not event_vendors:
             raise HTTPException(status_code=404, detail="Vendor has no events") 
@@ -52,7 +52,7 @@ class EventVendorsService:
         return_list = [self.event_vendors_repo.return_schema(event_vendor) for event_vendor in event_vendors]
         return return_list
     
-    async def update_event_vendors(self, data: EventVendorsUpdateSchema) -> EventVendorsReadSchema: 
+    async def update_event_vendors_service(self, data: EventVendorsUpdateSchema) -> EventVendorsReadSchema: 
         logger.info(f"Updating information for vendor {data.user_id} for event {data.event_id}")
         updated_event_vendors = await self.event_vendors_repo.update_event_vendors(data=data)
         
@@ -61,11 +61,13 @@ class EventVendorsService:
         
         return updated_event_vendors
     
-    async def delete_event_vendor(self, data: EventVendorSearchSchema):
+    async def delete_event_vendor_service(self, data: EventVendorSearchSchema):
         logger.info(f"Deleting vendor {data.user_id} from event {data.event_id}")
         event_vendor_deleted = self.event_vendors_repo.delete_event_vendor(data=data)
         if event_vendor_deleted is False:
-            raise HTTPException(status_code=404, detail="Unsuccessful deletion operation") 
+            raise HTTPException(status_code=404, detail="Unsuccessful deletion operation")
+
+
          
 
     

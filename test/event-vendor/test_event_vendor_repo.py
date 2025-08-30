@@ -27,8 +27,8 @@ async def test_create_event_vendor():
         test_date = datetime.now()
         
         event_vendor_data = EventVendorsCreateSchema(
-            event_id=test_event_id,
-            user_id=test_user_id,
+            event_id=uuid.UUID('10000000-0000-0000-0000-000000000001'),
+            user_id=uuid.UUID('10000000-0000-0000-0000-000000000001'),
             event_date=test_date
         )
 
