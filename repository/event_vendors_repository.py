@@ -37,7 +37,8 @@ class EventVendorsRepository:
         try:
             result = await self.session.execute(
                 select(EventVendor).where(EventVendor.event_id == event_id)
-            ) 
+            )
+             
             return list(result.scalars().all())
         except NoResultFound:
             return None
@@ -51,7 +52,7 @@ class EventVendorsRepository:
         except NoResultFound:
             return None
         
-    async def update_user(self, data: EventVendorsUpdateSchema) -> EventVendorsReadSchema | None:
+    async def update_event_vendors(self, data: EventVendorsUpdateSchema) -> EventVendorsReadSchema | None:
         try:
             # Check if updating a specific vendor in an event 
             if data.event_id is not None:

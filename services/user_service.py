@@ -48,9 +48,8 @@ class UserService:
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         
-        return await self.user_repo.delete_user_by_id(user_id)
-            
-
+        return await self.user_repo.delete_user_by_id(user_id) 
+    
     async def list_users(self) -> list[User]:
         try: 
             users = await self.user_repo.list_users()
