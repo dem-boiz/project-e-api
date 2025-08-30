@@ -9,7 +9,8 @@ from handlers import (
     get_event_guests_handler,
     get_event_pending_invites_handler,
     get_my_events_handler,
-    join_event_handler
+    join_event_handler,
+    delete_event_pending_invite_handler
 )               
 from database.session import get_async_session
 
@@ -187,6 +188,8 @@ async def join_event(
     return result
 
 
+# TODO: Account for max guests in all invite operations
+
 @router.get("/{event_id}/invites/pending", 
     dependencies=[
         Depends(validate_token_parent_session), 
@@ -202,6 +205,21 @@ async def get_event_pending_invites(
     result = await get_event_pending_invites_handler(event_id, service)
     logger.debug(f'Pending invites for event right before response {event_id}: {result}')
     logger.info(f"Retrieved {len(result) if isinstance(result, list) else 'unknown count'} pending invites for event: {event_id}")
+    return result
+
+
+@router.delete("/{event_id}/invites/pending", dependencies=[
+    Depends(validate_token_parent_session),
+    Depends(verify_event_ownership)
+])
+async def delete_event_pending_invites(
+    event_id: uuid.UUID,
+    service: InviteService = Depends(get_invite_service)
+):
+    """Delete all pending invites for a specific event - requires authentication and event existence verification"""
+    logger.info(f"Deleting pending invites for event: {event_id}")
+    result = await delete_event_pending_invite_handler(event_id, service)
+    logger.info(f"Deleted {len(result) if isinstance(result, list) else 'unknown count'} pending invites for event: {event_id}")
     return result
 
 

@@ -38,3 +38,11 @@ class InviteRepository:
             select(Invite).where(Invite.event_id == event_id)
         )
         return result.scalars().all()
+
+
+    async def delete_pending_invite_by_event_id(self, event_id: uuid.UUID) -> bool:
+        result = await self.db.execute(
+            delete(Invite).where(Invite.event_id == event_id, Invite.used_at == None)
+        )
+        await self.db.commit()
+        return result.rowcount > 0

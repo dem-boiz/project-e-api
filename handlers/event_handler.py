@@ -76,8 +76,10 @@ async def get_event_guests_handler(event_id: uuid.UUID, service: InviteService):
     return
 
 async def create_event_invite_handler(invite_data: InviteCreateRequest, event_id: uuid.UUID, host_id: uuid.UUID, service: InviteService):
-    try:
-        return await service.create_invite(invite_data, event_id, host_id)
-    except Exception as e:
-        logger.error(f"Error creating event invite: {e}")
-        return {"error": str(e)}
+    return await service.create_invite(invite_data, event_id, host_id)
+
+    
+
+
+async def delete_event_pending_invite_handler(event_id: uuid.UUID, service: InviteService):
+    return await service.delete_pending_invite(event_id)
