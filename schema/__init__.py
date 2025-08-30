@@ -41,5 +41,6 @@ from .refresh_token_schemas import (
 
 from .event_vendors_schemas import (
     EventVendorsCreateSchema,
-    EventVendorsReadSchema
+    EventVendorsReadSchema,
+    EventVendorsUpdateSchema
 )
