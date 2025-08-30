@@ -516,8 +516,16 @@ class AuthService:
         
         if parent_session is None:
             return False
-        if parent_session.revoked_at == None or parent_session.revoked_at <= decoded_token["iat"]:
+        
+        # If session isn't revoked, it's active
+        if parent_session.revoked_at is None:
             return True
+            
+        # Compare timestamps: session revocation time vs token issue time
+        revoked_timestamp = int(parent_session.revoked_at.timestamp())
+        if revoked_timestamp <= decoded_token["iat"]:
+            return True
+            
         return False
 
         
