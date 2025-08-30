@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.exc import NoResultFound
 from models import EventVendor
-from schema import EventVendorsReadSchema, EventVendorsCreateSchema, EventVendorsUpdateSchema
+from schema import EventVendorsReadSchema, EventVendorsCreateSchema, EventVendorsUpdateSchema, EventVendorSearchSchema
 import uuid
 from datetime import datetime
 
@@ -22,10 +22,10 @@ class EventVendorsRepository:
         await self.session.refresh(new_event_vendor)
         return EventVendorsReadSchema(event_id=data.event_id, user_id=data.user_id, event_date=data.event_date, added_at=datetime.now())
     
-    async def get_event_vendor(self, user_id: uuid.UUID, event_id: uuid.UUID) -> EventVendorsReadSchema | None:
+    async def get_event_vendor(self, data: EventVendorSearchSchema) -> EventVendorsReadSchema | None:
         try:
             result = await self.session.execute(
-                select(EventVendor).where(EventVendor.user_id == user_id and EventVendor.event_id == event_id)
+                select(EventVendor).where(EventVendor.user_id == data.user_id and EventVendor.event_id == data.event_id)
             )
             event_vendor = result.scalar_one()
             return self.return_schema(event_vendor)
@@ -33,24 +33,34 @@ class EventVendorsRepository:
             return None
         
 
-    async def get_vendors_by_event(self, event_id: uuid.UUID) -> List[EventVendor] | None:
+    async def get_vendors_by_event(self, data: EventVendorSearchSchema) -> List[EventVendor] | None:
         try:
             result = await self.session.execute(
-                select(EventVendor).where(EventVendor.event_id == event_id)
+                select(EventVendor).where(EventVendor.event_id == data.event_id)
             )
              
             return list(result.scalars().all())
         except NoResultFound:
             return None
         
-    async def get_events_for_vendor(self, user_id: uuid.UUID) -> List[EventVendor] | None:
+    async def get_events_for_vendor(self, data: EventVendorSearchSchema) -> List[EventVendor] | None:
         try:
             result = await self.session.execute(
-                select(EventVendor).where(EventVendor.user_id == user_id)
+                select(EventVendor).where(EventVendor.user_id == data.user_id)
             ) 
             return list(result.scalars().all())
         except NoResultFound:
             return None
+
+    async def delete_event_vendor(self, data: EventVendorSearchSchema) -> bool:
+        event_vendor = await self.get_event_vendor(data=data)
+
+        if event_vendor is None:
+            return False
+        
+        await self.session.delete(event_vendor)
+        await self.session.commit()
+        return True
         
     async def update_event_vendors(self, data: EventVendorsUpdateSchema) -> EventVendorsReadSchema | None:
         try:

@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
 from repository import EventVendorsRepository 
 from models import EventVendor
-from schema import EventVendorsCreateSchema, EventVendorsReadSchema, EventVendorsUpdateSchema 
+from schema import EventVendorsCreateSchema, EventVendorsReadSchema, EventVendorsUpdateSchema, EventVendorSearchSchema
 from config.logging_config import get_logger
 
 logger = get_logger("service.event_vendors")
@@ -15,7 +15,7 @@ class EventVendorsService:
 
     async def create_event_vendor_service(self, data: EventVendorsCreateSchema) -> EventVendorsReadSchema:
         logger.info(f"Checking if event vendor record exists")
-        existing = await self.event_vendors_repo.get_event_vendor(user_id=data.user_id, event_id=data.event_id)
+        existing = await self.event_vendors_repo.get_event_vendor(EventVendorSearchSchema(user_id=data.user_id, event_id=data.event_id))
         if existing:
             logger.warning(f"Event Vendor record creation filed: Vendor already assigned to event.")
             raise ValueError("Event Vendor record already exists.")
@@ -27,14 +27,14 @@ class EventVendorsService:
 
     async def get_event_vendor_record_service(self, user_id: uuid.UUID, event_id: uuid.UUID) -> EventVendorsReadSchema:
         logger.info(f"Getting users with user ID and event ID: {user_id} and {event_id}")
-        event_vendor = await self.event_vendors_repo.get_event_vendor(user_id=user_id, event_id=event_id)
+        event_vendor = await self.event_vendors_repo.get_event_vendor(EventVendorSearchSchema(user_id=user_id, event_id=event_id))
         if not event_vendor:
             raise HTTPException(status_code=404, detail="Event Vendor not found")  
         return event_vendor
     
     async def get_vendors_for_event_service(self, event_id: uuid.UUID) -> List[EventVendorsReadSchema]:
         logger.info(f"Getting all vendors for event: {event_id}")
-        event_vendors = await self.event_vendors_repo.get_vendors_by_event(event_id=event_id)
+        event_vendors = await self.event_vendors_repo.get_vendors_by_event(EventVendorSearchSchema(event_id=event_id))
         
         if not event_vendors:
             raise HTTPException(status_code=404, detail="Event not found") 
@@ -44,7 +44,7 @@ class EventVendorsService:
     
     async def get_events_for_vendor_service(self, user_id: uuid.UUID) -> List[EventVendorsReadSchema]:
         logger.info(f"Getting all events for vendor: {user_id}")
-        event_vendors = await self.event_vendors_repo.get_events_for_vendor(user_id=user_id)
+        event_vendors = await self.event_vendors_repo.get_events_for_vendor(EventVendorSearchSchema(user_id=user_id))
         
         if not event_vendors:
             raise HTTPException(status_code=404, detail="Vendor has no events") 
@@ -60,6 +60,12 @@ class EventVendorsService:
             raise HTTPException(status_code=404, detail="Vendor has no events or event not found") 
         
         return updated_event_vendors
+    
+    async def delete_event_vendor(self, data: EventVendorSearchSchema):
+        logger.info(f"Deleting vendor {data.user_id} from event {data.event_id}")
+        event_vendor_deleted = self.event_vendors_repo.delete_event_vendor(data=data)
+        if event_vendor_deleted is False:
+            raise HTTPException(status_code=404, detail="Unsuccessful deletion operation") 
          
 
     
