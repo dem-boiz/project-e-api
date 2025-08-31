@@ -14,8 +14,8 @@ from handlers import (
 )               
 from database.session import get_async_session
 
-from handlers.event_handler import create_event_invite_handler
-from schema.invite_schemas import InviteCreateRequest
+from handlers.event_handler import create_event_invite_handler, update_event_invite_handler
+from schema.invite_schemas import InviteCreateRequest, InviteUpdateRequest
 from services import EventService, AuthService, InviteService
 from schema import EventCreateSchema, EventUpdateSchema
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -170,6 +170,25 @@ async def post_event_invite(
     logger.info(f"Created invite for event: {event_id}")
     return result
 
+@router.patch("/{event_id}/invites/pending/{invite_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[
+        Depends(validate_token_parent_session),
+        Depends(verify_event_ownership)
+    ]
+)
+async def update_event_invite(
+    event_id: uuid.UUID,
+    invite_id: uuid.UUID,
+    data: InviteUpdateRequest,
+    service: InviteService = Depends(get_invite_service),
+):
+    """Update an existing invite for an event - requires authentication and ownership verification"""
+    logger.info(f"Updating invite {invite_id} for event: {event_id}")
+    result = await update_event_invite_handler(data, event_id, invite_id, service)
+    logger.info(f"Updated invite {invite_id} for event: {event_id}")
+    return result
+
 @router.post("/join/{otp}")
 async def join_event(
     otp: str,
@@ -186,7 +205,6 @@ async def join_event(
         response=response
     )
     return result
-
 
 # TODO: Account for max guests in all invite operations
 

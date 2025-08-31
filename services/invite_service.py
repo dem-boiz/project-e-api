@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from models.invite import Invite
 from repository.event_repository import EventRepository
 from repository.host_repository import HostRepository
-from schema.invite_schemas import InviteCreateRequest
+from schema.invite_schemas import InviteCreateRequest, InviteUpdateRequest
 from fastapi import HTTPException
 from repository.invite_repository import InviteRepository
 from config.logging_config import get_logger
@@ -93,7 +93,9 @@ class InviteService:
 
 
 
-    async def delete_pending_invite(self, event_id: uuid.UUID, invite_id: uuid.UUID) -> bool:
+    async def delete_pending_invite_by_event_id(self, event_id: uuid.UUID, invite_id: uuid.UUID) -> bool:
+
+
         deleted = await self.repo.delete_pending_invite_by_event_id(event_id, invite_id)
         if not deleted:
             raise HTTPException(status_code=404, detail="Pending invite not found")
@@ -106,4 +108,20 @@ class InviteService:
         if invite.expires_at < datetime.now():
             raise HTTPException(status_code=400, detail="Invite has expired")
         
+        return invite
+    
+
+    async def update_pending_invite_by_event_id(self, update_data: InviteUpdateRequest, event_id: uuid.UUID, invite_id: uuid.UUID) -> Invite:
+        invite = await self.repo.get_invite_by_event_id(event_id, invite_id)
+        if not invite or invite.used_at is not None:
+            # We raise 404 here because used_at invite would not be at the /pending sub-ath
+            raise HTTPException(status_code=404, detail="Invite not found")
+        if invite.expires_at < datetime.now():
+            raise HTTPException(status_code=400, detail="Invite has expired")
+
+        # Update the invite details
+        for key, value in update_data.model_dump(exclude_unset=True).items():
+            setattr(invite, key, value)
+
+        await self.repo.update_invite(invite)
         return invite

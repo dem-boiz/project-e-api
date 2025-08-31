@@ -22,3 +22,8 @@ class InviteCreateResponse(BaseModel):
  
 class InviteDeleteRequest(BaseModel):
     id: uuid.UUID
+
+
+class InviteUpdateRequest(BaseModel):
+    label: Optional[str] = None
+    accessType: Optional[str] = None

@@ -46,3 +46,14 @@ class InviteRepository:
         )
         await self.db.commit()
         return result.rowcount > 0
+
+    async def update_invite(self, invite: Invite) -> Invite:
+        await self.db.commit()
+        await self.db.refresh(invite)
+        return invite
+
+    async def get_invite_by_event_id(self, event_id: uuid.UUID, invite_id: uuid.UUID) -> Invite | None:
+        result = await self.db.execute(
+            select(Invite).where(Invite.event_id == event_id, Invite.id == invite_id)
+        )
+        return result.scalar_one_or_none()
