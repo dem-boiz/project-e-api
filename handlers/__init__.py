@@ -10,7 +10,7 @@ from .event_handler import (
     get_event_guests_handler,
     get_event_pending_invites_handler,
     delete_event_pending_invite_handler,
-    update_event_invite_handler
+    update_pending_event_invite_handler
 )
 from .user_handlers import (
     create_user_handler, get_user_by_id_handler, hard_delete_user_handler, get_user_by_email_handler

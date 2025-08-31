@@ -14,7 +14,7 @@ from handlers import (
 )               
 from database.session import get_async_session
 
-from handlers.event_handler import create_event_invite_handler, update_event_invite_handler
+from handlers.event_handler import create_event_invite_handler, update_pending_event_invite_handler
 from schema.invite_schemas import InviteCreateRequest, InviteUpdateRequest
 from services import EventService, AuthService, InviteService
 from schema import EventCreateSchema, EventUpdateSchema
@@ -185,9 +185,9 @@ async def update_event_invite(
 ):
     """Update an existing invite for an event - requires authentication and ownership verification"""
     logger.info(f"Updating invite {invite_id} for event: {event_id}")
-    result = await update_event_invite_handler(data, event_id, invite_id, service)
+    await update_pending_event_invite_handler(data, event_id, invite_id, service)
     logger.info(f"Updated invite {invite_id} for event: {event_id}")
-    return result
+    return
 
 @router.post("/join/{otp}")
 async def join_event(

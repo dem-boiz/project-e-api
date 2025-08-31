@@ -83,9 +83,8 @@ async def create_event_invite_handler(invite_data: InviteCreateRequest, event_id
     return invite_dict
 
 
-async def update_event_invite_handler(update_data: InviteUpdateRequest, event_id: uuid.UUID, invite_id: uuid.UUID, service: InviteService):
+async def update_pending_event_invite_handler(update_data: InviteUpdateRequest, event_id: uuid.UUID, invite_id: uuid.UUID, service: InviteService):
     return await service.update_pending_invite_by_event_id(update_data, event_id, invite_id)
 
 async def delete_event_pending_invite_handler(event_id: uuid.UUID, invite_id: uuid.UUID, service: InviteService):
     return await service.delete_pending_invite_by_event_id(event_id, invite_id)
-    
