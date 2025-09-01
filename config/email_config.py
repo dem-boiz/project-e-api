@@ -2,7 +2,7 @@ from fastapi_mail import ConnectionConfig
 from pydantic import SecretStr
 from typing import cast
 
-from settings import MAIL_FROM, MAIL_PASSWORD, MAIL_USERNAME
+from .settings import MAIL_FROM, MAIL_PASSWORD, MAIL_USERNAME
 
 email_config = ConnectionConfig(
     MAIL_USERNAME=MAIL_USERNAME,
