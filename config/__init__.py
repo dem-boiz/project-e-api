@@ -7,5 +7,17 @@ from .settings import (
     CSRF_PEPPER,
     EVENT_TOKEN_PEPPER,
     DEVICE_LIMIT,
-    INVITE_HOUR_EXPIRY
+    INVITE_HOUR_EXPIRY,
+    MAIL_FROM,
+    MAIL_USERNAME,
+    MAIL_PASSWORD,
+    CLIENT_URL,
+)
+
+from .email_config import (
+    email_config
+)
+
+from .logging_config import (
+    get_logger
 )

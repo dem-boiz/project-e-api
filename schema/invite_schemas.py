@@ -7,15 +7,16 @@ from typing import Optional
 class InviteCreateRequest(BaseModel):
     email: Optional[EmailStr] = None
     label: Optional[str] = None
-    accessType: str
-    deliveryMethod: str
+    access_type: str
+    delivery_method: str
 class InviteCreateResponse(BaseModel):
     id: uuid.UUID
     email: EmailStr
     event_id: uuid.UUID
     expires_at: datetime
     used: bool
-    created_at: datetime 
+    created_at: datetime
+    invite_link: str | None
 
     class Config:
         from_attributes = True
@@ -26,4 +27,4 @@ class InviteDeleteRequest(BaseModel):
 
 class InviteUpdateRequest(BaseModel):
     label: Optional[str] = None
-    accessType: Optional[str] = None
+    access_type: Optional[str] = None

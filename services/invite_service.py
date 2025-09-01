@@ -12,7 +12,8 @@ from fastapi import HTTPException
 from repository.invite_repository import InviteRepository
 from config.logging_config import get_logger
 
-from config import INVITE_HOUR_EXPIRY
+from config import INVITE_HOUR_EXPIRY, CLIENT_URL
+from utils import send_invite_email
 
 logger = get_logger("api.invites")
 
@@ -36,15 +37,15 @@ class InviteService:
 
     async def create_invite(self, invite_data: InviteCreateRequest, event_id: uuid.UUID, host_id: uuid.UUID) -> Invite:
         # Validate type
-        if invite_data.accessType not in ["guest", "vendor"]:
+        if invite_data.access_type not in ["guest", "vendor"]:
             raise HTTPException(status_code=400, detail="Invalid invite type")
 
         # Validate delivery method
-        if invite_data.deliveryMethod not in ["email", "link"]:
+        if invite_data.delivery_method not in ["email", "link"]:
             raise HTTPException(status_code=400, detail="Invalid delivery method")
 
         # Validate email for email delivery
-        if invite_data.deliveryMethod is "email" and not invite_data.email:
+        if invite_data.delivery_method == "email" and not invite_data.email:
             raise HTTPException(status_code=400, detail="Email is required for email delivery")
 
         # Validate event exists
@@ -56,7 +57,7 @@ class InviteService:
         host = await self.host_repo.get_host_by_id(host_id)
         if not host:
             raise HTTPException(status_code=404, detail="Host not found")
-
+    
         invite_code = await generate_unique_invite_code(self.repo)
         expires_at = datetime.now() + timedelta(hours=INVITE_HOUR_EXPIRY)
         invite_object = Invite(
@@ -67,10 +68,21 @@ class InviteService:
             expires_at=expires_at,
             created_at=datetime.now(),
             issued_by_host_id=host_id,
-            type=invite_data.accessType
+            type=invite_data.access_type
         )
-        await self.repo.create_invite(invite_object)
 
+        invite_link = f"{CLIENT_URL}/join-event/{invite_code}"
+
+        if invite_data.delivery_method == "email" and invite_data.email:
+            logger.info(f"Sending invite email to {invite_data.email} with code {invite_code}")
+            email_result = await send_invite_email(invite_data.email, invite_link)
+            if email_result.get("status") == "Invite failed":
+                logger.error(f"Failed to send invite email: {email_result.get('error')}")
+                raise HTTPException(status_code=500, detail="Failed to send invite email")
+        else:
+            logger.info(f"Invite link generated for {invite_data.email} with code {invite_code}")
+
+        await self.repo.create_invite(invite_object)
         return invite_object
 
     async def delete_invite(self, invite_code: str) -> bool:

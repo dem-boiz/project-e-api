@@ -8,6 +8,7 @@ from config import (
     JWT_ACCESS_LIFESPAN,
     JWT_REFRESH_LIFESPAN,
     CSRF_PEPPER,
+    email_config
 )
 import os, base64, hmac, hashlib
 from repository import RefreshTokenRepository
@@ -18,9 +19,10 @@ import uuid
 from typing import Optional
 import os
 from passlib.context import CryptContext
+from fastapi_mail import FastMail, MessageSchema, MessageType
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-from config.logging_config import get_logger
+from config import get_logger, CLIENT_URL
 
 
 logger = get_logger("auth")
@@ -298,5 +300,22 @@ async def generate_csrf_token(length: int = 32) -> str:
     """
     return secrets.token_urlsafe(length)
 
+async def send_invite_email(email: str, invite_url: str): 
+    try:
+        message = MessageSchema(
+            subject="You’re invited to an event!",
+            recipients=[email],  # List of recipient emails
+            body=f"""
+            <h2>You’ve been invited!</h2>
+            <p>Click the link below to join the event:</p>
+            <a href="{invite_url}">{invite_url}</a>
+            """,
+            subtype=MessageType.html  # or "plain" for text-only
+        )
 
-
+        fm = FastMail(email_config)
+        await fm.send_message(message)
+        return {"status": "Invite sent"}
+    except Exception as e:
+        logger.error(f"Failed to send email: {e}")
+        return {"status": "Invite failed", "error": str(e)}

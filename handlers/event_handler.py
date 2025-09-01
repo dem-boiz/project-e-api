@@ -2,7 +2,7 @@ import os
 import uuid
 from fastapi import Response
 from schema import EventCreateSchema, EventUpdateSchema
-from schema.invite_schemas import InviteCreateRequest, InviteUpdateRequest
+from schema.invite_schemas import InviteCreateRequest, InviteCreateResponse, InviteUpdateRequest
 from services import EventService, DeviceGrantService
 from config.logging_config import get_logger
 from services.invite_service import InviteService
@@ -75,12 +75,21 @@ async def get_event_guests_handler(event_id: uuid.UUID, service: InviteService):
     ''' Implement this '''
     return
 
-async def create_event_invite_handler(invite_data: InviteCreateRequest, event_id: uuid.UUID, host_id: uuid.UUID, service: InviteService):
-    invite = await service.create_invite(invite_data, event_id, host_id)
-    # Convert to dict and remove sensitive field
+async def create_event_invite_handler(
+    invite_data: InviteCreateRequest, 
+    event_id: uuid.UUID, host_id: uuid.UUID,
+    service: InviteService
+) -> InviteCreateResponse:
+    invite, invite_link = await service.create_invite(invite_data, event_id, host_id)
+    # Convert to dict and remove sensitive fields + add invite_link if needed
+
     invite_dict = invite.__dict__
     invite_dict.pop('otp_code', None)
-    return invite_dict
+
+    if invite_data.delivery_method != "email":
+        invite_dict['invite_link'] = invite_link
+
+    return InviteCreateResponse(**invite_dict)
 
 
 async def update_pending_event_invite_handler(update_data: InviteUpdateRequest, event_id: uuid.UUID, invite_id: uuid.UUID, service: InviteService):
