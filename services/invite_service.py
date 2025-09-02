@@ -71,7 +71,7 @@ class InviteService:
             type=invite_data.access_type,
         )
 
-        invite_link = f"{CLIENT_URL}/join-event/{invite_code}"
+        invite_link = f"{CLIENT_URL}/invite/{invite_code}"
 
         if invite_data.delivery_method == "email" and invite_data.email:
             logger.info(f"Sending invite email to {invite_data.email} with code {invite_code}")

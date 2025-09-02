@@ -123,7 +123,14 @@ class EventService:
         return False
 
     async def join_event(self, x_otp: str, device_id: uuid.UUID) -> tuple[DeviceGrant, str]:
-        event_id = await InviteService.validate_invite(x_otp) # type: ignore
+        # Create a new instance of InviteService with the same db session used by this service
+        db_session = self.repo.session
+        invite_service = InviteService(db_session)
+        
+        # Validate the invite
+        invite = await invite_service.validate_invite(x_otp)
+        event_id = invite.event_id
+        
         if await DeviceGrantService.device_hit_limit(device_id): # type: ignore
             logger.warning(f"Device {device_id} has hit the maximum event limit.")
             raise HTTPException(status_code=403, detail="Device has hit the maximum event limit.")

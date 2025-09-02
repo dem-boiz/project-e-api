@@ -195,5 +195,6 @@ class DeviceGrantService:
         return True
 
     async def device_hit_limit(self, device_id: uuid.UUID) -> bool:
+        logger.debug(f"Checking if device {device_id} has hit the event limit")
         active_grants = await self.get_active_grants_for_device(device_id)
         return len(active_grants) >= int(DEVICE_LIMIT)
