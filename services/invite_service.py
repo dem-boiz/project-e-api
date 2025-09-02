@@ -35,7 +35,7 @@ class InviteService:
         self.event_repo = EventRepository(db)
         self.host_repo = HostRepository(db)
 
-    async def create_invite(self, invite_data: InviteCreateRequest, event_id: uuid.UUID, host_id: uuid.UUID) -> Invite:
+    async def create_invite(self, invite_data: InviteCreateRequest, event_id: uuid.UUID, host_id: uuid.UUID) -> tuple[Invite, str | None]:
         # Validate type
         if invite_data.access_type not in ["guest", "vendor"]:
             raise HTTPException(status_code=400, detail="Invalid invite type")
@@ -83,7 +83,7 @@ class InviteService:
             logger.info(f"Invite link generated for {invite_data.email} with code {invite_code}")
 
         await self.repo.create_invite(invite_object)
-        return invite_object
+        return invite_object, invite_link if invite_data.delivery_method == "link" else None
 
     async def delete_invite(self, invite_code: str) -> bool:
         deleted = await self.repo.delete_invite_by_code(invite_code)
