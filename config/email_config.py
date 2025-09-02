@@ -14,4 +14,5 @@ email_config = ConnectionConfig(
     VALIDATE_CERTS=True,
     MAIL_SSL_TLS=False,
     MAIL_STARTTLS=True,
+    MAIL_DEBUG=1,
 )
