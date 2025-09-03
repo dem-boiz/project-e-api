@@ -58,6 +58,21 @@ async def get_current_host(
     token = credentials.credentials
     return await auth_service.get_current_host_service(token, graceful=graceful)
 
+# Separate dependency for graceful host retrieval without mandatory authentication
+async def get_current_host_graceful(
+    request: Request,
+    auth_service: AuthService = Depends(get_auth_service)
+) -> Host | None:
+    """Get the current host if authenticated, or None if not authenticated"""
+    logger.debug("Getting current host with graceful authentication")
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        logger.debug("No bearer token found, returning None (graceful)")
+        return None
+        
+    token = auth_header.split(" ")[1]
+    return await auth_service.get_current_host_service(token, graceful=True)
+
 async def get_device_id(
         request: Request
 ) -> uuid.UUID | None:
@@ -218,18 +233,13 @@ async def join_event(
     request: Request,
     service: EventService = Depends(get_event_service),
     device_id: uuid.UUID | None = Depends(get_device_id),
-    user: Host = Depends(partial(get_current_host, graceful=True))
+    user: Host | None = Depends(get_current_host_graceful)
 ):
     """Join an event - requires authentication and event existence verification"""
     logger.info(f"Joining event with otp: {otp}")
-    # Parse request body manually
-    try:
-        body = await request.json()
-        use_auth = body.get("useAuth", False)
-        logger.debug(f"Request body: {body}, useAuth: {use_auth}")
-    except Exception as e:
-        logger.error(f"Failed to parse request body: {e}")
-        use_auth = False
+    request_body = await request.json()
+    use_auth = request_body.get("useAuth", False)
+    logger.debug(f"Request body: {request_body}, useAuth: {use_auth}")
     result = await join_event_handler(
         otp, 
         service,
