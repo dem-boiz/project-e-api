@@ -309,7 +309,7 @@ class AuthService:
         ):
             logger.warning("The parent session for this refresh token is no longer active. Rejecting request")
             raise HTTPException(
-                status_code=403,
+                status_code=status.HTTP_403_FORBIDDEN,
                 detail="Session ended",
                 headers={"WWW-Authenticate": "Bearer"},
             )
@@ -389,7 +389,7 @@ class AuthService:
         if session_invalidated is None or session_invalidated is False:
             logger.warning("Session not invalidated.") 
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail="No active tokens found for the given session ID"
             )
         logger.info("Session tokens successfully revoked")
@@ -461,12 +461,18 @@ class AuthService:
         """Get current authenticated user"""
         token = credentials.credentials
         host = await self.get_current_host_service(token)
+        if not host:
+            logger.warning(f"Host not found for token: {token}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Host not found"
+            )
         return CurrentUserResponseSchema(
             email=host.email,
             host_id=str(host.id),
             name=host.company_name
         )
-    async def get_current_host_service(self, token: str) -> Host:
+    async def get_current_host_service(self, token: str, graceful: bool = False) -> Host | None:
         """Get current host from JWT token"""
         logger.debug(f"Verifying JWT token")
         try:
@@ -478,6 +484,8 @@ class AuthService:
             host = await self.host_repo.get_host_by_id(host_id)
             if not host:
                 logger.warning(f"Host not found: {host_id}")
+                if graceful:
+                    return None
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Host not found"
@@ -496,6 +504,8 @@ class AuthService:
         except ValueError:
             # Handle invalid UUID format
             logger.error(f"Invalid token format: {token}")
+            if graceful:
+                return None
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token format",
@@ -503,6 +513,8 @@ class AuthService:
             )
         except Exception as e:
             logger.error(f"Error occurred while verifying token: {e}")
+            if graceful:
+                return None
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=f"Error occurred while verifying token. {e}",

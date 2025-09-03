@@ -47,12 +47,13 @@ async def get_invite_service(session: AsyncSession = Depends(get_async_session))
 
 # Dependency to get current authenticated host
 async def get_current_host(
+    graceful: bool = False,
     credentials: HTTPAuthorizationCredentials = Security(security),
     auth_service: AuthService = Depends(get_auth_service)
 ) -> Host:
     """Get the current authenticated host from JWT token"""
     token = credentials.credentials
-    return await auth_service.get_current_host_service(token)
+    return await auth_service.get_current_host_service(token, graceful=graceful)
 
 async def get_device_id(
         request: Request
@@ -153,7 +154,7 @@ async def get_events(service: EventService = Depends(get_event_service)):
     return result
 
 @router.patch("/{event_id}", 
-    status_code=204, 
+    status_code=status.HTTP_204_NO_CONTENT, 
     dependencies=[
         Depends(validate_token_parent_session),
         Depends(verify_event_ownership)
@@ -205,20 +206,29 @@ async def update_event_invite(
     logger.info(f"Updated invite {invite_id} for event: {event_id}")
     return
 
+
+
 @router.post("/join/{otp}")
 async def join_event(
     otp: str,
     response: Response,
+    request: Request,
     service: EventService = Depends(get_event_service),
     device_id: uuid.UUID | None = Depends(get_device_id),
+    user: Host = Depends(lambda: get_current_host(graceful=True))
 ):
     """Join an event - requires authentication and event existence verification"""
     logger.info(f"Joining event with otp: {otp}")
+    # Parse request body to get useAuth parameter
+    body = await request.json()
+    use_auth = body.get("useAuth", False)
     result = await join_event_handler(
         otp, 
         service,
         device_id=device_id, # type: ignore
-        response=response
+        response=response,
+        user=user,
+        use_auth=use_auth
     )
     return result
 

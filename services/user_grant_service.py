@@ -4,43 +4,32 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select 
 from sqlalchemy.exc import NoResultFound
 from models import UserGrant
-from fastapi import HTTPException
-from repository import UserEventAccessRepository
-from schema import UserEventAccessCreateSchema, UserEventAccessReadSchema
+from fastapi import HTTPException, status
+from repository import UserGrantRepository
+from schema import UserGrantReadSchema, UserGrantCreateSchema
+from config import USER_GRANT_LIMIT
 
-
-class UserEventAccessService:
+class UserGrantService:
     def __init__(self, db: AsyncSession):
-        self.repo = UserEventAccessRepository(db)
+        self.repo = UserGrantRepository(db)
 
-    async def create_user_event_access(self, user_event_access: UserEventAccessCreateSchema) -> UserEventAccessReadSchema:
-        # Check if the access record already exists
-        existing = await self.repo.get_user_event_access_by_user_and_event(user_event_access.user_id, user_event_access.event_id)
+    async def create_user_grant(self, user_grant: UserGrantCreateSchema) -> UserGrantReadSchema:
+        # Check if the grant record already exists
+        existing = await self.repo.get_active_user_grants_by_user_and_event(user_grant.user_id, user_grant.event_id)
         if existing:    
             raise ValueError("Access record already exists for this user and event.")
-        new_access = UserGrant(
-            user_id=user_event_access.user_id,
-            event_id=user_event_access.event_id,
-            invite_id=user_event_access.invite_id,
-            is_deleted=False
-        )
-        return await self.repo.create_user_event_access(new_access)
-    
-    async def get_user_event_access_by_user_and_event(self, user_id: uuid.UUID, event_id: uuid.UUID) -> Optional[UserEventAccessReadSchema]:
-        """Retrieve a UserEventAccess record by user_id and event_id."""
-        access = await self.repo.get_user_event_access_by_user_and_event(user_id, event_id)
+        new_access = UserGrant(user_grant)
+        return await self.repo.create_user_grant(new_access)
+
+
+    async def delete_user_grant(self, user_id: uuid.UUID, event_id: uuid.UUID) -> None:
+        """Soft delete a UserGrant record by user_id and event_id."""
+        access = await self.repo.get_user_grant_by_user_and_event(user_id, event_id)
         if not access:
-            raise HTTPException(status_code=404, detail="User Event Access not found")
-        return UserEventAccessReadSchema.from_orm(access)
-    
-    async def delete_user_event_access(self, user_id: uuid.UUID, event_id: uuid.UUID) -> None:
-        """Soft delete a UserEventAccess record by user_id and event_id."""
-        access = await self.repo.get_user_event_access_by_user_and_event(user_id, event_id)
-        if not access:
-            raise HTTPException(status_code=404, detail="User Event Access not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User Grant not found")
         access.is_deleted = True
         await self.repo.session.commit()
 
-    async def user_hit_limit(self, user_id: uuid.UUID) -> bool:
+    async def user_hit_limit(self, user_id: uuid.UUID, event_id: uuid.UUID) -> bool:
         """Check if the user has hit the maximum event limit."""
-        return await self.repo.get_active_grants_count(user_id) >= 5
+        return await self.repo.get_active_grants_count(user_id, event_id) >= USER_GRANT_LIMIT

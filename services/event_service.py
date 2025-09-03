@@ -1,6 +1,6 @@
 import uuid
 from typing import Sequence
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 
@@ -11,8 +11,10 @@ from repository import EventRepository
 from models import Event 
 from repository.host_repository import HostRepository
 from schema import EventCreateSchema, EventUpdateSchema
+from schema.user_grant_schemas import UserGrantCreateSchema
 from services.device_grant_service import DeviceGrantService
 from services.invite_service import InviteService
+from services.user_grant_service import UserGrantService
 
 #TODO: add logging
 
@@ -124,7 +126,7 @@ class EventService:
         return False
 
 
-    async def join_event_with_user_id(self, x_otp: str, user_id: uuid.UUID) -> tuple[UserGrant, str]:
+    async def join_event_with_user_id(self, x_otp: str, user_id: uuid.UUID) -> UserGrantCreateSchema:
         db_session = self.repo.session
         invite_service = InviteService(db_session)
 
@@ -132,12 +134,22 @@ class EventService:
         invite = await invite_service.validate_invite(x_otp)
         event_id = invite.event_id
 
+        # Ensure the user hasn't joined max num of events
         if await UserGrantService.user_hit_limit(user_id): # type: ignore
             logger.warning(f"User {user_id} has hit the maximum event limit.")
-            raise HTTPException(status_code=403, detail="User has hit the maximum event limit.")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User has hit the maximum event limit.")
 
-        grant, token = await UserGrantService.issue_user_grant(event_id, user_id, x_otp) # type: ignore
-        return grant, token
+        grant_data = UserGrantCreateSchema(
+            user_id=user_id,
+            event_id=event_id,
+            access_type="full",
+            expires_at=None,
+            issued_at=datetime.now(),
+            created_from_invite_id=invite.id
+        )
+
+        return await UserGrantService.create_user_grant(grant_data) # type: ignore
+        
 
     async def join_event_with_device_id(self, x_otp: str, device_id: uuid.UUID) -> tuple[DeviceGrant, str]:
         # Create a new instance of InviteService with the same db session used by this service
@@ -150,7 +162,7 @@ class EventService:
         
         if await DeviceGrantService.device_hit_limit(device_id): # type: ignore
             logger.warning(f"Device {device_id} has hit the maximum event limit.")
-            raise HTTPException(status_code=403, detail="Device has hit the maximum event limit.")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Device has hit the maximum event limit.")
 
         grant, token = await DeviceGrantService.issue_device_grant(event_id, device_id, x_otp) # type: ignore
         return grant, token

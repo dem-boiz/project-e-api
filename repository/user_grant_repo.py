@@ -17,11 +17,7 @@ class UserGrantRepository:
         self.session.add(user_grant)
         await self.session.commit()
         await self.session.refresh(user_grant)
-        return UserGrantReadSchema(user_id=user_grant.user_id,
-                                        event_id=user_grant.event_id,
-                                        invite_id=user_grant.created_from_invite_id,
-                                        revoked_at=user_grant.revoked_at,
-                                        granted_at=user_grant.issued_at)
+        return UserGrantReadSchema(**user_grant.__dict__)
 
     async def get_active_user_grants_by_user_and_event(self, user_id: uuid.UUID, event_id: uuid.UUID) -> Sequence[UserGrant]:
         """Retrieve a UserGrant record by user_id and event_id."""
@@ -34,3 +30,8 @@ class UserGrantRepository:
         )
 
         return result.scalars().all()
+
+    async def get_active_grants_count(self, user_id: uuid.UUID, event_id: uuid.UUID) -> int:
+        """Retrieve the count of active UserGrant records by user_id and event_id."""
+        result = await self.get_active_user_grants_by_user_and_event(user_id, event_id)
+        return len(result)

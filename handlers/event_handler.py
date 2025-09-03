@@ -1,6 +1,8 @@
 import os
 import uuid
-from fastapi import HTTPException, Response
+from fastapi import HTTPException, Response, status
+from fastapi.security import HTTPAuthorizationCredentials
+from models.host import Host
 from routes.auth_route import get_current_user
 from schema import EventCreateSchema, EventUpdateSchema
 from schema.invite_schemas import InviteCreateRequest, InviteCreateResponse, InviteUpdateRequest
@@ -35,28 +37,30 @@ async def get_event_by_name_handler(name: str, service: EventService):
 async def get_event_pending_invites_handler(event_id: uuid.UUID, service: InviteService):
     return await service.get_pending_invites_by_event(event_id)
 
-async def join_event_handler(otp: str, service: EventService, device_id: uuid.UUID, response: Response):
-    
-    try:
-        user = get_current_user()
-        
-    except Exception as e:
-        logger.warning(f"Unable to get current user: {e}")
-        logger.info("Using device_id to join event instead of user_id")
-
-
-    grant, token = await service.join_event(otp, device_id)
-
-    cookieName = f'event_{grant.event_id}_token'
-    response.set_cookie(
-        key=cookieName, 
-        value=token,
-        path='/',
-        httponly=True,
-        secure=IS_PROD,
-        samesite="lax",
-        max_age=30*24*3600  # 30 days
-    )
+async def join_event_handler(
+    otp: str, 
+    service: EventService, 
+    device_id: uuid.UUID, 
+    response: Response, 
+    user: Host,
+    use_auth: bool
+):
+    if use_auth is True and user is not None:
+        logger.warning("No user found, using device_id instead")
+        await service.join_event_with_user_id(otp, user.id)
+    elif use_auth is False:
+        grant, token = await service.join_event_with_device_id(otp, device_id)
+        cookieName = f'event_{grant.event_id}_token'
+        response.set_cookie(
+            key=cookieName, 
+            value=token,
+            httponly=True,
+            secure=IS_PROD,
+            samesite="lax",
+            max_age=30*24*3600  # 30 days
+        )
+    else:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User not authenticated.")
 
     return {"message": "Joined event successfully"}
 

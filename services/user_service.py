@@ -1,7 +1,7 @@
 import uuid
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 from repository import UserRepository
 from models import User
 from schema import UserCreate
@@ -14,13 +14,13 @@ class UserService:
     async def get_user_by_id(self, user_id: uuid.UUID) -> Optional[User]:
         user = await self.repo.get_user_by_id(user_id)
         if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
         return user 
     
     async def get_user_by_email(self, email: str) -> Optional[User]:
         user = await self.repo.get_user_by_email(email)
         if not user:
-            raise HTTPException(status_code=404, detail="User not found")   
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")   
         return user
 
     async def create_user(self, user_data: UserCreate) -> User:
@@ -40,7 +40,7 @@ class UserService:
     async def hard_delete_user(self, user_id: uuid.UUID) -> bool:
         user = await self.repo.get_user_by_id(user_id)
         if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
         
         return await self.repo.delete_user_by_id(user_id)
             
@@ -50,4 +50,4 @@ class UserService:
             users = await self.repo.list_users()
             return list(users)
         except:
-            raise HTTPException(status_code=404, detail="Users not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Users not found")

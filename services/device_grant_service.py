@@ -6,7 +6,7 @@ from typing import Optional, List
 import hashlib
 import uuid
 
-from config import EVENT_TOKEN_PEPPER, DEVICE_LIMIT
+from config import EVENT_TOKEN_PEPPER, DEVICE_GRANT_LIMIT
 from models.device_grant import DeviceGrant
 from repository.device_grant_repository import DeviceGrantRepository
 from config.logging_config import get_logger
@@ -197,4 +197,4 @@ class DeviceGrantService:
     async def device_hit_limit(self, device_id: uuid.UUID) -> bool:
         logger.debug(f"Checking if device {device_id} has hit the event limit")
         active_grants = await self.get_active_grants_for_device(device_id)
-        return len(active_grants) >= int(DEVICE_LIMIT)
+        return len(active_grants) >= int(DEVICE_GRANT_LIMIT)

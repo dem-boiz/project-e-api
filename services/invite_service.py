@@ -8,7 +8,7 @@ from models.invite import Invite
 from repository.event_repository import EventRepository
 from repository.host_repository import HostRepository
 from schema.invite_schemas import InviteCreateRequest, InviteUpdateRequest
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 from repository.invite_repository import InviteRepository
 from config.logging_config import get_logger
 
@@ -38,25 +38,25 @@ class InviteService:
     async def create_invite(self, invite_data: InviteCreateRequest, event_id: uuid.UUID, host_id: uuid.UUID) -> tuple[Invite, str | None]:
         # Validate type
         if invite_data.access_type not in ["guest", "vendor"]:
-            raise HTTPException(status_code=400, detail="Invalid invite type")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid invite type")
 
         # Validate delivery method
         if invite_data.delivery_method not in ["email", "link"]:
-            raise HTTPException(status_code=400, detail="Invalid delivery method")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid delivery method")
 
         # Validate email for email delivery
         if invite_data.delivery_method == "email" and not invite_data.email:
-            raise HTTPException(status_code=400, detail="Email is required for email delivery")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email is required for email delivery")
 
         # Validate event exists
         event = await self.event_repo.get_event_by_id(event_id)
         if not event:
-            raise HTTPException(status_code=404, detail="Event not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
         
         # Validate host exists
         host = await self.host_repo.get_host_by_id(host_id)
         if not host:
-            raise HTTPException(status_code=404, detail="Host not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Host not found")
     
         invite_code = await generate_unique_invite_code(self.repo)
         expires_at = datetime.now() + timedelta(hours=INVITE_HOUR_EXPIRY)
@@ -78,7 +78,7 @@ class InviteService:
             email_result = await send_invite_email(invite_data.email, invite_link)
             if email_result.get("status") == "Invite failed":
                 logger.error(f"Failed to send invite email: {email_result.get('error')}")
-                raise HTTPException(status_code=500, detail="Failed to send invite email")
+                raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to send invite email")
         else:
             logger.info(f"Invite link generated for {invite_data.email} with code {invite_code}")
 
@@ -88,13 +88,13 @@ class InviteService:
     async def delete_invite(self, invite_code: str) -> bool:
         deleted = await self.repo.delete_invite_by_code(invite_code)
         if not deleted:
-            raise HTTPException(status_code=404, detail="Invite not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invite not found")
         return True
 
     async def get_invite_by_code(self, invite_code: str) -> Invite:
         invite = await self.repo.get_invite_by_code(invite_code)
         if not invite:
-            raise HTTPException(status_code=404, detail="Invite not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invite not found")
         return invite
 
 
@@ -110,16 +110,16 @@ class InviteService:
 
         deleted = await self.repo.delete_pending_invite_by_event_id(event_id, invite_id)
         if not deleted:
-            raise HTTPException(status_code=404, detail="Pending invite not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pending invite not found")
         return True
 
     async def validate_invite(self, invite_code: str) -> Invite:
         invite = await self.repo.get_invite_by_code(invite_code)
         if not invite:
-            raise HTTPException(status_code=404, detail="Invite not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invite not found")
         if invite.expires_at < datetime.now():
-            raise HTTPException(status_code=400, detail="Invite has expired")
-        
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invite has expired")
+
         return invite
     
 
@@ -127,9 +127,9 @@ class InviteService:
         invite = await self.repo.get_invite_by_event_id(event_id, invite_id)
         if not invite or invite.used_at is not None:
             # We raise 404 here because used_at invite would not be at the /pending sub-ath
-            raise HTTPException(status_code=404, detail="Invite not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invite not found")
         if invite.expires_at < datetime.now():
-            raise HTTPException(status_code=400, detail="Invite has expired")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invite has expired")
 
         # Update the invite details
         for key, value in update_data.model_dump(exclude_unset=True).items():

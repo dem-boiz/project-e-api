@@ -1,44 +1,41 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from uuid import UUID
 from datetime import datetime
 from typing import Optional
 
-class UserGrantSearchSchema(BaseModel):
-    email: EmailStr
 
+
+class UserGrantReadSchema(BaseModel):
+    id: UUID
+    user_id: UUID
+    event_id: UUID
+    access_type: str
+    expires_at: Optional[datetime] = None
+    issued_at: datetime
+    revoked_at: Optional[datetime] = None
+    created_from_invite_id: UUID
     class Config:
         from_attributes = True
+
 
 class UserGrantCreateSchema(BaseModel):
     user_id: UUID
     event_id: UUID
-    invite_id: UUID
-    revoked_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
-
-class UserGrantReadSchema(BaseModel):
-    user_id: UUID
-    event_id: UUID
-    invite_id: UUID  # Invite ID can be optional in read schema
-    revoked_at: datetime
-    granted_at: datetime
-
+    access_type: str
+    expires_at: Optional[datetime] = None
+    issued_at: datetime
+    created_from_invite_id: UUID
+    
     class Config:
         from_attributes = True
 
 class UserGrantUpdateSchema(BaseModel):
-    invite_id: Optional[UUID] = None  # Allow updating Invite ID
     revoked_at: Optional[datetime] = None
-    granted_at: Optional[datetime] = None
-
     class Config:
         from_attributes = True
 
 class UserGrantDeleteSchema(BaseModel):
     user_id: UUID
     event_id: UUID
-
     class Config:
         from_attributes = True

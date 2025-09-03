@@ -167,7 +167,7 @@ async def create_refresh_token(
         await refresh_token_repo.create_refresh_token(token_data)
     except Exception as e:
         logger.error(f"Error storing refresh token in database: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
     return encoded_token
 
@@ -224,47 +224,47 @@ def verify_jwt(token: str | None, expected_issuer=ISSUER, expected_audience=AUDI
         missing_claims = [claim for claim in required_claims if claim not in payload]
         if missing_claims:
             logger.warning(f"JWT missing required claims: {missing_claims}")
-            raise HTTPException(status_code=401, detail=f"Token missing required claims: {missing_claims}")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Token missing required claims: {missing_claims}")
         
         # Validate token type if specified
         if token_type and payload.get("typ") != token_type:
             logger.warning(f"Token type mismatch. Expected: {token_type}, Got: {payload.get('typ')}")
-            raise HTTPException(status_code=401, detail=f"Invalid token type. Expected {token_type}")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Invalid token type. Expected {token_type}")
         
         # Validate subject (user ID) is present and non-empty
         if not payload.get("sub"):
             logger.warning("JWT has empty or missing subject (user ID)")
-            raise HTTPException(status_code=401, detail="Token has invalid subject")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has invalid subject")
             
         # Validate session ID is present and non-empty
         if not payload.get("sid"):
             logger.warning("JWT has empty or missing session ID")
-            raise HTTPException(status_code=401, detail="Token has invalid session ID")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has invalid session ID")
             
         # Validate token ID is present and non-empty
         if not payload.get("jti"):
             logger.warning("JWT has empty or missing token ID")
-            raise HTTPException(status_code=401, detail="Token has invalid token ID")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has invalid token ID")
         
         logger.info(f"JWT verified successfully for user {payload['sub']}, session {payload['sid']}")
         return payload
     
     except ExpiredSignatureError as e:
         logger.warning(f"JWT token has expired: {e}")
-        raise HTTPException(status_code=401, detail="Token has expired")
-    
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired")
+
     except JWTClaimsError as e:
         logger.warning(f"JWT claims validation failed: {e}")
-        raise HTTPException(status_code=401, detail="Invalid token claims")
-    
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token claims")
+
     except JWTError as e:
         logger.warning(f"Invalid JWT token: {e}")
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
     except Exception as e:
         logger.error(f"Unexpected error during JWT verification: {e}")
         logger.error(f"Full stack trace:\\n{traceback.format_exc()}")
-        raise HTTPException(status_code=401, detail="Token verification failed")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token verification failed")
     
 def verify_csrf_token(
     x_csrf_token: str = Header(None, alias="X-CSRF-Token"),
@@ -276,13 +276,13 @@ def verify_csrf_token(
     print("CSRF Cookie:", csrf_token)
     if not x_csrf_token or not csrf_token:
         raise HTTPException(
-            status_code=403,
+            status_code=status.HTTP_403_FORBIDDEN,
             detail="CSRF token missing"
         )
     
     if x_csrf_token != csrf_token:
         raise HTTPException(
-            status_code=403,
+            status_code=status.HTTP_403_FORBIDDEN,
             detail="CSRF token mismatch"
         )
     

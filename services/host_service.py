@@ -1,7 +1,7 @@
 import uuid
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 from repository import HostRepository
 from models import Host
 from schema import HostCreateSchema, HostUpdateSchema
@@ -47,7 +47,7 @@ class HostService:
         host = await self.repo.get_host_by_id(host_id)
         if not host:
             logger.warning(f"Host deletion failed: Host not found with ID '{host_id}'")
-            raise HTTPException(status_code=404, detail="Host not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Host not found")
         await self.repo.delete_host_by_id(host_id)
         logger.info(f"Host with id '{host_id}' successfully deleted")
         return True
@@ -57,7 +57,7 @@ class HostService:
         host = await self.repo.get_host_by_email(email)
         if not host:
             logger.warning(f"Host deletion failed: Host not found with email '{email}'")
-            raise HTTPException(status_code=404, detail="Host not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Host not found")
         
         await self.repo.delete_host_by_email(email)
         logger.info(f"Host with email '{email}' successfully deleted")
@@ -68,7 +68,7 @@ class HostService:
         host = await self.repo.get_host_by_email(email)
         if not host:
             logger.warning(f"Host retrieval failed: Host not found with email '{email}'")
-            raise HTTPException(status_code=404, detail="Host not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Host not found")
         sanitized_response = self._sanitize_host_response(host, includePassword)
         logger.debug(f"Host retrieved successfully: {sanitized_response.email}")
         return sanitized_response
@@ -78,7 +78,7 @@ class HostService:
         host = await self.repo.get_host_by_id(host_id)
         if not host:
             logger.warning(f"Host retrieval failed: Host not found with ID '{host_id}'")
-            raise HTTPException(status_code=404, detail="Host not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Host not found")
         sanitized_response = self._sanitize_host_response(host, includePassword)
         logger.debug(f"Host retrieved successfully: {sanitized_response.email}")
         return sanitized_response
@@ -98,7 +98,7 @@ class HostService:
                 existing_host = await self.repo.get_host_by_email(value)
                 if existing_host and existing_host.id != host.id:
                     logger.warning(f"Host update failed: Email '{value}' is already in use. Will keep existing email '{host.email}'")
-                    raise HTTPException(status_code=409, detail="Email is already in use by another host.")
+                    raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email is already in use by another host.")
             if (key != 'password'):
                 logger.debug(f"Updating host field '{key}' to '{value}'")
                 
