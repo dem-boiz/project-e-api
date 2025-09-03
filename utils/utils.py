@@ -1,7 +1,8 @@
 import traceback
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import jwt, JWTError 
 from jose.exceptions import ExpiredSignatureError, JWTClaimsError
-from fastapi import Header, Cookie, HTTPException, status, Depends
+from fastapi import Header, Cookie, HTTPException, Security, status, Depends
 from config import (
     SECRET_KEY,
     ALGORITHM,
@@ -11,6 +12,7 @@ from config import (
 )
 import os, base64, hmac, hashlib
 from repository import RefreshTokenRepository
+from routes.auth_route import get_auth_service
 from schema import RefreshTokenCreateSchema
 from datetime import datetime, timedelta, timezone
 import secrets
@@ -18,6 +20,9 @@ import uuid
 from typing import Optional
 import os
 from passlib.context import CryptContext
+
+from schema.user_schemas import UserReadSchema
+from services.auth_service import AuthService
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 from config.logging_config import get_logger
@@ -87,9 +92,7 @@ def create_jwt(
 
     logger.debug(f"Creating {type} JWT for user {user_id}, session {session_id}, remember_me={remember_me}")
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
-
-
-
+  
 async def create_access_token(
     user_id: str,
     session_id: str, 
@@ -298,5 +301,30 @@ async def generate_csrf_token(length: int = 32) -> str:
     """
     return secrets.token_urlsafe(length)
 
+ # Dependency to get current authenticated host
+ 
+# Note: HttpBearer automatically checks for the existence of a token but does not validate it. 
+security = HTTPBearer()
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Security(security),
+    auth_service: AuthService = Depends(get_auth_service)
+) -> UserReadSchema:
+    """Get the current authenticated host from JWT token"""
+    token = credentials.credentials
+    return await auth_service.get_current_user_service(token)
 
 
+async def validate_token_parent_session(
+    credentials: HTTPAuthorizationCredentials = Security(security),
+    auth_service: AuthService = Depends(get_auth_service)
+): 
+    """ validate token parent session by checking that it hasnt been revoked"""
+    isActive = await auth_service.validate_session_is_active(credentials.credentials)
+
+    if isActive == False:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="session expired"
+        )
+    
+    return 

@@ -1,4 +1,5 @@
 from typing import List
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.exc import NoResultFound
@@ -61,6 +62,28 @@ class EventVendorsRepository:
         await self.session.delete(event_vendor)
         await self.session.commit()
         return True
+    
+    async def delete_vendors_for_event(self, data: EventVendorSearchSchema) -> int:
+        result = await self.session.execute(
+            delete(EventVendor).where(EventVendor.event_id == data.event_id)
+        )
+
+        if result is None:
+            return 0
+    
+        await self.session.commit()
+        return result.rowcount
+    
+    async def delete_vendor_from_events(self, data: EventVendorSearchSchema) -> int:
+        result = await self.session.execute(
+            delete(EventVendor).where(EventVendor.user_id == data.user_id)
+        )
+
+        if result is None:
+            return 0
+    
+        await self.session.commit()
+        return result.rowcount
         
     async def update_event_vendors(self, data: EventVendorsUpdateSchema) -> EventVendorsReadSchema | None:
         try:

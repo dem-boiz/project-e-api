@@ -11,7 +11,7 @@ from handlers import (
     join_event_handler
 )               
 from database.session import get_async_session
-
+from utils import get_current_user, validate_token_parent_session
 from handlers.event_handler import create_event_invite_handler
 from schema.invite_schemas import InviteCreateRequest
 from services import EventService, AuthService, InviteService
@@ -41,31 +41,7 @@ async def get_auth_service(session: AsyncSession = Depends(get_async_session)) -
 
 async def get_invite_service(session: AsyncSession = Depends(get_async_session)) -> InviteService:
     return InviteService(session)
-
-# Dependency to get current authenticated host
-async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Security(security),
-    auth_service: AuthService = Depends(get_auth_service)
-) -> UserReadSchema:
-    """Get the current authenticated host from JWT token"""
-    token = credentials.credentials
-    return await auth_service.get_current_user_service(token)
-
-async def validate_token_parent_session(
-    credentials: HTTPAuthorizationCredentials = Security(security),
-    auth_service: AuthService = Depends(get_auth_service)
-): 
-    """ validate token parent session by checking that it hasnt been revoked"""
-    isActive = await auth_service.validate_session_is_active(credentials.credentials)
-
-    if isActive == False:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="session expired"
-        )
-    
-    return 
-
+  
 # Dependency to verify event ownership. unlike the previous one, this one does not require the update data.
 # TODO: Replace all usage of above method to use this one instead? 
 async def verify_event_ownership(

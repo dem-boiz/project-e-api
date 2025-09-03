@@ -24,3 +24,9 @@ async def update_event_vendors_handler(data: EventVendorsUpdateSchema, service: 
 
 async def delete_event_vendors_handler(data: EventVendorSearchSchema, service: EventVendorsService):
     return await service.delete_event_vendor_service(data=data)
+
+async def delete_vendors_for_event_handler(data: EventVendorSearchSchema, service: EventVendorsService) -> int:
+    return await service.delete_vendors_for_event_service(data=data)
+
+async def delete_vendor_from_events_handler(data: EventVendorSearchSchema, service: EventVendorsService):
+    return await service.delete_vendor_from_events_service(data=data)

@@ -63,11 +63,23 @@ class EventVendorsService:
     
     async def delete_event_vendor_service(self, data: EventVendorSearchSchema):
         logger.info(f"Deleting vendor {data.user_id} from event {data.event_id}")
-        event_vendor_deleted = self.event_vendors_repo.delete_event_vendor(data=data)
+        event_vendor_deleted = await self.event_vendors_repo.delete_event_vendor(data=data)
         if event_vendor_deleted is False:
             raise HTTPException(status_code=404, detail="Unsuccessful deletion operation")
 
-
+    async def delete_vendors_for_event_service(self, data: EventVendorSearchSchema) -> int:
+        logger.info(f"Deleting vendors for the event {data.event_id}")
+        num_vendors_deleted = await self.event_vendors_repo.delete_vendors_for_event(data=data)
+        if num_vendors_deleted == 0:
+            raise HTTPException(status_code=404, detail="Unsuccessful deletion operation")
+        return num_vendors_deleted
+    
+    async def delete_vendor_from_events_service(self, data: EventVendorSearchSchema) -> int:
+        logger.info(f"Deleting vendor {data.user_id} from all events")
+        num_vendors_deleted = await self.event_vendors_repo.delete_vendor_from_events(data=data)
+        if num_vendors_deleted == 0:
+            raise HTTPException(status_code=404, detail="Unsuccessful deletion operation")
+        return num_vendors_deleted
          
 
     
