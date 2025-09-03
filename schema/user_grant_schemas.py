@@ -18,6 +18,15 @@ class UserGrantReadSchema(BaseModel):
         from_attributes = True
 
 
+class UserGrantSearchSchema(BaseModel):
+    user_id: Optional[UUID] = None
+    event_id: Optional[UUID] = None
+    access_type: Optional[str] = None
+    active_only: bool = True
+    class Config:
+        from_attributes = True
+
+
 class UserGrantCreateSchema(BaseModel):
     user_id: UUID
     event_id: UUID

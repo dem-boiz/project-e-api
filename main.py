@@ -14,7 +14,6 @@ from routes.event_route import router as event_router
 from routes.host_route import router as host_router
 from routes.auth_route import router as auth_router
 from fastapi.middleware.cors import CORSMiddleware
-from routes.user_event_access_route import router as user_event_access_router
 from middleware.request_logging import RequestLoggingMiddleware
 import uvicorn
 
@@ -44,13 +43,12 @@ app.include_router(base_router)
 app.include_router(event_router)
 app.include_router(host_router)
 app.include_router(auth_router)
-app.include_router(user_event_access_router)
 
 logger.info("All routers registered successfully")
 logger.info("FastAPI application setup complete")
 
 if __name__ == "__main__":
-    logger.info("Running FastAPI application (IPV4 & IPV6) with uvicorn...")
+    logger.info("Running FastAPI application with uvicorn...")
     uvicorn.run(
         app,
         host=["::", "0.0.0.0"],  # listen on IPv6 and IPv4 dual stack

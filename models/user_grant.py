@@ -4,11 +4,9 @@ from sqlalchemy import (
     Text,
 )
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
 import uuid
 from sqlalchemy.orm import Mapped, mapped_column
 from database.session import Base
-from sqlalchemy.sql import func
 from datetime import datetime
 
 

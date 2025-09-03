@@ -1,9 +1,7 @@
 import os
 import uuid
 from fastapi import HTTPException, Response, status
-from fastapi.security import HTTPAuthorizationCredentials
 from models.host import Host
-from routes.auth_route import get_current_user
 from schema import EventCreateSchema, EventUpdateSchema
 from schema.invite_schemas import InviteCreateRequest, InviteCreateResponse, InviteUpdateRequest
 from services import EventService, DeviceGrantService
