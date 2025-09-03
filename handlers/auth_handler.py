@@ -92,7 +92,6 @@ async def refresh_device_token_handler(
         secure=IS_PROD,
         samesite="lax",
         max_age=30*24*3600,
-        path="/api/auth/device/refresh"
     )
 
     logger.debug("Device token refreshed successfully")

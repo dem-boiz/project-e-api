@@ -1,11 +1,13 @@
 import os
 import uuid
-from fastapi import Response
+from fastapi import HTTPException, Response
+from routes.auth_route import get_current_user
 from schema import EventCreateSchema, EventUpdateSchema
 from schema.invite_schemas import InviteCreateRequest, InviteCreateResponse, InviteUpdateRequest
 from services import EventService, DeviceGrantService
 from config.logging_config import get_logger
 from services.invite_service import InviteService
+
 
 
 IS_PROD = os.getenv("ENV") == "PROD"
@@ -34,6 +36,15 @@ async def get_event_pending_invites_handler(event_id: uuid.UUID, service: Invite
     return await service.get_pending_invites_by_event(event_id)
 
 async def join_event_handler(otp: str, service: EventService, device_id: uuid.UUID, response: Response):
+    
+    try:
+        user = get_current_user()
+        
+    except Exception as e:
+        logger.warning(f"Unable to get current user: {e}")
+        logger.info("Using device_id to join event instead of user_id")
+
+
     grant, token = await service.join_event(otp, device_id)
 
     cookieName = f'event_{grant.event_id}_token'

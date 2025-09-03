@@ -18,9 +18,6 @@ from .user_handlers import (
 from .host_handler import (
     create_host_handler, delete_host_handler, get_host_by_id_handler, get_host_by_email_handler
 )
-from .user_event_access_handlers import (
-    create_user_access_event_handler
-)
 
 from .auth_handler import (
     refresh_token_handler, 

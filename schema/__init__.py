@@ -1,12 +1,12 @@
 from .user_schemas import UserCreate, UserRead
 from .event_schemas import EventCreateSchema, EventUpdateSchema
 from .host_schemas import HostCreateSchema, HostUpdateSchema, HostReadSchema
-from .user_event_access_schema import (
-    UserEventAccessCreateSchema, 
-    UserEventAccessReadSchema, 
-    UserEventAccessUpdateSchema, 
-    UserEventAccessDeleteSchema,
-    UserEventAccessSearchSchema,
+from .user_grant_schemas import (
+    UserGrantCreateSchema, 
+    UserGrantReadSchema, 
+    UserGrantUpdateSchema, 
+    UserGrantDeleteSchema,
+    UserGrantSearchSchema,
 )
 from .auth_schemas import (
     LoginRequestSchema, 

@@ -3,10 +3,9 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select 
 from sqlalchemy.exc import NoResultFound
-from models import UserEventAccess
+from models import UserGrant
 from fastapi import HTTPException
 from repository import UserEventAccessRepository
-from models import UserEventAccess
 from schema import UserEventAccessCreateSchema, UserEventAccessReadSchema
 
 
@@ -19,7 +18,7 @@ class UserEventAccessService:
         existing = await self.repo.get_user_event_access_by_user_and_event(user_event_access.user_id, user_event_access.event_id)
         if existing:    
             raise ValueError("Access record already exists for this user and event.")
-        new_access = UserEventAccess(
+        new_access = UserGrant(
             user_id=user_event_access.user_id,
             event_id=user_event_access.event_id,
             invite_id=user_event_access.invite_id,
@@ -42,15 +41,6 @@ class UserEventAccessService:
         access.is_deleted = True
         await self.repo.session.commit()
 
-    async def get_user_event_access_by_invite_id(self, invite_id: uuid.UUID) -> Optional[UserEventAccessReadSchema]:
-        """Retrieve a UserEventAccess record by invite_id."""
-        try:
-            result = await self.repo.session.execute(
-                select(UserEventAccess).where(
-                    UserEventAccess.invite_id == invite_id,
-                )
-            )
-            access = result.scalar_one()
-            return access
-        except NoResultFound:
-            return None
+    async def user_hit_limit(self, user_id: uuid.UUID) -> bool:
+        """Check if the user has hit the maximum event limit."""
+        return await self.repo.get_active_grants_count(user_id) >= 5

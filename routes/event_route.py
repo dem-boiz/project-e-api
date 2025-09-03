@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from fastapi import APIRouter, Depends, Response, status, Security, HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -53,6 +54,20 @@ async def get_current_host(
     token = credentials.credentials
     return await auth_service.get_current_host_service(token)
 
+async def get_device_id(
+        request: Request
+) -> uuid.UUID | None:
+    """Get the device ID from the cookie"""
+    device_id_str = request.cookies.get("device_id")
+    logger.debug(f"Got device ID from cookie: {device_id_str}")
+    if device_id_str:
+        try:
+            return uuid.UUID(device_id_str)
+        except ValueError:
+            # Invalid UUID format in cookie
+            return None
+    return None
+
 async def validate_token_parent_session(
     credentials: HTTPAuthorizationCredentials = Security(security),
     auth_service: AuthService = Depends(get_auth_service)
@@ -96,6 +111,7 @@ async def verify_event_ownership(
             status_code=getattr(e, 'status_code', status.HTTP_404_NOT_FOUND),
             detail=f"Error occured. {e}"
         )
+
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED, dependencies=[Depends(validate_token_parent_session)])
@@ -193,15 +209,15 @@ async def update_event_invite(
 async def join_event(
     otp: str,
     response: Response,
-    service: EventService = Depends(get_event_service)
+    service: EventService = Depends(get_event_service),
+    device_id: uuid.UUID | None = Depends(get_device_id),
 ):
     """Join an event - requires authentication and event existence verification"""
     logger.info(f"Joining event with otp: {otp}")
-    
     result = await join_event_handler(
         otp, 
         service,
-        device_id="THIS IS A TEST DEVICE ID", # type: ignore
+        device_id=device_id, # type: ignore
         response=response
     )
     return result

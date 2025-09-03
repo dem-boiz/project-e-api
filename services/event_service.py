@@ -6,6 +6,7 @@ from datetime import datetime
 
 from config.logging_config import get_logger
 from models.device_grant import DeviceGrant
+from models.user_grant import UserGrant
 from repository import EventRepository
 from models import Event 
 from repository.host_repository import HostRepository
@@ -122,7 +123,23 @@ class EventService:
         # TODO: Implement the logic to check for duplicate events
         return False
 
-    async def join_event(self, x_otp: str, device_id: uuid.UUID) -> tuple[DeviceGrant, str]:
+
+    async def join_event_with_user_id(self, x_otp: str, user_id: uuid.UUID) -> tuple[UserGrant, str]:
+        db_session = self.repo.session
+        invite_service = InviteService(db_session)
+
+        # Validate the invite
+        invite = await invite_service.validate_invite(x_otp)
+        event_id = invite.event_id
+
+        if await UserGrantService.user_hit_limit(user_id): # type: ignore
+            logger.warning(f"User {user_id} has hit the maximum event limit.")
+            raise HTTPException(status_code=403, detail="User has hit the maximum event limit.")
+
+        grant, token = await UserGrantService.issue_user_grant(event_id, user_id, x_otp) # type: ignore
+        return grant, token
+
+    async def join_event_with_device_id(self, x_otp: str, device_id: uuid.UUID) -> tuple[DeviceGrant, str]:
         # Create a new instance of InviteService with the same db session used by this service
         db_session = self.repo.session
         invite_service = InviteService(db_session)

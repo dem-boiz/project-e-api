@@ -3,13 +3,13 @@ from uuid import UUID
 from datetime import datetime
 from typing import Optional
 
-class UserEventAccessSearchSchema(BaseModel):
+class UserGrantSearchSchema(BaseModel):
     email: EmailStr
 
     class Config:
         from_attributes = True
 
-class UserEventAccessCreateSchema(BaseModel):
+class UserGrantCreateSchema(BaseModel):
     user_id: UUID
     event_id: UUID
     invite_id: UUID
@@ -18,7 +18,7 @@ class UserEventAccessCreateSchema(BaseModel):
     class Config:
         from_attributes = True
 
-class UserEventAccessReadSchema(BaseModel):
+class UserGrantReadSchema(BaseModel):
     user_id: UUID
     event_id: UUID
     invite_id: UUID  # Invite ID can be optional in read schema
@@ -28,7 +28,7 @@ class UserEventAccessReadSchema(BaseModel):
     class Config:
         from_attributes = True
 
-class UserEventAccessUpdateSchema(BaseModel):
+class UserGrantUpdateSchema(BaseModel):
     invite_id: Optional[UUID] = None  # Allow updating Invite ID
     revoked_at: Optional[datetime] = None
     granted_at: Optional[datetime] = None
@@ -36,7 +36,7 @@ class UserEventAccessUpdateSchema(BaseModel):
     class Config:
         from_attributes = True
 
-class UserEventAccessDeleteSchema(BaseModel):
+class UserGrantDeleteSchema(BaseModel):
     user_id: UUID
     event_id: UUID
 
