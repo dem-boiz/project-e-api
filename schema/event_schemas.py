@@ -8,6 +8,9 @@ class EventCreateSchema(BaseModel):
     datetime: str
     description: str
 
+class EventJoinRequest(BaseModel):
+    useAuth: bool
+
 class EventUpdateSchema(BaseModel):
     name: Optional[str] = None
     location: Optional[str] = None

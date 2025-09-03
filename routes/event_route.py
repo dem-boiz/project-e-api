@@ -16,13 +16,15 @@ from handlers import (
 from database.session import get_async_session
 
 from handlers.event_handler import create_event_invite_handler, update_pending_event_invite_handler
+from schema.event_schemas import EventJoinRequest
 from schema.invite_schemas import InviteCreateRequest, InviteUpdateRequest, InviteCreateResponse
 from services import EventService, AuthService, InviteService
 from schema import EventCreateSchema, EventUpdateSchema
 from sqlalchemy.ext.asyncio import AsyncSession
 from models import Host
 from config.logging_config import get_logger
- 
+from functools import partial
+
 import uuid
 # Initialize logger
 logger = get_logger("api.events")
@@ -52,6 +54,7 @@ async def get_current_host(
     auth_service: AuthService = Depends(get_auth_service)
 ) -> Host:
     """Get the current authenticated host from JWT token"""
+    logger.debug(f"Getting current host from token with graceful = {graceful}")
     token = credentials.credentials
     return await auth_service.get_current_host_service(token, graceful=graceful)
 
@@ -215,13 +218,18 @@ async def join_event(
     request: Request,
     service: EventService = Depends(get_event_service),
     device_id: uuid.UUID | None = Depends(get_device_id),
-    user: Host = Depends(lambda: get_current_host(graceful=True))
+    user: Host = Depends(partial(get_current_host, graceful=True))
 ):
     """Join an event - requires authentication and event existence verification"""
     logger.info(f"Joining event with otp: {otp}")
-    # Parse request body to get useAuth parameter
-    body = await request.json()
-    use_auth = body.get("useAuth", False)
+    # Parse request body manually
+    try:
+        body = await request.json()
+        use_auth = body.get("useAuth", False)
+        logger.debug(f"Request body: {body}, useAuth: {use_auth}")
+    except Exception as e:
+        logger.error(f"Failed to parse request body: {e}")
+        use_auth = False
     result = await join_event_handler(
         otp, 
         service,
