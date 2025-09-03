@@ -50,8 +50,8 @@ logger.info("FastAPI application setup complete")
 if __name__ == "__main__":
     logger.info("Running FastAPI application with uvicorn...")
     uvicorn.run(
-        app,
-        host=["::", "0.0.0.0"],  # listen on IPv6 and IPv4 dual stack
+        app, # listen on IPv6 and IPv4 dual stack
+        host=["::", "0.0.0.0"],  # type: ignore
         port=int(os.getenv("PORT", 8080)),
         proxy_headers=True,
         forwarded_allow_ips="*",
