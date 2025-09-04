@@ -18,7 +18,6 @@ class User(Base):
     name: Mapped[str] = mapped_column(Text, nullable=True) 
     contact_info: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     is_deleted: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text('false'))
-    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text('true')) 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     
