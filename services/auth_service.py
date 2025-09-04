@@ -859,7 +859,7 @@ def verify_csrf_token(
 security = HTTPBearer()
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Security(security),
-    auth_service: AuthService = Depends()
+    auth_service: AuthService = Depends(get_async_session)
 ) -> UserReadSchema | None:
     """Get the current authenticated user from JWT token"""
     token = credentials.credentials
@@ -869,7 +869,7 @@ async def get_current_user(
 # Separate dependency for graceful user retrieval without mandatory authentication
 async def get_current_user_graceful(
     request: Request,
-    auth_service: AuthService = Depends()
+    auth_service: AuthService = Depends(get_async_session)
 ) -> UserReadSchema | None:
     """Get the current user if authenticated, or None if not authenticated"""
     logger.debug("Getting current user with graceful authentication")
@@ -884,8 +884,8 @@ async def get_current_user_graceful(
   
 async def validate_token_parent_session(
     credentials: HTTPAuthorizationCredentials = Security(security),
-    auth_service: AuthService = Depends()
-): 
+    auth_service: AuthService = Depends(get_async_session)
+) -> None:
     """ validate token parent session by checking that it hasnt been revoked"""
     isActive = await auth_service.validate_session_is_active(credentials.credentials)
 
@@ -916,7 +916,7 @@ async def get_device_id(
 async def verify_event_ownership(
     event_id: uuid.UUID,
     current_user: UserReadSchema = Depends(get_current_user),
-    event_service: EventService = Depends()
+    event_service: EventService = Depends(get_async_session)
 ) -> tuple[uuid.UUID, UserReadSchema]:
     """Verify that the authenticated user owns the event"""
     try:
