@@ -21,17 +21,16 @@ import os
 from passlib.context import CryptContext
 from schema.user_schemas import UserReadSchema
 # With this:
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from services.auth_service import AuthService
-    from services.event_service import EventService
+
+from services.auth_service import AuthService
+from services.event_service import EventService
 from models import User
 
 
 
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-from config import get_logger, CLIENT_URL
+from config import get_logger
 
 
 logger = get_logger("auth")
