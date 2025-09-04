@@ -85,8 +85,6 @@ class UserRepository:
                 user.name = data.name
             if data.password is not None: 
                 user.password_hash = pwd_context.hash(data.password)
-            if data.description is not None:
-                user.description = data.description
             if data.contact_info is not None:
                 user.contact_info = data.contact_info # type: ignore
             
