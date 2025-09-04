@@ -6,12 +6,10 @@ from typing import List, Optional
 class EventVendorsCreateSchema(BaseModel):
     event_id: UUID
     user_id: UUID
-    event_date: datetime
 
 class EventVendorsReadSchema(BaseModel):
     event_id: UUID
     user_id: UUID
-    event_date: datetime
     added_at: datetime
     
 class EventVendorsUpdateSchema(BaseModel):
