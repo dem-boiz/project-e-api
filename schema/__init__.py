@@ -1,6 +1,5 @@
 from .user_schemas import UserCreateSchema, UserReadSchema, UserUpdateSchema
 from .event_schemas import EventCreateSchema, EventUpdateSchema, EventJoinRequest
-from .host_schemas import HostCreateSchema, HostUpdateSchema, HostReadSchema
 from .user_grant_schemas import (
     UserGrantCreateSchema, 
     UserGrantReadSchema, 

@@ -1,22 +1,23 @@
-from datetime import datetime, timezone, timedelta
-import traceback
+from datetime import datetime, timezone
 import uuid
 from typing import Optional
 from fastapi.security import HTTPAuthorizationCredentials
-from sqlalchemy import false
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import HTTPException, Request, status, Response, Cookie 
+from fastapi import HTTPException, Request, status, Response 
 from passlib.context import CryptContext
-from models import Host, Session
-from schema import LoginRequestSchema, UserReadSchema
-from schema import RefreshTokensSchema
-from schema import SessionCreateSchema 
+from schema import (
+    LoginRequestSchema, 
+    UserReadSchema, 
+    RefreshTokensSchema,
+    SessionCreateSchema
+)
 from schema.auth_schemas import CurrentUserResponseSchema, LoginResponseSchema
 from utils.utils import create_access_token, create_refresh_token, verify_jwt, generate_csrf_token, verify_csrf_hash
-from repository import HostRepository, SessionRepository, RefreshTokenRepository, UserRepository
+from repository import SessionRepository, RefreshTokenRepository, UserRepository
 from config.logging_config import get_logger
 import logging
 from config import ENV
+from models import User
 
 # Silences annoying warning
 logging.getLogger("passlib").setLevel(logging.ERROR)
@@ -28,10 +29,9 @@ logger = get_logger("auth")
 class AuthService:
     def __init__(self, db: AsyncSession):
         self.db = db
-        self.host_repo = HostRepository(db)
+        self.user_repo = UserRepository(db)
         self.session_repo = SessionRepository(db)
         self.refresh_token_repo = RefreshTokenRepository(db)
-        self.user_repo = UserRepository(db)
 
     def hash_password(self, password: str) -> str:
         """Hash a password using bcrypt"""
@@ -44,7 +44,7 @@ class AuthService:
         return pwd_context.verify(plain_password, hashed_password) 
 
     async def authenticate_user(self, email: str, password: str) -> Optional[UserReadSchema]:
-        """Authenticate a host by email and password"""
+        """Authenticate a user by email and password"""
         logger.debug(f"Authentication attempt for email: {email}")
         user = await self.user_repo.get_user_by_email(email)
         if not user:
@@ -59,7 +59,7 @@ class AuthService:
         return self.user_repo.return_schema(user)
 
     async def login_service(self, login_data: LoginRequestSchema, response: Response) -> LoginResponseSchema: 
-        """Login a host and return JWT token"""
+        """Login a user and return JWT token"""
         logger.debug(f"Login attempt for email: {login_data.email}")
         user = await self.authenticate_user(login_data.email, login_data.password)
         if not user:
@@ -161,7 +161,7 @@ class AuthService:
                                    response: Response,
                                    request: Request
                                    ) -> RefreshTokensSchema:
-        """Generate a new access & refresh token for the host"""
+        """Generate a new access & refresh token for the user"""
         
         # Verify Refresh JWT info
         """Refresh JWT token and rotate CSRF token.""" 
@@ -310,7 +310,7 @@ class AuthService:
         user_id_str = str(user_id)
         session_id_str = str(session_id)
         # Generate new access + refresh tokens
-        logger.debug(f"Generating new access token (& refresh token) for host ID: {user_id}. remember_me optionset to '{remember_me}'")
+        logger.debug(f"Generating new access token (& refresh token) for user ID: {user_id}. remember_me optionset to '{remember_me}'")
         access_token = await create_access_token(
             user_id=user_id_str, 
             session_id=session_id_str, 
@@ -451,31 +451,31 @@ class AuthService:
         """Get current authenticated user"""
         token = credentials.credentials
 
-        host = await self.get_current_host_service(token)
-        if not host:
-            logger.warning(f"Host not found for token: {token}")
+        user = await self.get_current_user_service(token)
+        if not user:
+            logger.warning(f"User not found for token: {token}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Host not found"
+                detail="User not found"
             )
         return CurrentUserResponseSchema(
-            email=host.email,
-            host_id=str(host.id),
-            name=host.name
+            email=user.email,
+            user_id=str(user.id),
+            name=user.name
         )
 
-    async def get_current_host_service(self, token: str, graceful: bool = False) -> Host | None:
-        """Get current host from JWT token"""
+    async def get_current_user_service(self, token: str, graceful: bool = False) -> UserReadSchema | None:
+        """Get current user from JWT token"""
         logger.debug(f"Verifying JWT token")
         try:
             decoded_token = verify_jwt(token)
             userId_str = decoded_token["sub"]
             # Convert string UUID back to UUID object
-            host_id = uuid.UUID(userId_str)
-            logger.debug(f"Token verified for host ID: {host_id}")
-            host = await self.host_repo.get_host_by_id(host_id)
-            if not host:
-                logger.warning(f"Host not found: {host_id}")
+            user_id = uuid.UUID(userId_str)
+            logger.debug(f"Token verified for user ID: {user_id}")
+            user = await self.user_repo.get_user_by_id(user_id)
+            if not user:
+                logger.warning(f"User not found: {user_id}")
                 if graceful:
                     return None
                 raise HTTPException(
@@ -483,7 +483,7 @@ class AuthService:
                     detail="User not found"
                 )
              
-            logger.debug(f"Host authenticated successfully: {user.email}")
+            logger.debug(f"User authenticated successfully: {user.email}")
             return user
         
         except ValueError:

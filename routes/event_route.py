@@ -32,7 +32,7 @@ from schema.invite_schemas import InviteCreateRequest, InviteUpdateRequest, Invi
 from services import EventService, AuthService, InviteService
 from schema import EventCreateSchema, EventUpdateSchema, UserReadSchema
 from sqlalchemy.ext.asyncio import AsyncSession
-from models import Host
+from models import User
 from config.logging_config import get_logger
 from functools import partial
 
@@ -50,12 +50,12 @@ security = HTTPBearer()
 @router.post("", status_code=status.HTTP_201_CREATED, dependencies=[Depends(validate_token_parent_session)])
 async def create_event(
     data: EventCreateSchema,
-    host: Host = Depends(get_current_user),
+    user: User = Depends(get_current_user),
     service: EventService = Depends(get_event_service)
 ):
-    """Create a new event - requires authentication and host authorization"""
-    logger.info(f"Creating new event: {data.name} for host: {host.id}")
-    result = await create_event_handler(data, service, host.id)
+    """Create a new event - requires authentication and user authorization"""
+    logger.info(f"Creating new event: {data.name} for user: {user.id}")
+    result = await create_event_handler(data, service, user.id)
     logger.info(f"Event created successfully: {data.name}")
     return result
 
@@ -107,14 +107,14 @@ async def update_event(
 @router.post("/{event_id}/invite")
 async def post_event_invite(
     data: InviteCreateRequest,
-    verification_data: tuple[uuid.UUID, Host] = Depends(verify_event_ownership),
+    verification_data: tuple[uuid.UUID, User] = Depends(verify_event_ownership),
     service: InviteService = Depends(get_invite_service),
 ) -> InviteCreateResponse:
     """Create and return the invite code for an event - requires authentication and ownership verification"""
-    event_id, host = verification_data
+    event_id, user = verification_data
     logger.info(f"Creating invite for event: {event_id}")
     # Build InviteCreateRequest from EventInviteSchema and event_id
-    result = await create_event_invite_handler(data, event_id, host.id, service)
+    result = await create_event_invite_handler(data, event_id, user.id, service)
     logger.info(f"Created invite for event: {event_id}")
     return result
 
@@ -146,7 +146,7 @@ async def join_event(
     request: Request,
     service: EventService = Depends(get_event_service),
     device_id: uuid.UUID | None = Depends(get_device_id),
-    user: Host | None = Depends(get_current_host_graceful)
+    user: User | None = Depends(get_current_user_graceful)
 ):
     """Join an event - requires authentication and event existence verification"""
     logger.info(f"Joining event with otp: {otp}")

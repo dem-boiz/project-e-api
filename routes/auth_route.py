@@ -35,7 +35,7 @@ logger = get_logger("auth")
 async def get_auth_service(session: AsyncSession = Depends(get_async_session)) -> AuthService:
     return AuthService(session)
  
-# Dependency to get HostService for registration
+# Dependency to get UserService for registration
 async def get_user_service(session: AsyncSession = Depends(get_async_session)) -> UserService:
     return UserService(session)
 

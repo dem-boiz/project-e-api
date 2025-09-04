@@ -4,7 +4,7 @@ from sqlalchemy.dialects.postgresql import UUID, INET
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from models import Host
+from models import User
 import uuid
 from sqlalchemy.schema import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
@@ -22,7 +22,7 @@ class Session(Base):
     sid: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     # TODO: Should Host be used or User? 
     # Foreign key to users table
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey(Host.__table__.c.id), nullable=False)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey(User.__table__.c.id), nullable=False)
 
     # Timestamp fields for session lifecycle tracking
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())

@@ -1,18 +1,15 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel, EmailStr
 import uuid
 from config.logging_config import get_logger
 from handlers import create_event_vendor_handler, update_event_vendors_handler, delete_event_vendors_handler, get_vendors_for_event_handler, get_event_vendor_record_handler, get_events_for_vendor_handler, delete_vendors_for_event_handler, delete_vendor_from_events_handler
 from database.session import get_async_session
 from handlers.event_vendor_handler import delete_vendors_for_event_handler
-from models.host import Host
 from routes.event_vendors_route import get_event_vendor_service
 from services import EventVendorsService
-from models.user import User
+from models import User
 from schema import EventVendorsReadSchema, EventVendorSearchSchema, EventVendorsCreateSchema, EventVendorsUpdateSchema
-from services.event_service import EventService
 from utils.utils import get_current_user, validate_token_parent_session
 
 router = APIRouter(prefix="/event-vendors", tags=["event-vendors"])
@@ -22,10 +19,10 @@ logger = get_logger("api.event-vendors")
 
 async def verify_event_vendor_ownership(
     data: EventVendorSearchSchema = Depends(),
-    current_user: Host = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     service: EventVendorsService = Depends(get_event_vendor_service)
-) -> tuple[uuid.UUID, Host]:
-    """Verify that the authenticated host owns the event"""
+) -> tuple[uuid.UUID, User]:
+    """Verify that the authenticated user owns the event"""
     try:
         event_id = data.event_id
         # Check verification for Vendor ownership of the event vendor record

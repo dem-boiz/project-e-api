@@ -14,7 +14,7 @@ router = APIRouter(prefix="/users", tags=["users"])
 async def get_user_service(session: AsyncSession = Depends(get_async_session))-> UserService:
     return UserService(session)
 
-
+@router.post("", response_model=UserReadSchema, status_code=status.HTTP_201_CREATED)
 @router.post("/", response_model=UserReadSchema, status_code=status.HTTP_201_CREATED)
 async def create_user(
     user_in: UserCreateSchema,   

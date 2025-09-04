@@ -42,7 +42,7 @@ class RefreshTokensSchema(BaseModel):
 class CurrentUserResponseSchema(BaseModel):
     email: EmailStr
     name: str
-    host_id: Optional[str] = None
+    user_id: Optional[str] = None
     
     class Config:
         from_attributes = True

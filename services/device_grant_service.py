@@ -10,7 +10,6 @@ from config import EVENT_TOKEN_PEPPER, DEVICE_GRANT_LIMIT
 from models.device_grant import DeviceGrant
 from repository.device_grant_repository import DeviceGrantRepository
 from config.logging_config import get_logger
-from repository.host_repository import HostRepository
 
 logger = get_logger("device_grant")
 

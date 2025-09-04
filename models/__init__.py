@@ -1,7 +1,6 @@
 # models/__init__.py 
 from .vendor import Vendor 
 from .user import User
-from .host import Host
 from .vendor import Vendor
 from .event import Event
 from .user_grant import UserGrant
@@ -11,7 +10,6 @@ from .refresh_tokens import RefreshToken
 __all__ = [
     "User", 
     "Session", 
-    "Host", 
     "Event", 
     "UserGrant", 
     "EventVendor", 

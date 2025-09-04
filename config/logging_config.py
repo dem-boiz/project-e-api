@@ -122,8 +122,8 @@ LOGGING_CONFIG = {
             "propagate": False
         },
 
-        # Host service logger
-        "service.host": {
+        # User service logger
+        "service.user": {
             "level": "DEBUG",
             "handlers": ["console", "file_all", "file_error"],
             "propagate": False

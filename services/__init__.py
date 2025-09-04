@@ -1,6 +1,5 @@
 from .user_service import UserService 
 from .event_service import EventService
-from .host_service import HostService   
 from .user_grant_service import UserGrantService
 from .auth_service import AuthService
 from .guest_device_service import GuestDeviceService

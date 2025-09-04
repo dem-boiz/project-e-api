@@ -2,7 +2,7 @@ import traceback
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import jwt, JWTError 
 from jose.exceptions import ExpiredSignatureError, JWTClaimsError
-from fastapi import Header, Cookie, HTTPException, Security, status, Depends
+from fastapi import Header, Cookie, HTTPException, Request, Security, status, Depends
 from config import (
     SECRET_KEY,
     ALGORITHM,
@@ -12,6 +12,7 @@ from config import (
     email_config
 )
 import os, base64, hmac, hashlib
+from database.session import get_async_session
 from repository import RefreshTokenRepository
 from routes.auth_route import get_auth_service
 from schema import RefreshTokenCreateSchema
@@ -21,11 +22,15 @@ import uuid
 from typing import Optional
 import os
 from passlib.context import CryptContext
-
+from sqlalchemy.ext.asyncio import AsyncSession
 from schema.user_schemas import UserReadSchema
 from services.auth_service import AuthService
+from models import User
 
 from fastapi_mail import FastMail, MessageSchema, MessageType
+
+from services.event_service import EventService
+from services.invite_service import InviteService
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 from config import get_logger, CLIENT_URL
@@ -304,33 +309,33 @@ async def generate_csrf_token(length: int = 32) -> str:
     """
     return secrets.token_urlsafe(length)
 
- # Dependency to get current authenticated host
+ # Dependency to get current authenticated user
  
 # Note: HttpBearer automatically checks for the existence of a token but does not validate it. 
 security = HTTPBearer()
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Security(security),
     auth_service: AuthService = Depends(get_auth_service)
-) -> UserReadSchema:
-    """Get the current authenticated host from JWT token"""
+) -> UserReadSchema | None:
+    """Get the current authenticated user from JWT token"""
     token = credentials.credentials
-    return await auth_service.get_current_user_service(token)
+    return await auth_service.get_current_user_service(token, graceful=False)
 
 
-# Separate dependency for graceful host retrieval without mandatory authentication
+# Separate dependency for graceful user retrieval without mandatory authentication
 async def get_current_user_graceful(
     request: Request,
     auth_service: AuthService = Depends(get_auth_service)
-) -> User | None:
-    """Get the current host if authenticated, or None if not authenticated"""
-    logger.debug("Getting current host with graceful authentication")
+) -> UserReadSchema | None:
+    """Get the current user if authenticated, or None if not authenticated"""
+    logger.debug("Getting current user with graceful authentication")
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
         logger.debug("No bearer token found, returning None (graceful)")
         return None
         
     token = auth_header.split(" ")[1]
-    return await auth_service.get_current_host_service(token, graceful=True)
+    return await auth_service.get_current_user_service(token, graceful=True)
   
   
 async def validate_token_parent_session(
@@ -398,20 +403,20 @@ async def get_device_id(
 # TODO: Replace all usage of above method to use this one instead? 
 async def verify_event_ownership(
     event_id: uuid.UUID,
-    current_host: Host = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     service: EventService = Depends(get_event_service)
-) -> tuple[uuid.UUID, Host]:
-    """Verify that the authenticated host owns the event"""
+) -> tuple[uuid.UUID, User]:
+    """Verify that the authenticated user owns the event"""
     try:
         event = await service.get_event_by_id(event_id=event_id)
 
-        if event.host_id != current_host.id:
+        if event.user_id != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You can only update events that you own"
             )
     
-        return event_id, current_host
+        return event_id, current_user
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

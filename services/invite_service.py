@@ -6,11 +6,11 @@ import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 from models.invite import Invite
 from repository.event_repository import EventRepository
-from repository.host_repository import HostRepository
 from schema.invite_schemas import InviteCreateRequest, InviteUpdateRequest
 from fastapi import HTTPException, status
 from repository.invite_repository import InviteRepository
 from config.logging_config import get_logger
+from repository.user_repository import UserRepository
 
 from config import INVITE_HOUR_EXPIRY, CLIENT_URL
 from utils import send_invite_email
@@ -33,9 +33,9 @@ class InviteService:
         assert hasattr(db, "execute"), "db is not an AsyncSession"
         self.repo = InviteRepository(db)
         self.event_repo = EventRepository(db)
-        self.host_repo = HostRepository(db)
+        self.user_repo = UserRepository(db)
 
-    async def create_invite(self, invite_data: InviteCreateRequest, event_id: uuid.UUID, host_id: uuid.UUID) -> tuple[Invite, str | None]:
+    async def create_invite(self, invite_data: InviteCreateRequest, event_id: uuid.UUID, user_id: uuid.UUID) -> tuple[Invite, str | None]:
         # Validate type
         if invite_data.access_type not in ["guest", "vendor"]:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid invite type")
@@ -53,10 +53,10 @@ class InviteService:
         if not event:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
         
-        # Validate host exists
-        host = await self.host_repo.get_host_by_id(host_id)
-        if not host:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Host not found")
+        # Validate user exists
+        user = await self.user_repo.get_user_by_id(user_id)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     
         invite_code = await generate_unique_invite_code(self.repo)
         expires_at = datetime.now() + timedelta(hours=INVITE_HOUR_EXPIRY)
@@ -67,7 +67,7 @@ class InviteService:
             otp_code=invite_code,
             expires_at=expires_at,
             created_at=datetime.now(),
-            issued_by_host_id=host_id,
+            issued_by_user_id=user_id,
             type=invite_data.access_type,
         )
 

@@ -1,7 +1,7 @@
 import os
 import uuid
 from fastapi import HTTPException, Response, status
-from models.host import Host
+from models.user import User
 from schema import EventCreateSchema, EventUpdateSchema
 from schema.invite_schemas import InviteCreateRequest, InviteCreateResponse, InviteUpdateRequest
 from services import EventService, DeviceGrantService
@@ -40,7 +40,7 @@ async def join_event_handler(
     service: EventService, 
     device_id: uuid.UUID, 
     response: Response, 
-    user: Host,
+    user: User,
     use_auth: bool
 ):
     if use_auth is True and user is not None:

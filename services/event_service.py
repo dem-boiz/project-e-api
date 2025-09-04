@@ -9,7 +9,7 @@ from models.device_grant import DeviceGrant
 from models.user_grant import UserGrant
 from repository import EventRepository
 from models import Event 
-from repository.host_repository import HostRepository
+from repository.host_repository import Repository
 from schema import EventCreateSchema, EventUpdateSchema
 from schema.user_grant_schemas import UserGrantCreateSchema
 from services.device_grant_service import DeviceGrantService
@@ -24,19 +24,19 @@ logger = get_logger("api.events")
 class EventService:
     def __init__(self, db: AsyncSession):
         self.repo = EventRepository(db)
-        self.host_repo = HostRepository(db)
+        self.host_repo = Repository(db)
     async def create_event(self, event_data: EventCreateSchema, host_id: uuid.UUID) -> Event:
         
         ''' # TODO: Implement the functions in repository to check these conditions
     
         # Check if the host is hosting too many events
         if await self.repo.count_hosted_events(event_data.host_id) >= 5:
-            raise ValueError("Host is already hosting too many events.")    
+            raise ValueError(" is already hosting too many events.")    
         
         # Check if the host is hosting an event at the same time
         overlapping_event = await self.repo.get_event_at_same_time(event_data.host_id, event_data.datetime)
         if overlapping_event:   
-            raise ValueError("Host is already hosting an event at this time.")  
+            raise ValueError(" is already hosting an event at this time.")  
             
         # Check if the event start time is before the end time
         if event_data.start_time >= event_data.end_time:    
@@ -49,7 +49,7 @@ class EventService:
         # host validations
         host = await self.host_repo.get_host_by_id(host_id)
         if not host:
-            raise ValueError("Host does not exist.")
+            raise ValueError(" does not exist.")
         
         existing_event = await self.repo.get_event_by_name(event_data.name)
         if existing_event and existing_event.host_id == host_id:
