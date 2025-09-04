@@ -15,9 +15,6 @@ from .event_handler import (
 from .user_handlers import (
     create_user_handler, get_user_by_id_handler, hard_delete_user_handler, get_user_by_email_handler
 )
-from .host_handler import (
-    create_host_handler, delete_host_handler, get_host_by_id_handler, get_host_by_email_handler
-)
 
 from .auth_handler import (
     refresh_token_handler, 

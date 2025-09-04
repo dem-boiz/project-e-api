@@ -5,7 +5,6 @@ from fastapi import APIRouter, Depends, Request, status, Security, Response, Coo
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.session import get_async_session
-from models import host
 from services import AuthService, UserService
 from schema import (
     LoginRequestSchema, 
@@ -46,7 +45,7 @@ async def login(
     response: Response,
     service: AuthService = Depends(get_auth_service),
 ):
-    """Login endpoint for hosts"""
+    """Login endpoint for users"""
     logger.info(f"Login attempt for email: {login_data.email}")
     result = await login_handler(login_data, response, service)
     logger.info(f"Login successful for email: {login_data.email}")
@@ -90,7 +89,7 @@ async def refresh_token(
     service: AuthService = Depends(get_auth_service) 
 ) -> RefreshResponseSchema:
     """Refresh JWT token and rotate CSRF token"""
-    logger.debug("Refreshing JWT token for host")
+    logger.debug("Refreshing JWT token for users")
 
     result = await refresh_token_handler(refresh_token, service, response, request)
 
@@ -106,7 +105,7 @@ async def refresh_device_token(
     device_token: uuid.UUID | None = Cookie(default=None),
 ) -> RefreshDeviceResponseSchema:
     """Refresh device JWT token and rotate CSRF token"""
-    logger.debug("Refreshing device JWT token for host")
+    logger.debug("Refreshing device JWT token for users")
 
     result = await refresh_device_token_handler(device_token, response)
 

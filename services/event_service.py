@@ -9,7 +9,7 @@ from models.device_grant import DeviceGrant
 from models.user_grant import UserGrant
 from repository import EventRepository
 from models import Event 
-from repository.host_repository import Repository
+from repository.user_repository import UserRepository
 from schema import EventCreateSchema, EventUpdateSchema
 from schema.user_grant_schemas import UserGrantCreateSchema
 from services.device_grant_service import DeviceGrantService
@@ -24,9 +24,9 @@ logger = get_logger("api.events")
 class EventService:
     def __init__(self, db: AsyncSession):
         self.repo = EventRepository(db)
-        self.host_repo = Repository(db)
-    async def create_event(self, event_data: EventCreateSchema, host_id: uuid.UUID) -> Event:
-        
+        self.user_repo = UserRepository(db)
+    async def create_event(self, event_data: EventCreateSchema, user_id: uuid.UUID) -> Event:
+
         ''' # TODO: Implement the functions in repository to check these conditions
     
         # Check if the host is hosting too many events
@@ -46,13 +46,13 @@ class EventService:
         # TODO: When the below are raised, the client gets a 500 response. refactor to be a 422 or 409
 
         '''
-        # host validations
-        host = await self.host_repo.get_host_by_id(host_id)
-        if not host:
+        # user validations
+        user = await self.user_repo.get_user_by_id(user_id)
+        if not user:
             raise ValueError(" does not exist.")
         
         existing_event = await self.repo.get_event_by_name(event_data.name)
-        if existing_event and existing_event.host_id == host_id:
+        if existing_event and existing_event.user_id == user_id:
             raise ValueError("Event already exists with this name.")
 
         # Check if the event date is in the past
@@ -77,8 +77,8 @@ class EventService:
         
 
         # If all checks pass, create the event
-        return await self.repo.create_event(event_data, host_id)
-    
+        return await self.repo.create_event(event_data, user_id)
+
     async def get_event_by_id(self, event_id: uuid.UUID) -> Event:
         # Check if the event exists
         event = await self.repo.get_event_by_id(event_id)

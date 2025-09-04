@@ -30,7 +30,7 @@ class Event(Base):
     event_images: Mapped[Optional[List[bytes]]] = mapped_column(ARRAY(LargeBinary), nullable=True, server_default=None)
     location: Mapped[str] = mapped_column(String, nullable=False)
     date_time: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    host_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("hosts.id", ondelete="CASCADE"), nullable=False)
+    host_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (

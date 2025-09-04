@@ -11,7 +11,6 @@ from fastapi import FastAPI
 from routes.user_route import router as user_router
 from routes.base_route import router as base_router
 from routes.event_route import router as event_router
-from routes.host_route import router as host_router
 from routes.auth_route import router as auth_router
 from routes.event_vendors_route import router as event_vendors_route
 from fastapi.middleware.cors import CORSMiddleware
@@ -42,7 +41,6 @@ logger.info("Setting up CORS middleware")
 app.include_router(user_router)
 app.include_router(base_router)
 app.include_router(event_router)
-app.include_router(host_router)
 app.include_router(auth_router)
 app.include_router(event_vendors_route)
 

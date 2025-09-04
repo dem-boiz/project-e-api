@@ -14,8 +14,8 @@ IS_PROD = os.getenv("ENV") == "PROD"
 
 logger = get_logger("api.events")   
 
-async def create_event_handler(data: EventCreateSchema, service: EventService, host_id: uuid.UUID):
-    return await service.create_event(data, host_id)
+async def create_event_handler(data: EventCreateSchema, service: EventService, user_id: uuid.UUID):
+    return await service.create_event(data, user_id)
 
 async def get_events_handler(service: EventService):
     return await service.get_all_events()
@@ -90,10 +90,10 @@ async def get_event_guests_handler(event_id: uuid.UUID, service: InviteService):
 
 async def create_event_invite_handler(
     invite_data: InviteCreateRequest, 
-    event_id: uuid.UUID, host_id: uuid.UUID,
+    event_id: uuid.UUID, user_id: uuid.UUID,
     service: InviteService
 ) -> InviteCreateResponse:
-    invite, invite_link = await service.create_invite(invite_data, event_id, host_id)
+    invite, invite_link = await service.create_invite(invite_data, event_id, user_id)
     # Convert to dict and remove sensitive fields + add invite_link if needed
 
     invite_dict = invite.__dict__
