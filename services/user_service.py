@@ -3,7 +3,6 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 from repository import UserRepository
-from models import User
 from schema import UserCreateSchema, UserReadSchema, UserUpdateSchema 
 from config.logging_config import get_logger
 
@@ -19,7 +18,7 @@ class UserService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
         return user 
     
-    async def get_user_by_email(self, email: str) -> Optional[User]:
+    async def get_user_by_email(self, email: str) -> Optional[UserReadSchema]:
         user = await self.user_repo.get_user_by_email(email)
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")   
@@ -50,7 +49,7 @@ class UserService:
         
         return await self.user_repo.delete_user_by_id(user_id) 
     
-    async def list_users(self) -> list[User]:
+    async def list_users(self) -> list[UserReadSchema]:
         try: 
             users = await self.user_repo.list_users()
             return list(users)

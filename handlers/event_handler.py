@@ -1,9 +1,9 @@
 import os
 import uuid
 from fastapi import HTTPException, Response, status
-from models.user import User
 from schema import EventCreateSchema, EventUpdateSchema
 from schema.invite_schemas import InviteCreateRequest, InviteCreateResponse, InviteUpdateRequest
+from schema.user_schemas import UserReadSchema
 from services import EventService, DeviceGrantService
 from config.logging_config import get_logger
 from services.invite_service import InviteService
@@ -38,15 +38,17 @@ async def get_event_pending_invites_handler(event_id: uuid.UUID, service: Invite
 async def join_event_handler(
     otp: str, 
     service: EventService, 
-    device_id: uuid.UUID, 
+    device_id: uuid.UUID | None, 
     response: Response, 
-    user: User,
+    user: UserReadSchema | None,
     use_auth: bool
 ):
     if use_auth is True and user is not None:
         logger.warning("No user found, using device_id instead")
         await service.join_event_with_user_id(otp, user.id)
     elif use_auth is False:
+        if device_id is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Device ID is required for joining event without authentication.")
         grant, token = await service.join_event_with_device_id(otp, device_id)
         cookieName = f'event_{grant.event_id}_token'
         response.set_cookie(

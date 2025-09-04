@@ -7,8 +7,8 @@ from handlers import create_event_vendor_handler, update_event_vendors_handler, 
 from database.session import get_async_session
 from handlers.event_vendor_handler import delete_vendors_for_event_handler
 from routes.event_vendors_route import get_event_vendor_service
+from schema.user_schemas import UserReadSchema
 from services import EventVendorsService
-from models import User
 from schema import EventVendorsReadSchema, EventVendorSearchSchema, EventVendorsCreateSchema, EventVendorsUpdateSchema
 from services.auth_service import (
     get_current_user,
@@ -22,9 +22,9 @@ logger = get_logger("api.event-vendors")
 
 async def verify_event_vendor_ownership(
     data: EventVendorSearchSchema = Depends(),
-    current_user: User = Depends(get_current_user),
+    current_user: UserReadSchema = Depends(get_current_user),
     service: EventVendorsService = Depends(get_event_vendor_service)
-) -> tuple[uuid.UUID, User]:
+) -> tuple[uuid.UUID, UserReadSchema]:
     """Verify that the authenticated user owns the event"""
     try:
         event_id = data.event_id

@@ -10,7 +10,6 @@ from fastapi import HTTPException, Request, status, Response
 from passlib.context import CryptContext
 from config.settings import SECRET_KEY
 from database.session import get_async_session
-from models.host import User
 from schema import (
     LoginRequestSchema, 
     UserReadSchema, 
@@ -60,8 +59,14 @@ class AuthService:
         """Authenticate a user by email and password"""
         logger.debug(f"Authentication attempt for email: {email}")
         user = await self.user_repo.get_user_by_email(email)
+
+
         if not user:
             logger.warning(f"user not found for email: {email}")
+            return None
+        
+        if not user.password_hash:  
+            logger.warning(f"No password hash found for user: {email}")
             return None
         
         if not self.verify_password(password, user.password_hash):
@@ -69,7 +74,7 @@ class AuthService:
             return None
         
         logger.debug(f"user authenticated successfully: {email}") 
-        return self.user_repo.return_schema(user)
+        return user
 
     async def login_service(self, login_data: LoginRequestSchema, response: Response) -> LoginResponseSchema: 
         """Login a user and return JWT token"""
@@ -913,9 +918,9 @@ async def get_device_id(
 # TODO: Replace all usage of above method to use this one instead? 
 async def verify_event_ownership(
     event_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: UserReadSchema = Depends(get_current_user),
     event_service: EventService = Depends()
-) -> tuple[uuid.UUID, User]:
+) -> tuple[uuid.UUID, UserReadSchema]:
     """Verify that the authenticated user owns the event"""
     try:
         event = await event_service.get_event_by_id(event_id=event_id)

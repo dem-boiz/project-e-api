@@ -14,6 +14,7 @@ from handlers import (
 )               
 
 
+from schema.user_schemas import UserReadSchema
 from services.invite_service import InviteService, get_invite_service
 from services.event_service import EventService, get_event_service
 
@@ -28,7 +29,6 @@ from services.auth_service import (
     get_device_id
 )
 from schema import EventCreateSchema, EventUpdateSchema
-from models import User
 from config.logging_config import get_logger
 
 import uuid
@@ -45,9 +45,14 @@ security = HTTPBearer()
 @router.post("", status_code=status.HTTP_201_CREATED, dependencies=[Depends(validate_token_parent_session)])
 async def create_event(
     data: EventCreateSchema,
-    user: User = Depends(get_current_user),
+    user: UserReadSchema | None = Depends(get_current_user),
     service: EventService = Depends(get_event_service)
 ):
+    
+    if user is None:
+        logger.error("User authentication failed: No user found in request")
+        return Response(content="Authentication required", status_code=status.HTTP_401_UNAUTHORIZED)
+    
     """Create a new event - requires authentication and user authorization"""
     logger.info(f"Creating new event: {data.name} for user: {user.id}")
     result = await create_event_handler(data, service, user.id)
@@ -102,7 +107,7 @@ async def update_event(
 @router.post("/{event_id}/invite")
 async def post_event_invite(
     data: InviteCreateRequest,
-    verification_data: tuple[uuid.UUID, User] = Depends(verify_event_ownership),
+    verification_data: tuple[uuid.UUID, UserReadSchema] = Depends(verify_event_ownership),
     service: InviteService = Depends(get_invite_service),
 ) -> InviteCreateResponse:
     """Create and return the invite code for an event - requires authentication and ownership verification"""
@@ -141,7 +146,7 @@ async def join_event(
     request: Request,
     service: EventService = Depends(get_event_service),
     device_id: uuid.UUID | None = Depends(get_device_id),
-    user: User | None = Depends(get_current_user_graceful)
+    user: UserReadSchema | None = Depends(get_current_user_graceful)
 ):
     """Join an event - requires authentication and event existence verification"""
     logger.info(f"Joining event with otp: {otp}")

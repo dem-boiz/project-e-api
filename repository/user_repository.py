@@ -41,14 +41,14 @@ class UserRepository:
         except NoResultFound:
             return None
 
-    async def get_user_by_email(self, email: str) -> User | None:
+    async def get_user_by_email(self, email: str) -> UserReadSchema | None:
         """Fetch user by email. Returns None if not found."""
         try:
             result = await self.session.execute(
                 select(User).where(User.email == email)
             )
             user = result.scalar_one()
-            return user
+            return self.return_schema(user)
         except NoResultFound:
             return None
 
@@ -69,12 +69,12 @@ class UserRepository:
         await self.session.delete(user)
         await self.session.commit()
         return True
-    
-    async def list_users(self) -> Sequence[User]:
+
+    async def list_users(self) -> Sequence[UserReadSchema]:
             result = await self.session.execute(select(User))
-            return result.scalars().all()
-    
-    async def update_user(self, user_id: uuid.UUID, data: UserUpdateSchema) -> Optional[User]:
+            return [self.return_schema(user) for user in result.scalars().all()]
+
+    async def update_user(self, user_id: uuid.UUID, data: UserUpdateSchema) -> Optional[UserReadSchema]:
         try:
             result = await self.session.execute(select(User).where(User.id == user_id))
             user = result.scalar_one()
@@ -90,7 +90,7 @@ class UserRepository:
             
             await self.session.commit()
             await self.session.refresh(user)
-            return user
+            return self.return_schema(user)
 
         except NoResultFound:
             return None

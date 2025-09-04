@@ -22,6 +22,7 @@ class UserReadSchema(BaseModel):
     is_deleted: bool
     is_active: bool
     name: str
+    password_hash: Optional[str] = None
 
     class Config:
         from_attributes = True
