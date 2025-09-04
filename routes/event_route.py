@@ -15,8 +15,10 @@ from handlers import (
 
 
 from schema.user_schemas import UserReadSchema
-from services.invite_service import InviteService, get_invite_service
-from services.event_service import EventService, get_event_service
+from services.invite_service import InviteService
+from services.event_service import EventService
+from sqlalchemy.ext.asyncio import AsyncSession
+from database.session import get_async_session
 
 from handlers.event_handler import create_event_invite_handler, update_pending_event_invite_handler
 from schema.invite_schemas import InviteCreateRequest, InviteUpdateRequest, InviteCreateResponse
@@ -39,6 +41,13 @@ router = APIRouter(prefix="/events", tags=["events"])
 
 # Note: HttpBearer automatically checks for the existence of a token but does not validate it. 
 security = HTTPBearer()
+
+async def get_invite_service(session: AsyncSession = Depends(get_async_session)) -> InviteService:
+    return InviteService(session)
+
+
+async def get_event_service(session: AsyncSession = Depends(get_async_session))-> EventService:
+    return EventService(session)
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED, dependencies=[Depends(validate_token_parent_session)])

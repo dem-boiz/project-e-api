@@ -1,9 +1,11 @@
 import os
 import uuid
 from config.logging_config import get_logger
+from database.session import get_async_session
 from fastapi import APIRouter, Depends, Request, status, Security, Response, Cookie, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from services.auth_service import AuthService, get_auth_service, verify_csrf_token
+from services.auth_service import AuthService, verify_csrf_token
+from sqlalchemy.ext.asyncio import AsyncSession
 from schema import (
     LoginRequestSchema, 
     LoginResponseSchema, 
@@ -27,7 +29,9 @@ router = APIRouter(prefix="/auth", tags=["authentication"])
 security = HTTPBearer()
 logger = get_logger("auth")
 
- 
+# Dependency to get AuthService for authentication
+async def get_auth_service(session: AsyncSession = Depends(get_async_session)) -> AuthService:
+    return AuthService(session) 
 
 @router.post("/login", response_model=LoginResponseSchema, status_code=status.HTTP_200_OK)
 async def login(
@@ -100,7 +104,7 @@ async def refresh_device_token(
     result = await refresh_device_token_handler(device_token, response)
 
     logger.debug("New device access token and CSRF token generated")
-    return result 
+    return result
 
 
 # Global logout endpoint

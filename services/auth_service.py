@@ -829,9 +829,6 @@ class AuthService:
         return hashed_new_token == base64.urlsafe_b64decode(hashed_token)
 
 
-# Dependency to get AuthService for authentication
-async def get_auth_service(session: AsyncSession = Depends(get_async_session)) -> AuthService:
-    return AuthService(session)
 
 
 def verify_csrf_token(

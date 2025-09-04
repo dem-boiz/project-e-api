@@ -141,5 +141,3 @@ class InviteService:
 
 
 
-async def get_invite_service(session: AsyncSession = Depends(get_async_session)) -> InviteService:
-    return InviteService(session)

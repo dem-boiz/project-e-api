@@ -175,6 +175,3 @@ class EventService:
 
 
 
-async def get_event_service(session: AsyncSession = Depends(get_async_session))-> EventService:
-    return EventService(session)
-
