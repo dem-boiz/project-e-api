@@ -8,12 +8,12 @@ from config import (
     ALGORITHM,
     JWT_ACCESS_LIFESPAN,
     JWT_REFRESH_LIFESPAN,
-    CSRF_PEPPER,
-    email_config
+    CSRF_PEPPER
 )
 import os, base64, hmac, hashlib
+import models
 from repository import RefreshTokenRepository
-from routes.auth_route import get_auth_service
+from utils.service_utils import get_auth_service
 from schema import RefreshTokenCreateSchema
 from datetime import datetime, timedelta, timezone
 import secrets
@@ -22,7 +22,10 @@ from typing import Optional
 import os
 from passlib.context import CryptContext
 from schema.user_schemas import UserReadSchema
-from services.auth_service import AuthService
+# With this:
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from services.auth_service import AuthService
 from models import User
 
 

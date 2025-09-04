@@ -23,7 +23,6 @@ from repository import SessionRepository, RefreshTokenRepository, UserRepository
 from config.logging_config import get_logger
 import logging
 from config import ENV
-from models import User
 
 # Silences annoying warning
 logging.getLogger("passlib").setLevel(logging.ERROR)
@@ -322,12 +321,14 @@ class AuthService:
             session_id=session_id_str, 
             remember_me=remember_me, 
         )
-        refresh_token, new_jti = await create_refresh_token(
+        refresh_token = await create_refresh_token(
             user_id=user_id_str, 
             session_id=session_id_str, 
-            remember_me=remember_me,
+            remember_me=remember_me, 
+            refresh_token_repo=self.refresh_token_repo, 
             csrf=new_csrf_token,
-            parent_jti=jti
+            parent_jti=jti,
+            replaced_by_jti=None
         )
 
 
