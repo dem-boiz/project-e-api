@@ -16,7 +16,6 @@ from services import AuthService, GuestDeviceService
 from typing import cast
 
 from config import ENV
-from repository import RefreshTokenRepository
 
 logger = get_logger("auth")
 

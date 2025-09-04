@@ -1,7 +1,7 @@
 import os
 import uuid
 from config.logging_config import get_logger
-from fastapi import APIRouter, Depends, Request, status, Security, Response, Cookie, Header, HTTPException
+from fastapi import APIRouter, Depends, Request, status, Security, Response, Cookie, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.session import get_async_session

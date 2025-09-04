@@ -12,7 +12,7 @@ from schema import (
     SessionCreateSchema
 )
 from schema.auth_schemas import CurrentUserResponseSchema, LoginResponseSchema
-from utils.utils import create_access_token, create_refresh_token, verify_jwt, generate_csrf_token, verify_csrf_hash
+from utils import create_access_token, create_refresh_token, verify_jwt, generate_csrf_token, verify_csrf_hash
 from repository import SessionRepository, RefreshTokenRepository, UserRepository
 from config.logging_config import get_logger
 import logging
