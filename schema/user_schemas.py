@@ -31,5 +31,4 @@ class UserUpdateSchema(BaseModel):
     email: Optional[EmailStr] = None
     name: Optional[str] = None
     password: Optional[str] = None
-    description: Optional[str] = None
     contact_info: Optional[Dict[str, Any]] = None
