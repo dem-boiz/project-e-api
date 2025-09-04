@@ -13,6 +13,8 @@ from .settings import (
     MAIL_PASSWORD,
     CLIENT_URL,
     USER_GRANT_LIMIT,
+    ISSUER,
+    AUDIENCE,
     
 )
 

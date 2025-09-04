@@ -4,10 +4,11 @@ from datetime import datetime, timedelta
 from typing import Sequence
 import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
+from database.session import get_async_session
 from models.invite import Invite
 from repository.event_repository import EventRepository
 from schema.invite_schemas import InviteCreateRequest, InviteUpdateRequest
-from fastapi import HTTPException, status
+from fastapi import Depends, HTTPException, status
 from repository.invite_repository import InviteRepository
 from config.logging_config import get_logger
 from repository.user_repository import UserRepository
@@ -137,3 +138,8 @@ class InviteService:
 
         await self.repo.update_invite(invite)
         return invite
+
+
+
+async def get_invite_service(session: AsyncSession = Depends(get_async_session)) -> InviteService:
+    return InviteService(session)

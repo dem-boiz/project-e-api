@@ -1,10 +1,11 @@
 import uuid
 from typing import Sequence
-from fastapi import HTTPException, status
+from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 
 from config.logging_config import get_logger
+from database.session import get_async_session
 from models.device_grant import DeviceGrant
 from models.user_grant import UserGrant
 from repository import EventRepository
@@ -168,3 +169,12 @@ class EventService:
 
         grant, token = await device_grant_service.issue_device_grant(event_id, device_id, invite.id) # type: ignore
         return grant, token
+
+
+
+
+
+
+async def get_event_service(session: AsyncSession = Depends(get_async_session))-> EventService:
+    return EventService(session)
+

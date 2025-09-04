@@ -20,6 +20,8 @@ MAIL_USERNAME = os.getenv("MAIL_USERNAME", "project.e.invites@gmail.com")
 MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "place-holder-password")
 CLIENT_URL = os.getenv("CLIENT_URL", "http://localhost:5173")
 USER_GRANT_LIMIT = int(os.getenv("USER_GRANT_LIMIT", 10))
+ISSUER = os.getenv("ISSUER", "SERVER")
+AUDIENCE = os.getenv('AUDIENCE', "CLIENT")
 
 if DATABASE_URL is None:
     raise ValueError("DATABASE_URL is not set in .env")

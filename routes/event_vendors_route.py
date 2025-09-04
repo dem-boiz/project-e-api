@@ -10,9 +10,9 @@ from routes.event_vendors_route import get_event_vendor_service
 from services import EventVendorsService
 from models import User
 from schema import EventVendorsReadSchema, EventVendorSearchSchema, EventVendorsCreateSchema, EventVendorsUpdateSchema
-from utils.auth_utils import (
-    get_current_user, 
-    validate_token_parent_session
+from services.auth_service import (
+    get_current_user,
+    validate_token_parent_session,
 )
 
 router = APIRouter(prefix="/event-vendors", tags=["event-vendors"])

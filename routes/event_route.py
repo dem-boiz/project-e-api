@@ -12,19 +12,21 @@ from handlers import (
     join_event_handler,
     delete_event_pending_invite_handler
 )               
-from utils.auth_utils import (
-    get_current_user, 
-    validate_token_parent_session,
-    verify_event_ownership,
-    get_current_user,
-    get_current_user_graceful,
-    get_device_id,
-)
- 
-from utils.service_utils import get_invite_service, get_event_service
+
+
+from services.invite_service import InviteService, get_invite_service
+from services.event_service import EventService, get_event_service
+
 from handlers.event_handler import create_event_invite_handler, update_pending_event_invite_handler
 from schema.invite_schemas import InviteCreateRequest, InviteUpdateRequest, InviteCreateResponse
 from services import EventService, InviteService
+from services.auth_service import (
+    get_current_user, 
+    get_current_user_graceful,
+    validate_token_parent_session,
+    verify_event_ownership,
+    get_device_id
+)
 from schema import EventCreateSchema, EventUpdateSchema
 from models import User
 from config.logging_config import get_logger

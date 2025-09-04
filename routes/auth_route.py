@@ -3,8 +3,7 @@ import uuid
 from config.logging_config import get_logger
 from fastapi import APIRouter, Depends, Request, status, Security, Response, Cookie, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from services.auth_service import AuthService
-from utils.service_utils import get_auth_service
+from services.auth_service import AuthService, get_auth_service, verify_csrf_token
 from schema import (
     LoginRequestSchema, 
     LoginResponseSchema, 
@@ -14,7 +13,6 @@ from schema import (
 )
 
 
-from utils.auth_utils import verify_csrf_token
 from handlers import (
     refresh_token_handler, 
     get_me_handler, 
