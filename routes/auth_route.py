@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, Request, status, Security, Response, Coo
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.session import get_async_session
-from services import AuthService, UserService
+from services.auth_service import AuthService
+from services.user_service import UserService
 from schema import (
     LoginRequestSchema, 
     LoginResponseSchema, 
