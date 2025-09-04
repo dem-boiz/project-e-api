@@ -11,7 +11,6 @@ from config import (
     CSRF_PEPPER
 )
 import os, base64, hmac, hashlib
-import models
 from repository import RefreshTokenRepository
 from utils.service_utils import get_auth_service
 from schema import RefreshTokenCreateSchema
@@ -315,7 +314,7 @@ async def generate_csrf_token(length: int = 32) -> str:
 security = HTTPBearer()
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Security(security),
-    auth_service: AuthService = Depends(get_auth_service)
+    auth_service: AuthService = Depends()
 ) -> UserReadSchema | None:
     """Get the current authenticated user from JWT token"""
     token = credentials.credentials
@@ -325,7 +324,7 @@ async def get_current_user(
 # Separate dependency for graceful user retrieval without mandatory authentication
 async def get_current_user_graceful(
     request: Request,
-    auth_service: AuthService = Depends(get_auth_service)
+    auth_service: AuthService = Depends()
 ) -> UserReadSchema | None:
     """Get the current user if authenticated, or None if not authenticated"""
     logger.debug("Getting current user with graceful authentication")
@@ -340,7 +339,7 @@ async def get_current_user_graceful(
   
 async def validate_token_parent_session(
     credentials: HTTPAuthorizationCredentials = Security(security),
-    auth_service: AuthService = Depends(get_auth_service)
+    auth_service: AuthService = Depends()
 ): 
     """ validate token parent session by checking that it hasnt been revoked"""
     isActive = await auth_service.validate_session_is_active(credentials.credentials)
