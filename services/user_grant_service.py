@@ -1,5 +1,6 @@
 import uuid
 from typing import Optional
+from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select 
 from sqlalchemy.exc import NoResultFound
@@ -18,18 +19,19 @@ class UserGrantService:
         existing = await self.repo.get_active_user_grants_by_user_and_event(user_grant.user_id, user_grant.event_id)
         if existing:    
             raise ValueError("Access record already exists for this user and event.")
-        new_access = UserGrant(user_grant)
+        # Create a new UserGrant instance with attributes from the schema
+        new_access = UserGrant(
+            user_id=user_grant.user_id,
+            event_id=user_grant.event_id,
+            access_type=user_grant.access_type,
+            expires_at=user_grant.expires_at,
+            issued_at=user_grant.issued_at,
+            created_from_invite_id=user_grant.created_from_invite_id
+        )
         return await self.repo.create_user_grant(new_access)
 
 
-    async def delete_user_grant(self, user_id: uuid.UUID, event_id: uuid.UUID) -> None:
-        """Soft delete a UserGrant record by user_id and event_id."""
-        access = await self.repo.get_user_grant_by_user_and_event(user_id, event_id)
-        if not access:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User Grant not found")
-        access.is_deleted = True
-        await self.repo.session.commit()
 
-    async def user_hit_limit(self, user_id: uuid.UUID, event_id: uuid.UUID) -> bool:
+    async def user_hit_limit(self, user_id: uuid.UUID) -> bool:
         """Check if the user has hit the maximum event limit."""
-        return await self.repo.get_active_grants_count(user_id, event_id) >= USER_GRANT_LIMIT
+        return await self.repo.get_active_grants_by_user_count(user_id) >= USER_GRANT_LIMIT

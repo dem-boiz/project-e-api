@@ -5,18 +5,20 @@ import os
 from typing import Optional, List
 import hashlib
 import uuid
-
+from sqlalchemy.ext.asyncio import AsyncSession
 from config import EVENT_TOKEN_PEPPER, DEVICE_GRANT_LIMIT
 from models.device_grant import DeviceGrant
 from repository.device_grant_repository import DeviceGrantRepository
 from config.logging_config import get_logger
+from repository.host_repository import HostRepository
 
 logger = get_logger("device_grant")
 
 class DeviceGrantService:
     
-    def __init__(self, repository: DeviceGrantRepository):
-        self.repository = repository
+    def __init__(self, db: AsyncSession):
+        assert hasattr(db, "execute"), "db is not an AsyncSession"
+        self.repo = DeviceGrantRepository(db)
 
 
 # load a long random secret from env (do NOT hardcode)
@@ -60,7 +62,7 @@ class DeviceGrantService:
         )
         
         # Save to database
-        saved_grant = await self.repository.create(device_grant)
+        saved_grant = await self.repo.create(device_grant)
         logger.info(f"Device grant issued: {saved_grant.id} for event: {event_id}")
         
         return saved_grant, raw_token
@@ -77,7 +79,7 @@ class DeviceGrantService:
         token_hash = self.hash_event_token(token)
         
         # Get the grant
-        device_grant = await self.repository.get_by_token_hash(token_hash)
+        device_grant = await self.repo.get_by_token_hash(token_hash)
 
         if not device_grant:
             logger.warning("Device token not found")
@@ -104,7 +106,7 @@ class DeviceGrantService:
         """Revoke a device grant by setting revoked_at timestamp"""
         logger.debug(f"Revoking device grant: {device_grant_id}")
         
-        device_grant = await self.repository.get_by_id(device_grant_id)
+        device_grant = await self.repo.get_by_id(device_grant_id)
         if not device_grant:
             logger.warning(f"Device grant not found for revocation: {device_grant_id}")
             return False
@@ -115,7 +117,7 @@ class DeviceGrantService:
         
         # Set revocation timestamp
         device_grant.revoked_at = datetime.utcnow()
-        await self.repository.update(device_grant)
+        await self.repo.update(device_grant)
         
         logger.info(f"Device grant revoked: {device_grant_id}")
         return True
@@ -136,7 +138,7 @@ class DeviceGrantService:
 
     async def get_active_grants_for_event(self, event_id: uuid.UUID) -> List[DeviceGrant]:
         """Get all active (non-expired, non-revoked) grants for an event"""
-        all_grants = await self.repository.get_all_by_event_id(event_id)
+        all_grants = await self.repo.get_all_by_event_id(event_id)
         now = datetime.now()
         
         active_grants = [
@@ -149,7 +151,7 @@ class DeviceGrantService:
 
     async def get_active_grants_for_device(self, device_id: uuid.UUID) -> List[DeviceGrant]:
         """Get all active (non-expired, non-revoked) grants for a device"""
-        all_grants = await self.repository.get_all_by_device_id(device_id)
+        all_grants = await self.repo.get_all_by_device_id(device_id)
         now = datetime.now()
 
         active_grants = [
@@ -179,7 +181,7 @@ class DeviceGrantService:
         """Extend the expiration time of a device grant"""
         logger.debug(f"Extending device grant expiration: {device_grant_id}")
         
-        device_grant = await self.repository.get_by_id(device_grant_id)
+        device_grant = await self.repo.get_by_id(device_grant_id)
         if not device_grant:
             return False
         
@@ -189,7 +191,7 @@ class DeviceGrantService:
         
         # Extend expiration
         device_grant.expires_at += timedelta(hours=additional_hours)
-        await self.repository.update(device_grant)
+        await self.repo.update(device_grant)
         
         logger.info(f"Extended device grant {device_grant_id} by {additional_hours} hours")
         return True

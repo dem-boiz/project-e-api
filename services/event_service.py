@@ -16,6 +16,7 @@ from services.device_grant_service import DeviceGrantService
 from services.invite_service import InviteService
 from services.user_grant_service import UserGrantService
 
+
 #TODO: add logging
 
 
@@ -129,13 +130,14 @@ class EventService:
     async def join_event_with_user_id(self, x_otp: str, user_id: uuid.UUID) -> UserGrantCreateSchema:
         db_session = self.repo.session
         invite_service = InviteService(db_session)
+        user_grant_service = UserGrantService(db_session)
 
         # Validate the invite
         invite = await invite_service.validate_invite(x_otp)
         event_id = invite.event_id
 
         # Ensure the user hasn't joined max num of events
-        if await UserGrantService.user_hit_limit(user_id): # type: ignore
+        if await user_grant_service.user_hit_limit(user_id): # type: ignore
             logger.warning(f"User {user_id} has hit the maximum event limit.")
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User has hit the maximum event limit.")
 
@@ -148,21 +150,21 @@ class EventService:
             created_from_invite_id=invite.id
         )
 
-        return await UserGrantService.create_user_grant(grant_data) # type: ignore
-        
+        return await user_grant_service.create_user_grant(grant_data) # type: ignore
 
     async def join_event_with_device_id(self, x_otp: str, device_id: uuid.UUID) -> tuple[DeviceGrant, str]:
         # Create a new instance of InviteService with the same db session used by this service
         db_session = self.repo.session
         invite_service = InviteService(db_session)
-        
+        device_grant_service = DeviceGrantService(db_session)
+
         # Validate the invite
         invite = await invite_service.validate_invite(x_otp)
         event_id = invite.event_id
-        
-        if await DeviceGrantService.device_hit_limit(device_id): # type: ignore
+
+        if await device_grant_service.device_hit_limit(device_id): # type: ignore
             logger.warning(f"Device {device_id} has hit the maximum event limit.")
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Device has hit the maximum event limit.")
 
-        grant, token = await DeviceGrantService.issue_device_grant(event_id, device_id, x_otp) # type: ignore
+        grant, token = await device_grant_service.issue_device_grant(event_id, device_id, invite.id) # type: ignore
         return grant, token

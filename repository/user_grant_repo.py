@@ -31,7 +31,7 @@ class UserGrantRepository:
 
         return result.scalars().all()
 
-    async def get_active_grants_by_user(self, user_id: uuid.UUID) -> int:
+    async def get_active_grants_by_user_count(self, user_id: uuid.UUID) -> int:
         """Retrieve all active UserGrant records by user_id."""
         result = await self.session.execute(
             select(UserGrant).where(
