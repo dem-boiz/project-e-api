@@ -27,5 +27,15 @@ from .auth_handler import (
     refresh_device_token_handler,
     global_logout_handler,
     kill_session_handler
-
 )
+
+from .event_vendor_handler import (
+    create_event_vendor_handler,
+    get_event_vendor_record_handler,
+    get_events_for_vendor_handler,
+    get_vendors_for_event_handler,
+    update_event_vendors_handler,
+    delete_event_vendors_handler,
+    delete_vendors_for_event_handler,
+    delete_vendor_from_events_handler
+    )

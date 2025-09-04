@@ -1,4 +1,4 @@
-from .user_schemas import UserCreate, UserRead
+from .user_schemas import UserCreateSchema, UserReadSchema, UserUpdateSchema
 from .event_schemas import EventCreateSchema, EventUpdateSchema, EventJoinRequest
 from .host_schemas import HostCreateSchema, HostUpdateSchema, HostReadSchema
 from .user_grant_schemas import (
@@ -37,4 +37,11 @@ from .refresh_token_schemas import (
     TokenRevokedError, 
     RefreshTokenCreateSchema, 
     RefreshTokenSchema
+) 
+
+from .event_vendors_schemas import (
+    EventVendorsCreateSchema,
+    EventVendorsReadSchema,
+    EventVendorsUpdateSchema,
+    EventVendorSearchSchema
 )

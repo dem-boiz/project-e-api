@@ -1,6 +1,9 @@
 import datetime
+from typing import List, Optional
 from sqlalchemy import (
+    ARRAY,
     Column,
+    LargeBinary,
     String,
     DateTime,
     Date,
@@ -24,6 +27,7 @@ class Event(Base):
     event_number: Mapped[int] = mapped_column(Integer, Identity(start=1, increment=1), unique=True, nullable=False)
     name: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str] = mapped_column(String, nullable=True) # We probably want this to not be nullable?
+    event_images: Mapped[Optional[List[bytes]]] = mapped_column(ARRAY(LargeBinary), nullable=True, server_default=None)
     location: Mapped[str] = mapped_column(String, nullable=False)
     date_time: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     host_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("hosts.id", ondelete="CASCADE"), nullable=False)

@@ -9,7 +9,7 @@ import uuid
 import sys
 import asyncio
 from uuid import uuid4
-from schema import UserCreate
+from schema import UserCreateSchema
 
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -22,8 +22,8 @@ async def create_and_hard_delete_user():
         email = "testuser1@example.com"
 
         # Create new User
-        userCreate = UserCreate(email=email)
-        new_user = await service.create_user(userCreate)
+        UserCreateSchema = UserCreateSchema(email=email)
+        new_user = await service.create_user(UserCreateSchema)
         assert new_user is not None
         assert new_user.email == email
         assert new_user.id is not  None 
@@ -39,8 +39,8 @@ async def test_get_user_by_email():
         email = "testuser1@example.com"
 
         # Create new User
-        userCreate = UserCreate(email=email)
-        new_user = await service.create_user(userCreate)
+        UserCreateSchema = UserCreateSchema(email=email)
+        new_user = await service.create_user(UserCreateSchema)
         assert new_user is not None
         assert new_user.email == email
         assert new_user.id is not  None 
@@ -64,8 +64,8 @@ async def test_get_user_by_email():
         email = "testuser1@example.com"
 
         # Create new User
-        userCreate = UserCreate(email=email)
-        new_user = await service.create_user(userCreate)
+        UserCreateSchema = UserCreateSchema(email=email)
+        new_user = await service.create_user(UserCreateSchema)
         assert new_user is not None
         assert new_user.email == email
         assert new_user.id is not  None 
@@ -89,8 +89,8 @@ async def test_get_user_by_email():
         email = "testuser1@example.com"
 
         # Create new User
-        userCreate = UserCreate(email=email)
-        new_user = await service.create_user(userCreate)
+        UserCreateSchema = UserCreateSchema(email=email)
+        new_user = await service.create_user(UserCreateSchema)
         assert new_user is not None
         assert new_user.email == email
         assert new_user.id is not  None 
@@ -114,8 +114,8 @@ async def test_user_soft_delete():
         email = "testuser1@example.com"
 
         # Create new User
-        userCreate = UserCreate(email=email)
-        new_user = await service.create_user(userCreate)
+        UserCreateSchema = UserCreateSchema(email=email)
+        new_user = await service.create_user(UserCreateSchema)
         assert new_user is not None
         assert new_user.email == email
         assert new_user.id is not  None 
@@ -145,7 +145,7 @@ async def test_list_users():
 
         # Create 10 users
         for email in emails:
-            user_create = UserCreate(email=email)
+            user_create = UserCreateSchema(email=email)
             user = await service.create_user(user_create)
             created_users.append(user)
 

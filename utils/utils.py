@@ -1,7 +1,8 @@
 import traceback
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import jwt, JWTError 
 from jose.exceptions import ExpiredSignatureError, JWTClaimsError
-from fastapi import Header, Cookie, HTTPException, status, Depends
+from fastapi import Header, Cookie, HTTPException, Security, status, Depends
 from config import (
     SECRET_KEY,
     ALGORITHM,
@@ -12,6 +13,7 @@ from config import (
 )
 import os, base64, hmac, hashlib
 from repository import RefreshTokenRepository
+from routes.auth_route import get_auth_service
 from schema import RefreshTokenCreateSchema
 from datetime import datetime, timedelta, timezone
 import secrets
@@ -19,6 +21,10 @@ import uuid
 from typing import Optional
 import os
 from passlib.context import CryptContext
+
+from schema.user_schemas import UserReadSchema
+from services.auth_service import AuthService
+
 from fastapi_mail import FastMail, MessageSchema, MessageType
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -89,9 +95,7 @@ def create_jwt(
 
     logger.debug(f"Creating {type} JWT for user {user_id}, session {session_id}, remember_me={remember_me}")
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
-
-
-
+  
 async def create_access_token(
     user_id: str,
     session_id: str, 
@@ -300,6 +304,49 @@ async def generate_csrf_token(length: int = 32) -> str:
     """
     return secrets.token_urlsafe(length)
 
+ # Dependency to get current authenticated host
+ 
+# Note: HttpBearer automatically checks for the existence of a token but does not validate it. 
+security = HTTPBearer()
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Security(security),
+    auth_service: AuthService = Depends(get_auth_service)
+) -> UserReadSchema:
+    """Get the current authenticated host from JWT token"""
+    token = credentials.credentials
+    return await auth_service.get_current_user_service(token)
+
+
+# Separate dependency for graceful host retrieval without mandatory authentication
+async def get_current_user_graceful(
+    request: Request,
+    auth_service: AuthService = Depends(get_auth_service)
+) -> User | None:
+    """Get the current host if authenticated, or None if not authenticated"""
+    logger.debug("Getting current host with graceful authentication")
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        logger.debug("No bearer token found, returning None (graceful)")
+        return None
+        
+    token = auth_header.split(" ")[1]
+    return await auth_service.get_current_host_service(token, graceful=True)
+  
+  
+async def validate_token_parent_session(
+    credentials: HTTPAuthorizationCredentials = Security(security),
+    auth_service: AuthService = Depends(get_auth_service)
+): 
+    """ validate token parent session by checking that it hasnt been revoked"""
+    isActive = await auth_service.validate_session_is_active(credentials.credentials)
+
+    if isActive == False:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="session expired"
+        )
+    
+    return 
 async def send_invite_email(email: str, invite_url: str): 
     try:
         message = MessageSchema(
@@ -319,3 +366,59 @@ async def send_invite_email(email: str, invite_url: str):
     except Exception as e:
         logger.error(f"Failed to send email: {e}")
         return {"status": "Invite failed", "error": str(e)}
+
+
+# Dependency to get EventService
+async def get_event_service(session: AsyncSession = Depends(get_async_session))-> EventService:
+    return EventService(session)
+
+# Dependency to get AuthService for authentication
+async def get_auth_service(session: AsyncSession = Depends(get_async_session)) -> AuthService:
+    return AuthService(session)
+
+async def get_invite_service(session: AsyncSession = Depends(get_async_session)) -> InviteService:
+    return InviteService(session)
+
+
+async def get_device_id(
+        request: Request
+) -> uuid.UUID | None:
+    """Get the device ID from the cookie"""
+    device_id_str = request.cookies.get("device_id")
+    logger.debug(f"Got device ID from cookie: {device_id_str}")
+    if device_id_str:
+        try:
+            return uuid.UUID(device_id_str)
+        except ValueError:
+            # Invalid UUID format in cookie
+            return None
+    return None
+
+# Dependency to verify event ownership. unlike the previous one, this one does not require the update data.
+# TODO: Replace all usage of above method to use this one instead? 
+async def verify_event_ownership(
+    event_id: uuid.UUID,
+    current_host: Host = Depends(get_current_user),
+    service: EventService = Depends(get_event_service)
+) -> tuple[uuid.UUID, Host]:
+    """Verify that the authenticated host owns the event"""
+    try:
+        event = await service.get_event_by_id(event_id=event_id)
+
+        if event.host_id != current_host.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only update events that you own"
+            )
+    
+        return event_id, current_host
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid event ID format"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=getattr(e, 'status_code', status.HTTP_404_NOT_FOUND),
+            detail=f"Error occured. {e}"
+        )

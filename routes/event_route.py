@@ -14,12 +14,23 @@ from handlers import (
     delete_event_pending_invite_handler
 )               
 from database.session import get_async_session
+from utils import (
+    get_current_user, 
+    validate_token_parent_session,
+    verify_event_ownership,
+    get_current_user,
+    get_current_user_graceful,
+    get_device_id,
+    get_invite_service,
+    get_auth_service,
+    get_event_service,
 
+)
 from handlers.event_handler import create_event_invite_handler, update_pending_event_invite_handler
 from schema.event_schemas import EventJoinRequest
 from schema.invite_schemas import InviteCreateRequest, InviteUpdateRequest, InviteCreateResponse
 from services import EventService, AuthService, InviteService
-from schema import EventCreateSchema, EventUpdateSchema
+from schema import EventCreateSchema, EventUpdateSchema, UserReadSchema
 from sqlalchemy.ext.asyncio import AsyncSession
 from models import Host
 from config.logging_config import get_logger
@@ -34,110 +45,12 @@ router = APIRouter(prefix="/events", tags=["events"])
 # Note: HttpBearer automatically checks for the existence of a token but does not validate it. 
 security = HTTPBearer()
 
-# TODO: Move these dependencies to a separate file
-
-# Dependency to get EventService
-async def get_event_service(session: AsyncSession = Depends(get_async_session))-> EventService:
-    return EventService(session)
-
-# Dependency to get AuthService for authentication
-async def get_auth_service(session: AsyncSession = Depends(get_async_session)) -> AuthService:
-    return AuthService(session)
-
-async def get_invite_service(session: AsyncSession = Depends(get_async_session)) -> InviteService:
-    return InviteService(session)
-
-# Dependency to get current authenticated host
-async def get_current_host(
-    graceful: bool = False,
-    credentials: HTTPAuthorizationCredentials = Security(security),
-    auth_service: AuthService = Depends(get_auth_service)
-) -> Host:
-    """Get the current authenticated host from JWT token"""
-    logger.debug(f"Getting current host from token with graceful = {graceful}")
-    token = credentials.credentials
-    return await auth_service.get_current_host_service(token, graceful=graceful)
-
-# Separate dependency for graceful host retrieval without mandatory authentication
-async def get_current_host_graceful(
-    request: Request,
-    auth_service: AuthService = Depends(get_auth_service)
-) -> Host | None:
-    """Get the current host if authenticated, or None if not authenticated"""
-    logger.debug("Getting current host with graceful authentication")
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        logger.debug("No bearer token found, returning None (graceful)")
-        return None
-        
-    token = auth_header.split(" ")[1]
-    return await auth_service.get_current_host_service(token, graceful=True)
-
-async def get_device_id(
-        request: Request
-) -> uuid.UUID | None:
-    """Get the device ID from the cookie"""
-    device_id_str = request.cookies.get("device_id")
-    logger.debug(f"Got device ID from cookie: {device_id_str}")
-    if device_id_str:
-        try:
-            return uuid.UUID(device_id_str)
-        except ValueError:
-            # Invalid UUID format in cookie
-            return None
-    return None
-
-async def validate_token_parent_session(
-    credentials: HTTPAuthorizationCredentials = Security(security),
-    auth_service: AuthService = Depends(get_auth_service)
-): 
-    """ validate token parent session by checking that it hasnt been revoked"""
-    isActive = await auth_service.validate_session_is_active(credentials.credentials)
-
-    if isActive == False:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="session expired"
-        )
-    
-    return 
-
-# Dependency to verify event ownership. unlike the previous one, this one does not require the update data.
-# TODO: Replace all usage of above method to use this one instead? 
-async def verify_event_ownership(
-    event_id: uuid.UUID,
-    current_host: Host = Depends(get_current_host),
-    service: EventService = Depends(get_event_service)
-) -> tuple[uuid.UUID, Host]:
-    """Verify that the authenticated host owns the event"""
-    try:
-        event = await service.get_event_by_id(event_id=event_id)
-
-        if event.host_id != current_host.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You can only update events that you own"
-            )
-    
-        return event_id, current_host
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid event ID format"
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=getattr(e, 'status_code', status.HTTP_404_NOT_FOUND),
-            detail=f"Error occured. {e}"
-        )
-
-
 
 @router.post("/", status_code=status.HTTP_201_CREATED, dependencies=[Depends(validate_token_parent_session)])
 @router.post("", status_code=status.HTTP_201_CREATED, dependencies=[Depends(validate_token_parent_session)])
 async def create_event(
     data: EventCreateSchema,
-    host: Host = Depends(get_current_host),
+    host: Host = Depends(get_current_user),
     service: EventService = Depends(get_event_service)
 ):
     """Create a new event - requires authentication and host authorization"""
