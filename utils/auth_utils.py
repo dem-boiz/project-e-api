@@ -24,11 +24,11 @@ from schema.user_schemas import UserReadSchema
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from services.auth_service import AuthService
+    from services.event_service import EventService
 from models import User
 
 
-from services.event_service import EventService
-from utils.service_utils import get_event_service
+
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 from config import get_logger, CLIENT_URL
@@ -370,11 +370,11 @@ async def get_device_id(
 async def verify_event_ownership(
     event_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
-    service: EventService = Depends(get_event_service)
+    event_service: EventService = Depends()
 ) -> tuple[uuid.UUID, User]:
     """Verify that the authenticated user owns the event"""
     try:
-        event = await service.get_event_by_id(event_id=event_id)
+        event = await event_service.get_event_by_id(event_id=event_id)
 
         if event.user_id != current_user.id:
             raise HTTPException(
