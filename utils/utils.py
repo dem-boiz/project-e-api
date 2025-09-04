@@ -9,6 +9,7 @@ from config import (
     JWT_ACCESS_LIFESPAN,
     JWT_REFRESH_LIFESPAN,
     CSRF_PEPPER,
+    email_config
 )
 import os, base64, hmac, hashlib
 from repository import RefreshTokenRepository
@@ -23,9 +24,11 @@ from passlib.context import CryptContext
 
 from schema.user_schemas import UserReadSchema
 from services.auth_service import AuthService
+
+from fastapi_mail import FastMail, MessageSchema, MessageType
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-from config.logging_config import get_logger
+from config import get_logger, CLIENT_URL
 
 
 logger = get_logger("auth")
@@ -168,7 +171,7 @@ async def create_refresh_token(
         await refresh_token_repo.create_refresh_token(token_data)
     except Exception as e:
         logger.error(f"Error storing refresh token in database: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
     return encoded_token
 
@@ -225,47 +228,47 @@ def verify_jwt(token: str | None, expected_issuer=ISSUER, expected_audience=AUDI
         missing_claims = [claim for claim in required_claims if claim not in payload]
         if missing_claims:
             logger.warning(f"JWT missing required claims: {missing_claims}")
-            raise HTTPException(status_code=401, detail=f"Token missing required claims: {missing_claims}")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Token missing required claims: {missing_claims}")
         
         # Validate token type if specified
         if token_type and payload.get("typ") != token_type:
             logger.warning(f"Token type mismatch. Expected: {token_type}, Got: {payload.get('typ')}")
-            raise HTTPException(status_code=401, detail=f"Invalid token type. Expected {token_type}")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Invalid token type. Expected {token_type}")
         
         # Validate subject (user ID) is present and non-empty
         if not payload.get("sub"):
             logger.warning("JWT has empty or missing subject (user ID)")
-            raise HTTPException(status_code=401, detail="Token has invalid subject")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has invalid subject")
             
         # Validate session ID is present and non-empty
         if not payload.get("sid"):
             logger.warning("JWT has empty or missing session ID")
-            raise HTTPException(status_code=401, detail="Token has invalid session ID")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has invalid session ID")
             
         # Validate token ID is present and non-empty
         if not payload.get("jti"):
             logger.warning("JWT has empty or missing token ID")
-            raise HTTPException(status_code=401, detail="Token has invalid token ID")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has invalid token ID")
         
         logger.info(f"JWT verified successfully for user {payload['sub']}, session {payload['sid']}")
         return payload
     
     except ExpiredSignatureError as e:
         logger.warning(f"JWT token has expired: {e}")
-        raise HTTPException(status_code=401, detail="Token has expired")
-    
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired")
+
     except JWTClaimsError as e:
         logger.warning(f"JWT claims validation failed: {e}")
-        raise HTTPException(status_code=401, detail="Invalid token claims")
-    
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token claims")
+
     except JWTError as e:
         logger.warning(f"Invalid JWT token: {e}")
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
     except Exception as e:
         logger.error(f"Unexpected error during JWT verification: {e}")
         logger.error(f"Full stack trace:\\n{traceback.format_exc()}")
-        raise HTTPException(status_code=401, detail="Token verification failed")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token verification failed")
     
 def verify_csrf_token(
     x_csrf_token: str = Header(None, alias="X-CSRF-Token"),
@@ -277,13 +280,13 @@ def verify_csrf_token(
     print("CSRF Cookie:", csrf_token)
     if not x_csrf_token or not csrf_token:
         raise HTTPException(
-            status_code=403,
+            status_code=status.HTTP_403_FORBIDDEN,
             detail="CSRF token missing"
         )
     
     if x_csrf_token != csrf_token:
         raise HTTPException(
-            status_code=403,
+            status_code=status.HTTP_403_FORBIDDEN,
             detail="CSRF token mismatch"
         )
     
@@ -314,6 +317,22 @@ async def get_current_user(
     return await auth_service.get_current_user_service(token)
 
 
+# Separate dependency for graceful host retrieval without mandatory authentication
+async def get_current_user_graceful(
+    request: Request,
+    auth_service: AuthService = Depends(get_auth_service)
+) -> User | None:
+    """Get the current host if authenticated, or None if not authenticated"""
+    logger.debug("Getting current host with graceful authentication")
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        logger.debug("No bearer token found, returning None (graceful)")
+        return None
+        
+    token = auth_header.split(" ")[1]
+    return await auth_service.get_current_host_service(token, graceful=True)
+  
+  
 async def validate_token_parent_session(
     credentials: HTTPAuthorizationCredentials = Security(security),
     auth_service: AuthService = Depends(get_auth_service)
@@ -328,3 +347,78 @@ async def validate_token_parent_session(
         )
     
     return 
+async def send_invite_email(email: str, invite_url: str): 
+    try:
+        message = MessageSchema(
+            subject="You’re invited to an event!",
+            recipients=[email],  # List of recipient emails
+            body=f"""
+            <h2>You’ve been invited!</h2>
+            <p>Click the link below to join the event:</p>
+            <a href="{invite_url}">{invite_url}</a>
+            """,
+            subtype=MessageType.html  # or "plain" for text-only
+        )
+
+        fm = FastMail(email_config)
+        await fm.send_message(message)
+        return {"status": "Invite sent"}
+    except Exception as e:
+        logger.error(f"Failed to send email: {e}")
+        return {"status": "Invite failed", "error": str(e)}
+
+
+# Dependency to get EventService
+async def get_event_service(session: AsyncSession = Depends(get_async_session))-> EventService:
+    return EventService(session)
+
+# Dependency to get AuthService for authentication
+async def get_auth_service(session: AsyncSession = Depends(get_async_session)) -> AuthService:
+    return AuthService(session)
+
+async def get_invite_service(session: AsyncSession = Depends(get_async_session)) -> InviteService:
+    return InviteService(session)
+
+
+async def get_device_id(
+        request: Request
+) -> uuid.UUID | None:
+    """Get the device ID from the cookie"""
+    device_id_str = request.cookies.get("device_id")
+    logger.debug(f"Got device ID from cookie: {device_id_str}")
+    if device_id_str:
+        try:
+            return uuid.UUID(device_id_str)
+        except ValueError:
+            # Invalid UUID format in cookie
+            return None
+    return None
+
+# Dependency to verify event ownership. unlike the previous one, this one does not require the update data.
+# TODO: Replace all usage of above method to use this one instead? 
+async def verify_event_ownership(
+    event_id: uuid.UUID,
+    current_host: Host = Depends(get_current_user),
+    service: EventService = Depends(get_event_service)
+) -> tuple[uuid.UUID, Host]:
+    """Verify that the authenticated host owns the event"""
+    try:
+        event = await service.get_event_by_id(event_id=event_id)
+
+        if event.host_id != current_host.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only update events that you own"
+            )
+    
+        return event_id, current_host
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid event ID format"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=getattr(e, 'status_code', status.HTTP_404_NOT_FOUND),
+            detail=f"Error occured. {e}"
+        )

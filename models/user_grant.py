@@ -1,25 +1,23 @@
 from sqlalchemy import (
-    Column,
-    Boolean,
     DateTime,
     ForeignKey,
+    Text,
 )
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
 import uuid
 from sqlalchemy.orm import Mapped, mapped_column
 from database.session import Base
-from sqlalchemy.sql import func
 from datetime import datetime
 
 
-class UserEventAccess(Base):
-    __tablename__ = "user_event_access"
+class UserGrant(Base):
+    __tablename__ = "user_grants"
 
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     event_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("events.id", ondelete="CASCADE"), primary_key=True)
-    invite_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("invites.id", ondelete="SET NULL"), nullable=True)
+    access_type: Mapped[str] = mapped_column(Text, nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
+    issued_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     revoked_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
-    granted_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
-
-    # Optional relationships for easier access
+    created_from_invite_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("invites.id", ondelete="SET NULL"), nullable=True)

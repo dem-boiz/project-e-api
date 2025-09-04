@@ -21,6 +21,7 @@ class LoginServiceResponseSchema(BaseModel):
 
 class RefreshResponseSchema(BaseModel):
     access_token: str
+    csrf_token: str
     token_type: str = "bearer"
     class Config:
         from_attributes = True

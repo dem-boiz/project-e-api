@@ -11,7 +11,7 @@ from schema import (
     RefreshDeviceResponseSchema
 )
 from services import AuthService
-from fastapi import HTTPException, Request, Response
+from fastapi import HTTPException, Request, Response, status
 from services import AuthService, GuestDeviceService
 from typing import cast
 
@@ -69,7 +69,7 @@ async def kill_session_handler(service: AuthService, sid: uuid.UUID):
         }
     else:
         raise HTTPException(
-            status_code=404,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="No active tokens found for the given session ID"
         )
 
@@ -85,6 +85,7 @@ async def refresh_device_token_handler(
     await GuestDeviceService.touch_guest_device(device_id) # type: ignore
 
     # Set device ID in cookie (persistent httponly)
+    # TODO: ensure this code executes even if the user is not signed in when they refresh
     response.set_cookie(
         key="device_id",
         value=str(device_id),
@@ -92,7 +93,6 @@ async def refresh_device_token_handler(
         secure=IS_PROD,
         samesite="lax",
         max_age=30*24*3600,
-        path="/api/auth/device/refresh"
     )
 
     logger.debug("Device token refreshed successfully")

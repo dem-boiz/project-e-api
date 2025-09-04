@@ -300,7 +300,7 @@ class AuthService:
         ):
             logger.warning("The parent session for this refresh token is no longer active. Rejecting request")
             raise HTTPException(
-                status_code=403,
+                status_code=status.HTTP_403_FORBIDDEN,
                 detail="Session ended",
                 headers={"WWW-Authenticate": "Bearer"},
             )
@@ -379,7 +379,7 @@ class AuthService:
         if session_invalidated is None or session_invalidated is False:
             logger.warning("Session not invalidated.") 
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail="No active tokens found for the given session ID"
             )
         logger.info("Session tokens successfully revoked")
@@ -450,24 +450,34 @@ class AuthService:
     async def get_me_service(self, credentials:HTTPAuthorizationCredentials) -> CurrentUserResponseSchema:
         """Get current authenticated user"""
         token = credentials.credentials
-        host = await self.get_current_user_service(token)
+
+        host = await self.get_current_host_service(token)
+        if not host:
+            logger.warning(f"Host not found for token: {token}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Host not found"
+            )
         return CurrentUserResponseSchema(
             email=host.email,
             host_id=str(host.id),
             name=host.name
         )
-    async def get_current_user_service(self, token: str) -> UserReadSchema:
-        """Get current user from JWT token"""
+
+    async def get_current_host_service(self, token: str, graceful: bool = False) -> Host | None:
+        """Get current host from JWT token"""
         logger.debug(f"Verifying JWT token")
         try:
             decoded_token = verify_jwt(token)
             userId_str = decoded_token["sub"]
             # Convert string UUID back to UUID object
-            user_id = uuid.UUID(userId_str)
-            logger.debug(f"Token verified for user ID: {user_id}")
-            user = await self.user_repo.get_user_by_id(user_id)
-            if not user:
-                logger.warning(f"Host not found: {user_id}")
+            host_id = uuid.UUID(userId_str)
+            logger.debug(f"Token verified for host ID: {host_id}")
+            host = await self.host_repo.get_host_by_id(host_id)
+            if not host:
+                logger.warning(f"Host not found: {host_id}")
+                if graceful:
+                    return None
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="User not found"
@@ -479,6 +489,8 @@ class AuthService:
         except ValueError:
             # Handle invalid UUID format
             logger.error(f"Invalid token format: {token}")
+            if graceful:
+                return None
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token format",
@@ -486,6 +498,8 @@ class AuthService:
             )
         except Exception as e:
             logger.error(f"Error occurred while verifying token: {e}")
+            if graceful:
+                return None
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=f"Error occurred while verifying token. {e}",
@@ -499,8 +513,16 @@ class AuthService:
         
         if parent_session is None:
             return False
-        if parent_session.revoked_at == None or parent_session.revoked_at <= decoded_token["iat"]:
+        
+        # If session isn't revoked, it's active
+        if parent_session.revoked_at is None:
             return True
+            
+        # Compare timestamps: session revocation time vs token issue time
+        revoked_timestamp = int(parent_session.revoked_at.timestamp())
+        if revoked_timestamp <= decoded_token["iat"]:
+            return True
+            
         return False
 
         
