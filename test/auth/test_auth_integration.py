@@ -6,7 +6,7 @@ from services import AuthService, HostService
 from database import AsyncSessionLocal
 from models import Host
 from schema import HostCreateSchema, LoginRequestSchema
-from utils.utils import create_jwt, verify_jwt
+from utils.auth_utils import create_jwt, verify_jwt
 import sys
 import asyncio
 import uuid

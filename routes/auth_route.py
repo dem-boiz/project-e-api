@@ -16,7 +16,7 @@ from schema import (
 )
 
 
-from utils import verify_csrf_token
+from utils.auth_utils import verify_csrf_token
 from handlers import (
     refresh_token_handler, 
     get_me_handler, 

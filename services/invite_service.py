@@ -13,7 +13,7 @@ from config.logging_config import get_logger
 from repository.user_repository import UserRepository
 
 from config import INVITE_HOUR_EXPIRY, CLIENT_URL
-from utils import send_invite_email
+from utils.email_utils import send_invite_email
 
 logger = get_logger("api.invites")
 

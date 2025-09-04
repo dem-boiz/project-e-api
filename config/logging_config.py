@@ -144,6 +144,11 @@ LOGGING_CONFIG = {
             "level": "INFO",
             "handlers": ["file_api"],
             "propagate": False
+        },
+        "utils": {
+            "level": "DEBUG",
+            "handlers": ["console", "file_all", "file_error"],
+            "propagate": False
         }
     }
 }

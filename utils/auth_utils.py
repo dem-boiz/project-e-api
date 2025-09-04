@@ -12,7 +12,6 @@ from config import (
     email_config
 )
 import os, base64, hmac, hashlib
-from database.session import get_async_session
 from repository import RefreshTokenRepository
 from routes.auth_route import get_auth_service
 from schema import RefreshTokenCreateSchema
@@ -22,15 +21,13 @@ import uuid
 from typing import Optional
 import os
 from passlib.context import CryptContext
-from sqlalchemy.ext.asyncio import AsyncSession
 from schema.user_schemas import UserReadSchema
 from services.auth_service import AuthService
 from models import User
 
-from fastapi_mail import FastMail, MessageSchema, MessageType
 
 from services.event_service import EventService
-from services.invite_service import InviteService
+from utils.service_utils import get_event_service
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 from config import get_logger, CLIENT_URL
@@ -352,38 +349,6 @@ async def validate_token_parent_session(
         )
     
     return 
-async def send_invite_email(email: str, invite_url: str): 
-    try:
-        message = MessageSchema(
-            subject="You’re invited to an event!",
-            recipients=[email],  # List of recipient emails
-            body=f"""
-            <h2>You’ve been invited!</h2>
-            <p>Click the link below to join the event:</p>
-            <a href="{invite_url}">{invite_url}</a>
-            """,
-            subtype=MessageType.html  # or "plain" for text-only
-        )
-
-        fm = FastMail(email_config)
-        await fm.send_message(message)
-        return {"status": "Invite sent"}
-    except Exception as e:
-        logger.error(f"Failed to send email: {e}")
-        return {"status": "Invite failed", "error": str(e)}
-
-
-# Dependency to get EventService
-async def get_event_service(session: AsyncSession = Depends(get_async_session))-> EventService:
-    return EventService(session)
-
-# Dependency to get AuthService for authentication
-async def get_auth_service(session: AsyncSession = Depends(get_async_session)) -> AuthService:
-    return AuthService(session)
-
-async def get_invite_service(session: AsyncSession = Depends(get_async_session)) -> InviteService:
-    return InviteService(session)
-
 
 async def get_device_id(
         request: Request

@@ -12,7 +12,13 @@ from schema import (
     SessionCreateSchema
 )
 from schema.auth_schemas import CurrentUserResponseSchema, LoginResponseSchema
-from utils import create_access_token, create_refresh_token, verify_jwt, generate_csrf_token, verify_csrf_hash
+from utils.auth_utils import (
+    create_access_token, 
+    create_refresh_token, 
+    verify_jwt, 
+    generate_csrf_token, 
+    verify_csrf_hash
+)
 from repository import SessionRepository, RefreshTokenRepository, UserRepository
 from config.logging_config import get_logger
 import logging
@@ -316,14 +322,12 @@ class AuthService:
             session_id=session_id_str, 
             remember_me=remember_me, 
         )
-        refresh_token = await create_refresh_token(
+        refresh_token, new_jti = await create_refresh_token(
             user_id=user_id_str, 
             session_id=session_id_str, 
-            remember_me=remember_me, 
-            refresh_token_repo=self.refresh_token_repo, 
+            remember_me=remember_me,
             csrf=new_csrf_token,
-            parent_jti=jti,
-            replaced_by_jti=None
+            parent_jti=jti
         )
 
 
