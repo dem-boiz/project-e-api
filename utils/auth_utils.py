@@ -12,7 +12,6 @@ from config import (
 )
 import os, base64, hmac, hashlib
 from repository import RefreshTokenRepository
-from utils.service_utils import get_auth_service
 from schema import RefreshTokenCreateSchema
 from datetime import datetime, timedelta, timezone
 import secrets
