@@ -6,7 +6,6 @@ from config.logging_config import get_logger
 from handlers import create_event_vendor_handler, update_event_vendors_handler, delete_event_vendors_handler, get_vendors_for_event_handler, get_event_vendor_record_handler, get_events_for_vendor_handler, delete_vendors_for_event_handler, delete_vendor_from_events_handler
 from database.session import get_async_session
 from handlers.event_vendor_handler import delete_vendors_for_event_handler
-from routes.event_vendors_route import get_event_vendor_service
 from schema.user_schemas import UserReadSchema
 from services import EventVendorsService
 from schema import EventVendorsReadSchema, EventVendorSearchSchema, EventVendorsCreateSchema, EventVendorsUpdateSchema
@@ -19,6 +18,15 @@ router = APIRouter(prefix="/event-vendors", tags=["event-vendors"])
 
 # Initialize logger
 logger = get_logger("api.event-vendors")
+
+
+
+
+# Dependency to get EventVendor
+async def get_event_vendor_service(session: AsyncSession = Depends(get_async_session))-> EventVendorsService:
+    return EventVendorsService(session) 
+
+
 
 async def verify_event_vendor_ownership(
     data: EventVendorSearchSchema = Depends(),
@@ -48,11 +56,6 @@ async def verify_event_vendor_ownership(
             status_code=getattr(e, 'status_code', status.HTTP_404_NOT_FOUND),
             detail=f"Error occured. {e}"
         )
-
-
-# Dependency to get EventVendor
-async def get_event_vendor_service(session: AsyncSession = Depends(get_async_session))-> EventVendorsService:
-    return EventVendorsService(session) 
 
 @router.post("/",
               response_model=EventVendorsReadSchema, 
