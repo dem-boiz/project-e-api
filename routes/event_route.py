@@ -1,7 +1,6 @@
 import uuid
-from datetime import datetime
-from fastapi import APIRouter, Depends, Response, status, Security, HTTPException, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import APIRouter, Depends, Response, status, Request
+from fastapi.security import HTTPBearer
 from handlers import (
     create_event_handler, 
     delete_event_handler, 
@@ -13,7 +12,6 @@ from handlers import (
     join_event_handler,
     delete_event_pending_invite_handler
 )               
-from database.session import get_async_session
 from utils.auth_utils import (
     get_current_user, 
     validate_token_parent_session,
@@ -21,18 +19,15 @@ from utils.auth_utils import (
     get_current_user,
     get_current_user_graceful,
     get_device_id,
-    get_event_service,
 )
-from utils.service_utils import get_invite_service
+ 
+from utils.service_utils import get_invite_service, get_event_service
 from handlers.event_handler import create_event_invite_handler, update_pending_event_invite_handler
-from schema.event_schemas import EventJoinRequest
 from schema.invite_schemas import InviteCreateRequest, InviteUpdateRequest, InviteCreateResponse
-from services import EventService, AuthService, InviteService
-from schema import EventCreateSchema, EventUpdateSchema, UserReadSchema
-from sqlalchemy.ext.asyncio import AsyncSession
+from services import EventService, InviteService
+from schema import EventCreateSchema, EventUpdateSchema
 from models import User
 from config.logging_config import get_logger
-from functools import partial
 
 import uuid
 # Initialize logger
