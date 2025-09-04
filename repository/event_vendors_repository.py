@@ -14,14 +14,14 @@ class EventVendorsRepository:
         self.session = session
 
     def return_schema(self, data: EventVendor):
-        return EventVendorsReadSchema(event_id=data.event_id, user_id=data.user_id, event_date=data.event_date, added_at=datetime.now())
+        return EventVendorsReadSchema(event_id=data.event_id, user_id=data.user_id, added_at=datetime.now())
 
     async def create_event_vendor(self, data: EventVendorsCreateSchema) -> EventVendorsReadSchema:
-        new_event_vendor = EventVendor(event_id=data.event_id, user_id=data.user_id, event_date=data.event_date)
+        new_event_vendor = EventVendor(event_id=data.event_id, user_id=data.user_id)
         self.session.add(new_event_vendor)
         await self.session.commit()
         await self.session.refresh(new_event_vendor)
-        return EventVendorsReadSchema(event_id=data.event_id, user_id=data.user_id, event_date=data.event_date, added_at=datetime.now())
+        return EventVendorsReadSchema(event_id=data.event_id, user_id=data.user_id, added_at=datetime.now())
     
     async def get_event_vendor(self, data: EventVendorSearchSchema) -> EventVendorsReadSchema | None:
         try:
