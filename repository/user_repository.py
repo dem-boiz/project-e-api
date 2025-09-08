@@ -19,7 +19,7 @@ class UserRepository:
 
     def return_schema(self, user: User): 
         return UserReadSchema(id=user.id, email=user.email, name=user.name, user_number=user.user_number,  created_at=user.created_at, 
-                                  updated_at=user.updated_at, is_deleted=user.is_deleted, is_active=user.is_active)
+                                  updated_at=user.updated_at, is_deleted=user.is_deleted)
  
     async def create_user(self, data: UserCreateSchema) -> UserReadSchema:
         """Create a new user with unique UUID and additional information"""

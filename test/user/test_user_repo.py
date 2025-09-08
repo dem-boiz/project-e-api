@@ -32,8 +32,7 @@ async def test_create_user():
         # Assertions
         assert new_user is not None
         assert new_user.email == user_data.email 
-        assert new_user.is_deleted is False
-        assert new_user.is_active is True
+        assert new_user.is_deleted is False 
         assert new_user.id is not None
         assert new_user.user_number > 0
         assert new_user.created_at is not None
