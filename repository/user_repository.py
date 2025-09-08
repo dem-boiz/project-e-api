@@ -48,7 +48,9 @@ class UserRepository:
                 select(User).where(User.email == email)
             )
             user = result.scalar_one()
-            return self.return_schema(user)
+            user_schema = self.return_schema(user)
+            user_schema.password_hash = user.password_hash  # Include password hash in the returned schema
+            return user_schema
         except NoResultFound:
             return None
 
