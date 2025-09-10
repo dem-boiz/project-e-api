@@ -71,7 +71,7 @@ async def create_event_vendor(
     return await create_event_vendor_handler(data=data, service=service)
 
 @router.post("/image",
-              response_model=EventVendorsReadSchema
+              response_model=VendorImagesReadSchema
 )
 async def add_vendor_image(
     data: VendorImagesCreateSchema,
