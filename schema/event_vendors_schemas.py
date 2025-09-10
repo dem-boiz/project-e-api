@@ -24,5 +24,6 @@ class EventVendorSearchSchema(BaseModel):
 
 class EventVendorClientSchema(BaseModel):
     name: str
-    vendor_images: Optional[List[bytes]] = None
+    id: str
+    vendor_images: Optional[List[str]] = None
     vendor_description: Optional[str] = None
