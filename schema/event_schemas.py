@@ -22,7 +22,7 @@ class EventReadSchema(BaseModel):
     id: UUID
     name: str
     location: str
-    datetime: str
+    date_time: str
     description: Optional[str] = None
     host_id: UUID
     created_at: str
