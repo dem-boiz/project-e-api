@@ -22,5 +22,5 @@ class Invite(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     used_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
-    issued_by_host_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    issued_by_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     type: Mapped[str] = mapped_column(Text, nullable=True)
