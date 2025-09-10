@@ -1,3 +1,4 @@
+import base64
 from typing import List
 from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,7 +14,7 @@ class VendorImagesRepository:
         self.session = session
 
     async def create_vendor_image(self, data: VendorImagesCreateSchema) -> VendorImagesReadSchema:
-        new_event_image = VendorImage(event_vendor_id=data.event_vendor_id, image_data=data.image_data) 
+        new_event_image = VendorImage(event_vendor_id=data.event_vendor_id, image_data=base64.b64decode(data.image_data))
         self.session.add(new_event_image)
         await self.session.commit()
         await self.session.refresh(new_event_image)

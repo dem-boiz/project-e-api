@@ -5,11 +5,11 @@ from typing import List, Optional
 
 class VendorImagesCreateSchema(BaseModel):
     event_vendor_id: UUID
-    image_data: bytes
+    image_data: str  # Base64 encoded string
 
 class VendorImagesReadSchema(BaseModel):
     event_vendor_id: UUID
-    image_data: bytes
+    image_data: str
     created_at: datetime
 
 class VendorImagesDeleteSchema(BaseModel):
