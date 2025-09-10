@@ -45,3 +45,9 @@ from .event_vendors_schemas import (
     EventVendorSearchSchema,
     EventVendorClientSchema
 )
+
+from .vendor_images_schemas import (
+    VendorImagesCreateSchema,
+    VendorImagesReadSchema,
+    VendorImagesDeleteSchema
+)
