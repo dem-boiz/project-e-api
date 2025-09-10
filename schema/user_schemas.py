@@ -20,7 +20,6 @@ class UserReadSchema(BaseModel):
     created_at: datetime
     updated_at: datetime
     is_deleted: bool
-    is_active: bool
     name: str
     password_hash: Optional[str] = None
 
