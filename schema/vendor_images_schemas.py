@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import List, Optional
 
 class VendorImagesCreateSchema(BaseModel):
-    event_vendor_id: UUID
+    event_vendor_id: str
     image_data: str  # Base64 encoded string
 
 class VendorImagesReadSchema(BaseModel):
