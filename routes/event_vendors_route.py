@@ -91,6 +91,7 @@ async def get_vendors_for_event(
     return await get_vendors_for_event_handler(data=data, service=service)
 
 
+
 @router.patch("/", 
               response_model=EventVendorsReadSchema, 
               status_code=status.HTTP_202_ACCEPTED,

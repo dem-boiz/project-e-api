@@ -20,7 +20,8 @@ class EventRepository:
             description=event.description,
             date_time=datetime.fromisoformat(event.datetime),
             location=event.location,
-            host_id=host_id
+            host_id=host_id,
+            event_images=[]
         )
 
         self.session.add(new_event)

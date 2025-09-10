@@ -859,20 +859,22 @@ def verify_csrf_token(
 security = HTTPBearer()
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Security(security),
-    auth_service: AuthService = Depends(get_async_session)
+    async_session: AsyncSession = Depends(get_async_session)
 ) -> UserReadSchema | None:
     """Get the current authenticated user from JWT token"""
     token = credentials.credentials
+    auth_service: AuthService = AuthService(async_session)
     return await auth_service.get_current_user_service(token, graceful=False)
 
 
 # Separate dependency for graceful user retrieval without mandatory authentication
 async def get_current_user_graceful(
     request: Request,
-    auth_service: AuthService = Depends(get_async_session)
+    async_session: AsyncSession = Depends(get_async_session)
 ) -> UserReadSchema | None:
     """Get the current user if authenticated, or None if not authenticated"""
     logger.debug("Getting current user with graceful authentication")
+    auth_service: AuthService = AuthService(async_session)  
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
         logger.debug("No bearer token found, returning None (graceful)")
@@ -884,9 +886,10 @@ async def get_current_user_graceful(
   
 async def validate_token_parent_session(
     credentials: HTTPAuthorizationCredentials = Security(security),
-    auth_service: AuthService = Depends(get_async_session)
+    async_session: AsyncSession = Depends(get_async_session)
 ) -> None:
     """ validate token parent session by checking that it hasnt been revoked"""
+    auth_service: AuthService = AuthService(async_session)
     isActive = await auth_service.validate_session_is_active(credentials.credentials)
 
     if isActive == False:
