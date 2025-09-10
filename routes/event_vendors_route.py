@@ -3,12 +3,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
 from config.logging_config import get_logger
-from handlers import create_event_vendor_handler, update_event_vendors_handler, delete_event_vendors_handler, get_vendors_for_event_handler, get_event_vendor_record_handler, get_events_for_vendor_handler, delete_vendors_for_event_handler, delete_vendor_from_events_handler
+from handlers import add_vendor_image_handler, create_event_vendor_handler, update_event_vendors_handler, delete_event_vendors_handler, get_vendors_for_event_handler, get_event_vendor_record_handler, get_events_for_vendor_handler, delete_vendors_for_event_handler, delete_vendor_from_events_handler
 from database.session import get_async_session
 from handlers.event_vendor_handler import delete_vendors_for_event_handler
 from schema.user_schemas import UserReadSchema
-from services import EventVendorsService
-from schema import EventVendorsReadSchema, EventVendorSearchSchema, EventVendorsCreateSchema, EventVendorsUpdateSchema, EventVendorClientSchema
+from services import EventVendorsService, VendorImagesService
+from schema import VendorImagesReadSchema, VendorImagesCreateSchema, EventVendorsReadSchema, EventVendorSearchSchema, EventVendorsCreateSchema, EventVendorsUpdateSchema, EventVendorClientSchema
 from services.auth_service import (
     get_current_user,
     validate_token_parent_session,
@@ -26,6 +26,9 @@ logger = get_logger("api.event-vendors")
 async def get_event_vendor_service(session: AsyncSession = Depends(get_async_session))-> EventVendorsService:
     return EventVendorsService(session) 
 
+# Dependency to get VendorImagesService
+async def get_vendor_images_service(session: AsyncSession = Depends(get_async_session))-> VendorImagesService:
+    return VendorImagesService(session)
 
 
 async def verify_event_vendor_ownership(
@@ -66,6 +69,15 @@ async def create_event_vendor(
     service: EventVendorsService = Depends(get_event_vendor_service)
 ):
     return await create_event_vendor_handler(data=data, service=service)
+
+@router.post("/images",
+              response_model=EventVendorsReadSchema
+)
+async def add_vendor_image(
+    data: VendorImagesCreateSchema,
+    service: VendorImagesService = Depends(get_vendor_images_service)
+):
+    return await add_vendor_image_handler(data=data, service=service)
     
 @router.get("/", response_model=EventVendorsReadSchema, status_code=status.HTTP_302_FOUND)
 async def get_event_vendor(

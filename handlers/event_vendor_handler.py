@@ -1,7 +1,7 @@
 from typing import List
 from fastapi import Depends, status, HTTPException
-from services import EventVendorsService
-from schema import EventVendorSearchSchema, EventVendorsCreateSchema, EventVendorsReadSchema, EventVendorsUpdateSchema, EventVendorClientSchema
+from services import EventVendorsService, VendorImagesService
+from schema import VendorImagesCreateSchema, VendorImagesReadSchema, EventVendorSearchSchema, EventVendorsCreateSchema, EventVendorsReadSchema, EventVendorsUpdateSchema, EventVendorClientSchema
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, EmailStr
 from database.session import get_async_session
@@ -30,3 +30,6 @@ async def delete_vendors_for_event_handler(data: EventVendorSearchSchema, servic
 
 async def delete_vendor_from_events_handler(data: EventVendorSearchSchema, service: EventVendorsService):
     return await service.delete_vendor_from_events_service(data=data)
+
+async def add_vendor_image_handler(data: VendorImagesCreateSchema, service: VendorImagesService) -> VendorImagesReadSchema:
+    return await service.add_vendor_image_service(data=data)
