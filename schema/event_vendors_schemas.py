@@ -15,8 +15,7 @@ class EventVendorsReadSchema(BaseModel):
 class EventVendorsUpdateSchema(BaseModel):
     event_id: Optional[UUID] = None
     user_id: UUID
-    vendor_description: Optional[str] = None
-    vendor_images: Optional[List[bytes]] = None
+    vendor_description: Optional[str] = None 
 
 class EventVendorSearchSchema(BaseModel):
     user_id: Optional[UUID] = None
@@ -24,6 +23,5 @@ class EventVendorSearchSchema(BaseModel):
 
 class EventVendorClientSchema(BaseModel):
     name: str
-    id: str
-    vendor_images: Optional[List[str]] = None
+    id: str 
     vendor_description: Optional[str] = None
