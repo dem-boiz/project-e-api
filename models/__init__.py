@@ -7,6 +7,7 @@ from .user_grant import UserGrant
 from .event_vendors import EventVendor
 from .sessions import Session
 from .refresh_tokens import RefreshToken 
+from .vendor_images import VendorImage
 __all__ = [
     "User", 
     "Session", 
@@ -14,5 +15,6 @@ __all__ = [
     "UserGrant", 
     "EventVendor", 
     "RefreshToken", 
-    "Vendor"
+    "Vendor",
+    "VendorImage"
 ]

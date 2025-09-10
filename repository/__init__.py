@@ -4,3 +4,4 @@ from .user_grant_repo import UserGrantRepository
 from .session_repository import SessionRepository
 from .refresh_token_repository import RefreshTokenRepository 
 from .event_vendors_repository import EventVendorsRepository
+from .vendor_images_repository import VendorImagesRepository

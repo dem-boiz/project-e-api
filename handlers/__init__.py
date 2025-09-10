@@ -34,5 +34,6 @@ from .event_vendor_handler import (
     update_event_vendors_handler,
     delete_event_vendors_handler,
     delete_vendors_for_event_handler,
-    delete_vendor_from_events_handler
+    delete_vendor_from_events_handler,
+    add_vendor_image_handler
     )
