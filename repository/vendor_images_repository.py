@@ -18,7 +18,7 @@ class VendorImagesRepository:
         self.session.add(new_event_image)
         await self.session.commit()
         await self.session.refresh(new_event_image)
-        return VendorImagesReadSchema(event_vendor_id=data.event_vendor_id, image_data=data.image_data, created_at=new_event_image.created_at)
+        return VendorImagesReadSchema(event_vendor_id=str(data.event_vendor_id), image_data=data.image_data, created_at=new_event_image.created_at) # type: ignore
  
     async def get_vendor_image(self, image_id: uuid.UUID) -> VendorImagesReadSchema | None:
         try:
