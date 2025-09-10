@@ -19,6 +19,7 @@ from datetime import datetime
 class EventVendor(Base):
     __tablename__ = "event_vendors"
 
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     event_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey(Event.__table__.c.id), primary_key=True)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey(User.__table__.c.id), primary_key=True)
     vendor_description: Mapped[Optional[str]] = mapped_column(Text, nullable=True, server_default=None)
