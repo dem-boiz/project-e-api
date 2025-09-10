@@ -69,7 +69,7 @@ class InviteService:
             expires_at=expires_at,
             created_at=datetime.now(),
             issued_by_user_id=user_id,
-            type=invite_data.access_type,
+            type=invite_data.access_type, 
         )
 
         invite_link = f"{CLIENT_URL}/invite/{invite_code}"

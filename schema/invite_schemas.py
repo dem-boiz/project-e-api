@@ -27,3 +27,4 @@ class InviteDeleteRequest(BaseModel):
 class InviteUpdateRequest(BaseModel):
     label: Optional[str] = None
     access_type: Optional[str] = None
+    used_at: Optional[datetime] = None

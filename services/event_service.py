@@ -13,7 +13,8 @@ from models import Event
 from repository.user_repository import UserRepository
 from schema import EventCreateSchema, EventUpdateSchema
 from schema.event_schemas import EventReadSchema
-from schema.user_grant_schemas import UserGrantCreateSchema
+from schema.invite_schemas import InviteUpdateRequest
+from schema.user_grant_schemas import UserGrantCreateSchema, UserGrantReadSchema
 from services.device_grant_service import DeviceGrantService
 from services.invite_service import InviteService
 from services.user_grant_service import UserGrantService
@@ -128,13 +129,14 @@ class EventService:
         return False
 
 
-    async def join_event_with_user_id(self, x_otp: str, user_id: uuid.UUID) -> UserGrantCreateSchema:
+    async def join_event_with_user_id(self, x_otp: str, user_id: uuid.UUID) -> UserGrantReadSchema:
         db_session = self.repo.session
         invite_service = InviteService(db_session)
         user_grant_service = UserGrantService(db_session)
 
         # Validate the invite
         invite = await invite_service.validate_invite(x_otp)
+
         event_id = invite.event_id
 
         # Ensure the user hasn't joined max num of events
@@ -145,14 +147,16 @@ class EventService:
         grant_data = UserGrantCreateSchema(
             user_id=user_id,
             event_id=event_id,
-            access_type="full",
+            access_type="guest" if invite.type == "guest" else "vendor",
             expires_at=None,
             issued_at=datetime.now(),
             created_from_invite_id=invite.id
         )
         
-
-        return await user_grant_service.create_user_grant(grant_data) # type: ignore
+        update_data = InviteUpdateRequest(used_at=datetime.now())
+        await invite_service.update_pending_invite_by_event_id(update_data, event_id, invite.id)
+        user_grant = await user_grant_service.create_user_grant(grant_data) # type: ignore
+        return user_grant
 
     async def join_event_with_device_id(self, x_otp: str, device_id: uuid.UUID) -> tuple[DeviceGrant, str]:
         # Create a new instance of InviteService with the same db session used by this service
