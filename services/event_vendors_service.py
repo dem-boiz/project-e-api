@@ -1,3 +1,4 @@
+import base64
 import uuid
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -42,15 +43,18 @@ class EventVendorsService:
             raise HTTPException(status_code=404, detail="No vendors found for the specified event") 
         
         return_list: List[EventVendorClientSchema] = []
-
+        i = 0
         for event_vendor in event_vendors:
+            i += 1
+            logger.info(f"Processing vendor {i} for event {data.event_id}")
             logger.info(f"Event Vendor found: {event_vendor.user_id} for event {event_vendor.event_id}")    
             vendor_user = await self.user_repo.get_user_by_id(event_vendor.user_id)
             if vendor_user is None:
                 raise HTTPException(status_code=404, detail=f"User not found for vendor with user ID {event_vendor.user_id}")
             return_list.append(EventVendorClientSchema(
+                id=str(i),
                 name=vendor_user.name,
-                vendor_images=event_vendor.vendor_images,  # Assuming vendor images are not stored in the user model, adjust as necessary
+                vendor_images=base64.b64encode(event_vendor.vendor_images).decode("utf-8"),  # Assuming vendor images are not stored in the user model, adjust as necessary
                 vendor_description=event_vendor.vendor_description  # Assuming vendor description is not stored in the user model, adjust as necessary
             ))
             
