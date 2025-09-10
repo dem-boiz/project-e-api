@@ -923,9 +923,10 @@ async def verify_event_ownership(
 ) -> tuple[uuid.UUID, UserReadSchema]:
     """Verify that the authenticated user owns the event"""
     try:
+        logger.debug(f"Verifying ownership for event: {event_id} and user: {current_user.id}")
         event = await event_service.get_event_by_id(event_id=event_id)
 
-        if event.user_id != current_user.id:
+        if event.host_id != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You can only update events that you own"
@@ -933,11 +934,13 @@ async def verify_event_ownership(
     
         return event_id, current_user
     except ValueError:
+        logger.error(f"Invalid event ID format: {event_id}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid event ID format"
         )
     except Exception as e:
+        logger.error(f"Error verifying event ownership: {e}")
         raise HTTPException(
             status_code=getattr(e, 'status_code', status.HTTP_404_NOT_FOUND),
             detail=f"Error occured. {e}"

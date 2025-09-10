@@ -16,3 +16,18 @@ class EventUpdateSchema(BaseModel):
     location: Optional[str] = None
     datetime: Optional[str] = None
     description: Optional[str] = None
+
+
+class EventReadSchema(BaseModel):
+    id: UUID
+    name: str
+    location: str
+    datetime: str
+    description: Optional[str] = None
+    host_id: UUID
+    created_at: str
+    event_images: list[bytes] = []
+    class Config:
+        orm_mode = True
+        from_attributes = True
+        

@@ -12,6 +12,7 @@ from repository import EventRepository
 from models import Event 
 from repository.user_repository import UserRepository
 from schema import EventCreateSchema, EventUpdateSchema
+from schema.event_schemas import EventReadSchema
 from schema.user_grant_schemas import UserGrantCreateSchema
 from services.device_grant_service import DeviceGrantService
 from services.invite_service import InviteService
@@ -26,7 +27,7 @@ class EventService:
     def __init__(self, db: AsyncSession):
         self.repo = EventRepository(db)
         self.user_repo = UserRepository(db)
-    async def create_event(self, event_data: EventCreateSchema, user_id: uuid.UUID) -> Event:
+    async def create_event(self, event_data: EventCreateSchema, user_id: uuid.UUID) -> EventReadSchema:
 
         ''' # TODO: Implement the functions in repository to check these conditions
     
@@ -53,7 +54,7 @@ class EventService:
             raise ValueError(" does not exist.")
         
         existing_event = await self.repo.get_event_by_name(event_data.name)
-        if existing_event and existing_event.user_id == user_id:
+        if existing_event and existing_event.host_id == user_id:
             raise ValueError("Event already exists with this name.")
 
         # Check if the event date is in the past
@@ -80,30 +81,29 @@ class EventService:
         # If all checks pass, create the event
         return await self.repo.create_event(event_data, user_id)
 
-    async def get_event_by_id(self, event_id: uuid.UUID) -> Event:
+    async def get_event_by_id(self, event_id: uuid.UUID) -> EventReadSchema:
         # Check if the event exists
         event = await self.repo.get_event_by_id(event_id)
         if not event:
             raise ValueError("Event with the specified ID does not exist.")
         
         return event
-    
 
-    async def get_events_by_ids(self, event_ids: list[uuid.UUID]) -> Sequence[Event]:
+    async def get_events_by_ids(self, event_ids: list[uuid.UUID]) -> Sequence[EventReadSchema]:
         return await self.repo.get_events_by_ids(event_ids)
 
-    async def get_event_by_name(self, name: str) -> Event:
+    async def get_event_by_name(self, name: str) -> EventReadSchema | None:
         # Check if the event exists
         event = await self.repo.get_event_by_name(name)
         if not event:
             raise ValueError("Event with the specified name does not exist.")
         
         return event
-    
-    async def get_all_events(self) -> Sequence[Event]:
+
+    async def get_all_events(self) -> Sequence[EventReadSchema]:
         return await self.repo.get_all_events()
-    
-    async def update_event(self, event_id: uuid.UUID, data: EventUpdateSchema) -> Event:
+
+    async def update_event(self, event_id: uuid.UUID, data: EventUpdateSchema) -> EventReadSchema | None:
         # Check if the event exists
         event = await self.repo.get_event_by_id(event_id)
         if not event:
@@ -150,6 +150,7 @@ class EventService:
             issued_at=datetime.now(),
             created_from_invite_id=invite.id
         )
+        
 
         return await user_grant_service.create_user_grant(grant_data) # type: ignore
 
