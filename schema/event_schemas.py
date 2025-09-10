@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID
 from pydantic import BaseModel
 from typing import Optional
@@ -22,7 +23,7 @@ class EventReadSchema(BaseModel):
     id: UUID
     name: str
     location: str
-    date_time: str
+    date_time: datetime
     description: Optional[str] = None
     host_id: UUID
     created_at: str
