@@ -884,9 +884,10 @@ async def get_current_user_graceful(
   
 async def validate_token_parent_session(
     credentials: HTTPAuthorizationCredentials = Security(security),
-    auth_service: AuthService = Depends(get_async_session)
+    async_session: AsyncSession = Depends(get_async_session)
 ) -> None:
     """ validate token parent session by checking that it hasnt been revoked"""
+    auth_service: AuthService = AuthService(async_session)
     isActive = await auth_service.validate_session_is_active(credentials.credentials)
 
     if isActive == False:
