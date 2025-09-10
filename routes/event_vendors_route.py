@@ -81,7 +81,7 @@ async def get_events_for_vendor(
 ):
     return await get_events_for_vendor_handler(data=data, service=service)
 
-@router.get("/event-id/{event_id}", response_model=List[EventVendorClientSchema], status_code=status.HTTP_302_FOUND)
+@router.get("/event-id/{event_id}", response_model=List[EventVendorClientSchema])
 async def get_vendors_for_event(
     event_id: uuid.UUID,
     service: EventVendorsService = Depends(get_event_vendor_service)
