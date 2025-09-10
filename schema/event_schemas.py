@@ -18,7 +18,6 @@ class EventUpdateSchema(BaseModel):
     datetime: Optional[str] = None
     description: Optional[str] = None
 
-
 class EventReadSchema(BaseModel):
     id: UUID
     name: str
@@ -26,7 +25,7 @@ class EventReadSchema(BaseModel):
     date_time: datetime
     description: Optional[str] = None
     host_id: UUID
-    created_at: str
+    created_at: datetime
     event_images: list[bytes] = []
     class Config:
         orm_mode = True
