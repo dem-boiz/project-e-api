@@ -99,9 +99,7 @@ class EventVendorsRepository:
                 event_vendor = result.scalar_one()
                 if data.vendor_description is not None:
                     event_vendor.vendor_description = data.vendor_description
-                
-                if data.vendor_images is not None:
-                    event_vendor.vendor_images = data.vendor_images
+                 
                 await self.session.commit()
                 await self.session.refresh(event_vendor)
                 return self.return_schema(event_vendor)
@@ -118,9 +116,7 @@ class EventVendorsRepository:
                 for event_vendor in event_vendors:
                     if data.vendor_description is not None:
                         event_vendor.vendor_description = data.vendor_description
-                
-                    if data.vendor_images is not None:
-                        event_vendor.vendor_images = data.vendor_images
+                 
 
                     await self.session.commit()
                     await self.session.refresh(event_vendor)
