@@ -919,11 +919,12 @@ async def get_device_id(
 async def verify_event_ownership(
     event_id: uuid.UUID,
     current_user: UserReadSchema = Depends(get_current_user),
-    event_service: EventService = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session)
 ) -> tuple[uuid.UUID, UserReadSchema]:
     """Verify that the authenticated user owns the event"""
     try:
         logger.debug(f"Verifying ownership for event: {event_id} and user: {current_user.id}")
+        event_service = EventService(session)
         event = await event_service.get_event_by_id(event_id=event_id)
 
         if event.host_id != current_user.id:
