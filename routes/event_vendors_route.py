@@ -8,7 +8,7 @@ from database.session import get_async_session
 from handlers.event_vendor_handler import delete_vendors_for_event_handler
 from schema.user_schemas import UserReadSchema
 from services import EventVendorsService
-from schema import EventVendorsReadSchema, EventVendorSearchSchema, EventVendorsCreateSchema, EventVendorsUpdateSchema
+from schema import EventVendorsReadSchema, EventVendorSearchSchema, EventVendorsCreateSchema, EventVendorsUpdateSchema, EventVendorClientSchema
 from services.auth_service import (
     get_current_user,
     validate_token_parent_session,
@@ -81,7 +81,7 @@ async def get_events_for_vendor(
 ):
     return await get_events_for_vendor_handler(data=data, service=service)
 
-@router.get("/event-id/{event_id}", response_model=List[EventVendorsReadSchema], status_code=status.HTTP_302_FOUND)
+@router.get("/event-id/{event_id}", response_model=List[EventVendorClientSchema], status_code=status.HTTP_302_FOUND)
 async def get_vendors_for_event(
     event_id: uuid.UUID,
     service: EventVendorsService = Depends(get_event_vendor_service)

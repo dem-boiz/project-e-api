@@ -2,16 +2,17 @@ import uuid
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
-from repository import EventVendorsRepository 
+from repository import EventVendorsRepository, UserRepository
 from models import EventVendor
-from schema import EventVendorsCreateSchema, EventVendorsReadSchema, EventVendorsUpdateSchema, EventVendorSearchSchema
+from schema import EventVendorsCreateSchema, EventVendorsReadSchema, EventVendorsUpdateSchema, EventVendorSearchSchema, EventVendorClientSchema
 from config.logging_config import get_logger
 
 logger = get_logger("service.event_vendors")
 
 class EventVendorsService:
     def __init__(self, db: AsyncSession):
-        self.event_vendors_repo = EventVendorsRepository(db)  
+        self.event_vendors_repo = EventVendorsRepository(db)
+        self.user_repo = UserRepository(db)
 
     async def create_event_vendor_service(self, data: EventVendorsCreateSchema) -> EventVendorsReadSchema:
         logger.info(f"Checking if event vendor record exists")
@@ -32,23 +33,41 @@ class EventVendorsService:
             raise HTTPException(status_code=404, detail="Event Vendor not found")  
         return event_vendor
     
-    async def get_vendors_for_event_service(self, data: EventVendorSearchSchema) -> List[EventVendorsReadSchema]:
+    async def get_vendors_for_event_service(self, data: EventVendorSearchSchema) -> List[EventVendorClientSchema]:
         logger.info(f"Getting all vendors for event: {data.event_id}")
+        
         event_vendors = await self.event_vendors_repo.get_vendors_by_event(EventVendorSearchSchema(event_id=data.event_id))
+        # For each EventVendorsReadSchema returned, convert to EventVendorClientSchema to get the client-friendly format
+        if event_vendors is None or len(event_vendors) == 0:
+            raise HTTPException(status_code=404, detail="No vendors found for the specified event") 
+        
+        return_list: List[EventVendorClientSchema] = []
+
+        for event_vendor in event_vendors:
+            logger.info(f"Event Vendor found: {event_vendor.user_id} for event {event_vendor.event_id}")    
+            vendor_user = await self.user_repo.get_user_by_id(event_vendor.user_id)
+            if vendor_user is None:
+                raise HTTPException(status_code=404, detail=f"User not found for vendor with user ID {event_vendor.user_id}")
+            return_list.append(EventVendorClientSchema(
+                name=vendor_user.name,
+                vendor_images=event_vendor.vendor_images,  # Assuming vendor images are not stored in the user model, adjust as necessary
+                vendor_description=event_vendor.vendor_description  # Assuming vendor description is not stored in the user model, adjust as necessary
+            ))
+            
         
         if not event_vendors:
             raise HTTPException(status_code=404, detail="Event not found") 
-         
-        return_list = [self.event_vendors_repo.return_schema(event_vendor) for event_vendor in event_vendors]
+        
         return return_list
     
     async def get_events_for_vendor_service(self, data: EventVendorSearchSchema) -> List[EventVendorsReadSchema]:
         logger.info(f"Getting all events for vendor: {data.user_id}")
+        
         event_vendors = await self.event_vendors_repo.get_events_for_vendor(EventVendorSearchSchema(user_id=data.user_id))
-        
-        if not event_vendors:
-            raise HTTPException(status_code=404, detail="Vendor has no events") 
-        
+
+        if event_vendors is None or len(event_vendors) == 0:
+            raise HTTPException(status_code=404, detail="No events found for the specified vendor")
+ 
         return_list = [self.event_vendors_repo.return_schema(event_vendor) for event_vendor in event_vendors]
         return return_list
     

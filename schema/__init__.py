@@ -42,5 +42,6 @@ from .event_vendors_schemas import (
     EventVendorsCreateSchema,
     EventVendorsReadSchema,
     EventVendorsUpdateSchema,
-    EventVendorSearchSchema
+    EventVendorSearchSchema,
+    EventVendorClientSchema
 )
