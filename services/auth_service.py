@@ -272,6 +272,7 @@ class AuthService:
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
+        
         valid_csrf = self.verify_csrf_hash(csrf_token, existing_csrf_hash)
         logger.info(f"Valid CSRF: {valid_csrf}")
 
@@ -821,12 +822,16 @@ class AuthService:
         logger.debug("Hashing token")
         mac = hmac.new(CSRF_PEPPER, token.encode("utf-8"), hashlib.sha256).digest()
         return base64.urlsafe_b64encode(mac).decode("ascii")
+    
+    
+
 
     def verify_csrf_hash(self, plain_token: str, hashed_token: str) -> bool:
         """Verify a token against its hash"""
-        logger.debug("Verifying token")
-        hashed_new_token = hmac.new(CSRF_PEPPER, plain_token.encode("utf-8"), hashlib.sha256).digest()
-        return hashed_new_token == base64.urlsafe_b64decode(hashed_token)
+        logger.debug(f"Verifying plain token '{plain_token}' against hash '{hashed_token}'")
+        hashed_new_token = self.hash_csrf(plain_token)
+        logger.debug(f"Hashed new token: {hashed_new_token}")
+        return hashed_new_token == hashed_token
 
 
 
