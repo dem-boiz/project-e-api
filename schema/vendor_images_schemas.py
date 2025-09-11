@@ -8,7 +8,7 @@ class VendorImagesCreateSchema(BaseModel):
     image_data: str  # Base64 encoded string
 
 class VendorImagesReadSchema(BaseModel):
-    event_vendor_id: str
+    event_vendor_id: UUID
     image_data: str
     created_at: datetime
 
