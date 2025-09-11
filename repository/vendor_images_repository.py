@@ -29,3 +29,10 @@ class VendorImagesRepository:
             return VendorImagesReadSchema(event_vendor_id=vendor_image.event_vendor_id, image_data=vendor_image.image_data, created_at=vendor_image.created_at) # type: ignore
         except NoResultFound:
             return None
+        
+    async def get_images_for_event_vendor(self, event_vendor_id: uuid.UUID) -> List[VendorImagesReadSchema]:
+        result = await self.session.execute(
+            select(VendorImage).where(VendorImage.event_vendor_id == event_vendor_id)
+        )
+        images = result.scalars().all()
+        return [VendorImagesReadSchema(event_vendor_id=image.event_vendor_id, image_data=base64.b64encode(image.image_data).decode('utf-8'), created_at=image.created_at) for image in images] # type: ignore
