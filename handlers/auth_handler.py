@@ -93,6 +93,7 @@ async def refresh_device_token_handler(
         samesite="lax",
         max_age=30*24*3600,
     )
+    
 
     logger.debug("Device token refreshed successfully")
     return RefreshDeviceResponseSchema(message="Device token refreshed successfully")

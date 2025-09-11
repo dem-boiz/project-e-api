@@ -479,7 +479,7 @@ class AuthService:
             )
         return CurrentUserResponseSchema(
             email=user.email,
-            user_id=str(user.id),
+            id=str(user.id),
             name=user.name
         )
 
