@@ -35,4 +35,4 @@ class VendorImagesRepository:
             select(VendorImage).where(VendorImage.event_vendor_id == event_vendor_id)
         )
         images = result.scalars().all()
-        return [VendorImagesReadSchema(event_vendor_id=image.event_vendor_id, image_data=base64.b64encode(image.image_data).decode('utf-8'), created_at=image.created_at) for image in images] # type: ignore
+        return [VendorImagesReadSchema(event_vendor_id=image.event_vendor_id, image_data=base64.b64encode(image.image_data), created_at=image.created_at) for image in images] 
