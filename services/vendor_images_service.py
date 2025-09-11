@@ -28,3 +28,8 @@ class VendorImagesService:
         if not image:
             raise HTTPException(status_code=404, detail="Vendor Image not found")  
         return image
+    
+    async def get_vendor_images_for_event_vendor_service(self, event_vendor_id: uuid.UUID) -> List[VendorImagesReadSchema]:
+        logger.info(f"Fetching images for event vendor ID: {event_vendor_id}")
+        images = await self.event_vendors_repo.get_images_for_event_vendor(event_vendor_id=event_vendor_id)
+        return images

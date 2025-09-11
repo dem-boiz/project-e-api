@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
 from config.logging_config import get_logger
-from handlers import add_vendor_image_handler, create_event_vendor_handler, update_event_vendors_handler, delete_event_vendors_handler, get_vendors_for_event_handler, get_event_vendor_record_handler, get_events_for_vendor_handler, delete_vendors_for_event_handler, delete_vendor_from_events_handler
+from handlers import get_vendor_image_handler, add_vendor_image_handler, create_event_vendor_handler, update_event_vendors_handler, delete_event_vendors_handler, get_vendors_for_event_handler, get_event_vendor_record_handler, get_events_for_vendor_handler, delete_vendors_for_event_handler, delete_vendor_from_events_handler
 from database.session import get_async_session
 from handlers.event_vendor_handler import delete_vendors_for_event_handler
 from schema.user_schemas import UserReadSchema
@@ -78,6 +78,16 @@ async def add_vendor_image(
     service: VendorImagesService = Depends(get_vendor_images_service)
 ):
     return await add_vendor_image_handler(data=data, service=service)
+
+@router.get("/images/{event_vendor_id}",
+              response_model=List[VendorImagesReadSchema]
+)
+async def get_vendor_image(
+    event_vendor_id: uuid.UUID, 
+    service: VendorImagesService = Depends(get_vendor_images_service)
+):
+    return await get_vendor_image_handler(event_vendor_id=event_vendor_id, service=service)
+
     
 @router.get("/", response_model=EventVendorsReadSchema, status_code=status.HTTP_302_FOUND)
 async def get_event_vendor(

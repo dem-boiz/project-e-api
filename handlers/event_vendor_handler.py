@@ -33,3 +33,6 @@ async def delete_vendor_from_events_handler(data: EventVendorSearchSchema, servi
 
 async def add_vendor_image_handler(data: VendorImagesCreateSchema, service: VendorImagesService) -> VendorImagesReadSchema:
     return await service.add_vendor_image_service(data=data)
+
+async def get_vendor_image_handler(event_vendor_id: uuid.UUID, service: VendorImagesService) -> List[VendorImagesReadSchema]:
+    return await service.get_vendor_images_for_event_vendor_service(event_vendor_id=event_vendor_id)
