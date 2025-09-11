@@ -905,7 +905,7 @@ async def get_device_id(
 ) -> uuid.UUID | None:
     """Get the device ID from the cookie"""
     device_id_str = request.cookies.get("device_id")
-    logger.debug(f"Got device ID from cookie: {device_id_str}")
+    logger.info(f"Got device ID from cookie: {device_id_str}")
     if device_id_str:
         try:
             return uuid.UUID(device_id_str)
