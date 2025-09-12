@@ -130,10 +130,17 @@ class EventService:
             logger.debug(f"Device {device_id} has access to events: {event_ids_from_cookies}... a total of {len(event_ids_from_cookies)} events.")
             accessible_events.extend(accessible_events_from_cookies)
 
+
+
+
+
         if not user and not device_id:
             logger.debug("No user or device ID provided, returning empty event list.")
+            return []
+        non_duplicate_events = list({event.id: event for event in accessible_events}.values())  # Remove duplicates while preserving order
 
-        return accessible_events
+
+        return non_duplicate_events
 
 
 
