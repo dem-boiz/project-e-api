@@ -6,8 +6,6 @@ from .event_handler import (
     get_event_by_id_handler,
     get_event_by_name_handler,
     join_event_handler,
-    get_my_events_handler,
-    get_event_guests_handler,
     get_event_pending_invites_handler,
     delete_event_pending_invite_handler,
     update_pending_event_invite_handler

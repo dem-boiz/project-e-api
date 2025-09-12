@@ -4,7 +4,7 @@ from fastapi import HTTPException, Response, status
 from schema import EventCreateSchema, EventUpdateSchema
 from schema.invite_schemas import InviteCreateRequest, InviteCreateResponse, InviteUpdateRequest
 from schema.user_schemas import UserReadSchema
-from services import EventService, DeviceGrantService
+from services import EventService
 from config.logging_config import get_logger
 from services.invite_service import InviteService
 
@@ -17,8 +17,13 @@ logger = get_logger("api.events")
 async def create_event_handler(data: EventCreateSchema, service: EventService, user_id: uuid.UUID):
     return await service.create_event(data, user_id)
 
-async def get_events_handler(service: EventService, device_id: uuid.UUID | None = None, user: UserReadSchema | None = None):
-    return await service.get_accessible_events_for_user(device_id=device_id, user=user)
+async def get_events_handler(
+        service: EventService, 
+        device_id: uuid.UUID | None = None, 
+        user: UserReadSchema | None = None,
+        cookies: dict | None = None
+    ):
+    return await service.get_accessible_events_for_user(device_id=device_id, user=user, cookies=cookies)
 
 async def delete_event_handler(service: EventService, event_id: uuid.UUID):
     return await service.delete_event(event_id)
@@ -64,31 +69,6 @@ async def join_event_handler(
 
     return {"message": "Joined event successfully"}
 
-async def get_my_events_handler(cookies: dict, service: EventService):
-    event_ids = []
-    for key, value in cookies.items():
-        if key.startswith("event_") and key.endswith("_token"):
-            # parse event id from cookie name (format is event_<event_id>_token)
-            event_id = key[len("event_"):-len("_token")]
-
-            # This is a an event access cookie, we validate the token by using it to retrieve
-            # the associated device grant and checking its validity
-            # The device grant is then returned.
-            if await DeviceGrantService.validate_device_token(value, event_id): # type: ignore
-                event_ids.append(event_id)
-
-    if not event_ids:
-        logger.warning("No valid event IDs found in cookies")
-        return []
-    
-    logger.debug(f"Found a total of {len(event_ids)} event IDs in cookies")
-    event_info = await service.get_events_by_ids(event_ids)
-
-    return event_info
-
-async def get_event_guests_handler(event_id: uuid.UUID, service: InviteService):
-    ''' Implement this '''
-    return
 
 async def create_event_invite_handler(
     invite_data: InviteCreateRequest, 

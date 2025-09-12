@@ -5,10 +5,8 @@ from handlers import (
     create_event_handler, 
     delete_event_handler, 
     get_events_handler, 
-    patch_event_handler, 
-    get_event_guests_handler,
+    patch_event_handler,
     get_event_pending_invites_handler,
-    get_my_events_handler,
     join_event_handler,
     delete_event_pending_invite_handler
 )               
@@ -88,12 +86,13 @@ async def delete_event(
 @router.get("/")
 @router.get("")
 async def get_events(
+    request: Request,
     service: EventService = Depends(get_event_service),
     device_id: uuid.UUID | None = Depends(get_device_id),
-    user: UserReadSchema | None = Depends(get_current_user_graceful)
+    user: UserReadSchema | None = Depends(get_current_user_graceful),
 ):
     logger.info("Fetching all events")
-    result = await get_events_handler(service, device_id, user)
+    result = await get_events_handler(service, device_id, user, request.cookies)
     logger.info(f"Retrieved {len(result) if isinstance(result, list) else 'unknown count'} events")
     return result
 
@@ -226,15 +225,4 @@ async def get_event_guests(
     logger.info(f"Fetching guests for event: {event_id}")
     result = await get_event_guests_handler(event_id, service)
     logger.info(f"Retrieved {len(result) if isinstance(result, list) else 'unknown count'} guests for event: {event_id}")
-    return result
-
-@router.get("/my-events")
-async def get_my_events(
-    request: Request,
-    service: EventService = Depends(get_event_service)
-):
-    """Get all events for the current user - requires authentication"""
-    logger.info("Fetching events for current user")
-    result = await get_my_events_handler(request.cookies, service)
-    logger.info(f"Retrieved {len(result) if isinstance(result, list) else 'unknown count'} events for user")
     return result

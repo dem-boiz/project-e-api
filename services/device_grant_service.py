@@ -81,14 +81,9 @@ class DeviceGrantService:
         device_grant = await self.repo.get_by_token_hash(token_hash)
 
         if not device_grant:
-            logger.warning("Device token not found")
+            logger.warning("No device grant found for token")
             return False
-        
-        # Check if expired
-        if device_grant.expires_at < datetime.now():
-            logger.warning(f"Device token expired: {device_grant.id}")
-            return False
-        
+
         # Check if revoked
         if device_grant.revoked_at is not None:
             logger.warning(f"Device token revoked: {device_grant.id}")
@@ -142,7 +137,7 @@ class DeviceGrantService:
         
         active_grants = [
             grant for grant in all_grants
-            if grant.expires_at > now and grant.revoked_at is None
+            if grant.revoked_at is None
         ]
         
         logger.debug(f"Found {len(active_grants)} active grants for event: {event_id}")
@@ -151,49 +146,14 @@ class DeviceGrantService:
     async def get_active_grants_for_device(self, device_id: uuid.UUID) -> List[DeviceGrant]:
         """Get all active (non-expired, non-revoked) grants for a device"""
         all_grants = await self.repo.get_all_by_device_id(device_id)
-        now = datetime.now()
 
         active_grants = [
             grant for grant in all_grants
-            if grant.expires_at > now and grant.revoked_at is None
+            if grant.revoked_at is None
         ]
 
         logger.debug(f"Found {len(active_grants)} active grants for device: {device_id}")
         return active_grants
-
-    async def cleanup_expired_grants(self) -> int:
-        """Remove expired grants from the database (cleanup utility)"""
-        logger.debug("Starting cleanup of expired device grants")
-        
-        # This would typically be done with a bulk delete query
-        # For now, we'll get all and filter (could be optimized)
-        # In a real implementation, you'd add a bulk delete method to the repository
-        
-        logger.info("Expired device grants cleanup completed")
-        return 0  # Placeholder - implement bulk delete in repository if needed
-
-    async def extend_grant_expiration(
-        self, 
-        device_grant_id: uuid.UUID, 
-        additional_hours: int
-    ) -> bool:
-        """Extend the expiration time of a device grant"""
-        logger.debug(f"Extending device grant expiration: {device_grant_id}")
-        
-        device_grant = await self.repo.get_by_id(device_grant_id)
-        if not device_grant:
-            return False
-        
-        if device_grant.revoked_at is not None:
-            logger.warning(f"Cannot extend revoked grant: {device_grant_id}")
-            return False
-        
-        # Extend expiration
-        device_grant.expires_at += timedelta(hours=additional_hours)
-        await self.repo.update(device_grant)
-        
-        logger.info(f"Extended device grant {device_grant_id} by {additional_hours} hours")
-        return True
 
     async def device_hit_limit(self, device_id: uuid.UUID) -> bool:
         logger.debug(f"Checking if device {device_id} has hit the event limit")

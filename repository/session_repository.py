@@ -112,16 +112,6 @@ class SessionRepository:
             await self.session.rollback()
             logger.error(f"Failed to revoke sessions for user_id {user_id}: {e}")
             return False
- 
-    async def extend_session_expiry(self, session_id: uuid.UUID, extension_hours: int = 24) -> Session | None:
-        """Extend the expiry time of a session."""
-        session_record = await self.get_session_by_sid(session_id)
-        if session_record:
-            session_record.expires_at = datetime.now(timezone.utc) + timedelta(hours=extension_hours)
-            session_record.updated_at = datetime.now(timezone.utc)
-            await self.session.commit()
-            await self.session.refresh(session_record)
-        return session_record 
     
     async def get_recent_sessions(self, user_id: uuid.UUID, limit: int = 10) -> Sequence[Session]:
         """Get the most recent sessions for a user."""

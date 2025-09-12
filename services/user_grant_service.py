@@ -18,7 +18,7 @@ class UserGrantService:
 
     async def create_user_grant(self, user_grant: UserGrantCreateSchema) -> UserGrantReadSchema:
         # Check if the grant record already exists
-        existing = await self.repo.get_active_user_grants_by_user_and_event(user_grant.user_id, user_grant.event_id)
+        existing = await self.repo.get_active_user_grant_by_user_and_event(user_grant.user_id, user_grant.event_id)
         if existing:    
             raise ValueError("Access record already exists for this user and event.")
         # Create a new UserGrant instance with attributes from the schema
@@ -26,7 +26,6 @@ class UserGrantService:
             user_id=user_grant.user_id,
             event_id=user_grant.event_id,
             access_type=user_grant.access_type,
-            expires_at=user_grant.expires_at,
             issued_at=user_grant.issued_at,
             created_from_invite_id=user_grant.created_from_invite_id
         )

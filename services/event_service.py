@@ -106,30 +106,60 @@ class EventService:
         return await self.repo.get_all_events()
     
 
-    async def get_accessible_events_for_user(self, user: UserReadSchema | None = None, device_id: uuid.UUID | None = None) -> list[EventReadSchema]:
+    async def get_accessible_events_for_user(
+            self, 
+            user: UserReadSchema | None = None,
+            device_id: uuid.UUID | None = None,
+            cookies: dict | None = None
+    ) -> list[EventReadSchema]:
         accessible_events: list[EventReadSchema] = []
-        
+        """ Returns the all accessible events for a user based on their user ID and/or device ID."""
         if user:
             user_grant_service = UserGrantService(self.repo.session)
             user_grants = await user_grant_service.get_active_grants_by_user_id(user.id)  # type: ignore
             event_ids = [grant.event_id for grant in user_grants]
             events = await self.get_events_by_ids(event_ids)
-            logger.debug(f"User {user.id} has access to events: {event_ids}")
+            logger.debug(f"User {user.id} has access to events: {event_ids}... a total of {len(event_ids)} events.")
             events_hosted_by_user = await self.repo.get_events_hosted_by_user(user.id)
             accessible_events.extend(events)
             accessible_events.extend(events_hosted_by_user)
         if device_id:
             device_grant_service = DeviceGrantService(self.repo.session)
-            device_grants = await device_grant_service.get_active_grants_by_device_id(device_id)  # type: ignore
-            event_ids = [grant.event_id for grant in device_grants]
-            events = await self.get_events_by_ids(event_ids)
-            logger.debug(f"Device {device_id} has access to events: {event_ids}")
-            accessible_events.extend(events)
+            event_ids_from_cookies = await self.get_valid_event_ids_from_device_cookies(device_grant_service, cookies)
+            accessible_events_from_cookies = await self.get_events_by_ids(event_ids_from_cookies)
+            logger.debug(f"Device {device_id} has access to events: {event_ids_from_cookies}... a total of {len(event_ids_from_cookies)} events.")
+            accessible_events.extend(accessible_events_from_cookies)
 
         if not user and not device_id:
             logger.debug("No user or device ID provided, returning empty event list.")
 
         return accessible_events
+
+
+
+    async def get_valid_event_ids_from_device_cookies(
+            self, 
+            device_grant_service: DeviceGrantService, 
+            cookies: dict | None
+    ) -> list[uuid.UUID]:
+        """ Extract valid event IDs from cookies by validating each event access token. """
+        valid_event_ids = []
+        if not cookies:
+            return valid_event_ids
+        
+        for cookie in cookies:
+            if cookie.startswith("event_") and cookie.endswith("_token"):
+                event_id = cookie[len("event_"):-len("_token")]
+                try:
+                    uuid_event_id = uuid.UUID(event_id)
+                except ValueError:
+                    logger.warning(f"Invalid event ID in cookie: {event_id}")
+                    continue
+
+                if await device_grant_service.validate_device_token(cookies[cookie], uuid_event_id): # type: ignore
+                    valid_event_ids.append(uuid_event_id)
+                    logger.debug(f"Valid event ID from cookie: {event_id}")
+        return valid_event_ids
 
     async def update_event(self, event_id: uuid.UUID, data: EventUpdateSchema) -> EventReadSchema | None:
         # Check if the event exists

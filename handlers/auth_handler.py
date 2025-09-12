@@ -72,6 +72,12 @@ async def kill_session_handler(service: AuthService, sid: uuid.UUID):
             detail="No active tokens found for the given session ID"
         )
 
+
+
+# TODO: Fix scenario where we can see the device_id cookie in the client but when refreshing
+# this below says it was not found and generates a new one...
+# This is an issue as we need a consistent device ID to when validating the issues grant cookies..
+# We still need to update get events method to validate these issued grant cookies with the token
 async def refresh_device_token_handler(
         device_id: uuid.UUID | None,
         response: Response,
