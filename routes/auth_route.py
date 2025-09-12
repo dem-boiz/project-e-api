@@ -100,13 +100,13 @@ async def refresh_token(
              )
 async def refresh_device_token(
     response: Response,
-    device_token: uuid.UUID | None = Cookie(default=None),
+    device_id: uuid.UUID | None = Cookie(default=None),
     device_service: GuestDeviceService = Depends(get_guest_device_service),
 ):
     """Refresh device JWT token and rotate CSRF token"""
     logger.debug("Refreshing device JWT token for users")
 
-    await refresh_device_token_handler(device_token, response, device_service)
+    await refresh_device_token_handler(device_id, response, device_service)
 
     logger.debug("New device access token and CSRF token generated")
     return
