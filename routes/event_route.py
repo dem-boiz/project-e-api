@@ -87,9 +87,13 @@ async def delete_event(
 
 @router.get("/")
 @router.get("")
-async def get_events(service: EventService = Depends(get_event_service)):
+async def get_events(
+    service: EventService = Depends(get_event_service),
+    device_id: uuid.UUID | None = Depends(get_device_id),
+    user: UserReadSchema | None = Depends(get_current_user_graceful)
+):
     logger.info("Fetching all events")
-    result = await get_events_handler(service)
+    result = await get_events_handler(service, device_id, user)
     logger.info(f"Retrieved {len(result) if isinstance(result, list) else 'unknown count'} events")
     return result
 

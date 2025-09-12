@@ -9,7 +9,9 @@ from fastapi import HTTPException, status
 from repository import UserGrantRepository
 from schema import UserGrantReadSchema, UserGrantCreateSchema
 from config import USER_GRANT_LIMIT
+from config.logging_config import get_logger
 
+logger = get_logger("service.user_grants")
 class UserGrantService:
     def __init__(self, db: AsyncSession):
         self.repo = UserGrantRepository(db)
@@ -31,6 +33,12 @@ class UserGrantService:
         return await self.repo.create_user_grant(new_access)
 
 
+
+    async def get_active_grants_by_user_id(self, user_id: uuid.UUID) -> list[UserGrantReadSchema]:
+        logger.info('Fetching active grants for user_id: %s', user_id)
+        grants = await self.repo.get_active_grants_by_user(user_id)
+        logger.info('Found %d active grants for user_id: %s', len(grants), user_id)
+        return [UserGrantReadSchema.model_validate(grant) for grant in grants]
 
     async def user_hit_limit(self, user_id: uuid.UUID) -> bool:
         """Check if the user has hit the maximum event limit."""

@@ -15,6 +15,7 @@ from schema import EventCreateSchema, EventUpdateSchema
 from schema.event_schemas import EventReadSchema
 from schema.invite_schemas import InviteUpdateRequest
 from schema.user_grant_schemas import UserGrantCreateSchema, UserGrantReadSchema
+from schema.user_schemas import UserReadSchema
 from services.device_grant_service import DeviceGrantService
 from services.invite_service import InviteService
 from services.user_grant_service import UserGrantService
@@ -103,6 +104,32 @@ class EventService:
 
     async def get_all_events(self) -> Sequence[EventReadSchema]:
         return await self.repo.get_all_events()
+    
+
+    async def get_accessible_events_for_user(self, user: UserReadSchema | None = None, device_id: uuid.UUID | None = None) -> list[EventReadSchema]:
+        accessible_events: list[EventReadSchema] = []
+        
+        if user:
+            user_grant_service = UserGrantService(self.repo.session)
+            user_grants = await user_grant_service.get_active_grants_by_user_id(user.id)  # type: ignore
+            event_ids = [grant.event_id for grant in user_grants]
+            events = await self.get_events_by_ids(event_ids)
+            logger.debug(f"User {user.id} has access to events: {event_ids}")
+            events_hosted_by_user = await self.repo.get_events_hosted_by_user(user.id)
+            accessible_events.extend(events)
+            accessible_events.extend(events_hosted_by_user)
+        if device_id:
+            device_grant_service = DeviceGrantService(self.repo.session)
+            device_grants = await device_grant_service.get_active_grants_by_device_id(device_id)  # type: ignore
+            event_ids = [grant.event_id for grant in device_grants]
+            events = await self.get_events_by_ids(event_ids)
+            logger.debug(f"Device {device_id} has access to events: {event_ids}")
+            accessible_events.extend(events)
+
+        if not user and not device_id:
+            logger.debug("No user or device ID provided, returning empty event list.")
+
+        return accessible_events
 
     async def update_event(self, event_id: uuid.UUID, data: EventUpdateSchema) -> EventReadSchema | None:
         # Check if the event exists

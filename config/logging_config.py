@@ -128,6 +128,12 @@ LOGGING_CONFIG = {
             "handlers": ["console", "file_all", "file_error"],
             "propagate": False
         },
+        # User service logger
+        "service.user_grants": {
+            "level": "DEBUG",
+            "handlers": ["console", "file_all", "file_error"],
+            "propagate": False
+        },
         # SQLAlchemy logger (reduce verbosity)
         "sqlalchemy.engine.Engine": {
             "level": "WARNING",

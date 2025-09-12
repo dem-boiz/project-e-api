@@ -43,6 +43,14 @@ class EventRepository:
         event = result.scalar_one_or_none()
 
         return EventReadSchema.model_validate(event) if event else None
+    
+
+    async def get_events_hosted_by_user(self, user_id: uuid.UUID) -> Sequence[EventReadSchema]:
+        result = await self.session.execute(
+            select(Event).where(Event.host_id == user_id)
+        )
+        events = result.scalars().all()
+        return [EventReadSchema.model_validate(event) for event in events]
 
     async def get_event_by_id(self, event_id: uuid.UUID) -> EventReadSchema | None:
         result = await self.session.execute(

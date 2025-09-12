@@ -17,8 +17,8 @@ logger = get_logger("api.events")
 async def create_event_handler(data: EventCreateSchema, service: EventService, user_id: uuid.UUID):
     return await service.create_event(data, user_id)
 
-async def get_events_handler(service: EventService):
-    return await service.get_all_events()
+async def get_events_handler(service: EventService, device_id: uuid.UUID | None = None, user: UserReadSchema | None = None):
+    return await service.get_accessible_events_for_user(device_id=device_id, user=user)
 
 async def delete_event_handler(service: EventService, event_id: uuid.UUID):
     return await service.delete_event(event_id)
