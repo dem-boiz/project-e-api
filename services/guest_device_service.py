@@ -15,6 +15,7 @@ class GuestDeviceService:
     
     def __init__(self, db: AsyncSession):
         self.db = db
+        self.repository = GuestDeviceRepository(db)
 
     async def create_guest_device(self, guest_device_id: Optional[uuid.UUID] = None) -> GuestDevice:
         """
