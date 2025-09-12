@@ -319,6 +319,7 @@ class AuthService:
             and parent_session.revoked_at >= datetime.fromtimestamp(iat, tz=timezone.utc)
         ):
             logger.warning("The parent session for this refresh token is no longer active. Rejecting request")
+            logger.info("Parent session details: " + str(parent_session))
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Session ended",
