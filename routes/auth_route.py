@@ -97,14 +97,14 @@ async def refresh_token(
 async def refresh_device_token(
     response: Response,
     device_token: uuid.UUID | None = Cookie(default=None),
-) -> RefreshDeviceResponseSchema:
+):
     """Refresh device JWT token and rotate CSRF token"""
     logger.debug("Refreshing device JWT token for users")
 
-    result = await refresh_device_token_handler(device_token, response)
+    await refresh_device_token_handler(device_token, response)
 
     logger.debug("New device access token and CSRF token generated")
-    return result
+    return
 
 
 # Global logout endpoint
