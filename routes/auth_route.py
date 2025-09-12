@@ -24,6 +24,7 @@ from handlers import (
     global_logout_handler, 
     kill_session_handler  
 )
+from services.guest_device_service import GuestDeviceService
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 security = HTTPBearer()
@@ -32,6 +33,9 @@ logger = get_logger("auth")
 # Dependency to get AuthService for authentication
 async def get_auth_service(session: AsyncSession = Depends(get_async_session)) -> AuthService:
     return AuthService(session) 
+
+async def get_guest_device_service(session: AsyncSession = Depends(get_async_session)) -> GuestDeviceService:
+    return GuestDeviceService(session)
 
 @router.post("/login", response_model=LoginResponseSchema, status_code=status.HTTP_200_OK)
 async def login(
@@ -97,11 +101,12 @@ async def refresh_token(
 async def refresh_device_token(
     response: Response,
     device_token: uuid.UUID | None = Cookie(default=None),
+    device_service: GuestDeviceService = Depends(get_guest_device_service),
 ):
     """Refresh device JWT token and rotate CSRF token"""
     logger.debug("Refreshing device JWT token for users")
 
-    await refresh_device_token_handler(device_token, response)
+    await refresh_device_token_handler(device_token, response, device_service)
 
     logger.debug("New device access token and CSRF token generated")
     return

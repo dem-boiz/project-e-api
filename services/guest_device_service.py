@@ -6,14 +6,15 @@ from models.guest_device import GuestDevice
 from repository.guest_device_repository import GuestDeviceRepository
 from config.logging_config import get_logger
 from fastapi import HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = get_logger("guest_device")
 
 
 class GuestDeviceService:
     
-    def __init__(self, repository: GuestDeviceRepository):
-        self.repository = repository
+    def __init__(self, db: AsyncSession):
+        self.db = db
 
     async def create_guest_device(self, guest_device_id: Optional[uuid.UUID] = None) -> GuestDevice:
         """

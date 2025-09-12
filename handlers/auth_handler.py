@@ -74,14 +74,15 @@ async def kill_session_handler(service: AuthService, sid: uuid.UUID):
 
 async def refresh_device_token_handler(
         device_id: uuid.UUID | None,
-        response: Response
+        response: Response,
+        guest_device_service: GuestDeviceService
     ) -> RefreshDeviceResponseSchema:
     if not device_id:
         device_id = uuid.uuid4()
         logger.warning(f"No device ID provided, generated new UUID: {device_id}")
 
     # Update last seen timestamp, or create if a new device
-    await GuestDeviceService.touch_guest_device(device_id) # type: ignore
+    await guest_device_service.touch_guest_device(device_id) # type: ignore
 
     # Set device ID in cookie (persistent httponly)
     # TODO: ensure this code executes even if the user is not signed in when they refresh
@@ -93,7 +94,7 @@ async def refresh_device_token_handler(
         samesite="lax",
         max_age=30*24*3600,
     )
-    
+
 
     logger.debug("Device token refreshed successfully")
     return RefreshDeviceResponseSchema(message="Device token refreshed successfully")
