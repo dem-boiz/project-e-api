@@ -38,7 +38,8 @@ class DeviceGrantService:
         self, 
         event_id: uuid.UUID,
         device_id: uuid.UUID,
-        created_from_invite_id: Optional[str] = None
+        created_from_invite_id: Optional[uuid.UUID] = None,
+        invite_label: Optional[str] = None
     ) -> tuple[DeviceGrant, str]:
         """
         Issue a new device grant for an event
@@ -53,6 +54,7 @@ class DeviceGrantService:
         # Create device grant
         device_grant = DeviceGrant(
             event_id=event_id,
+            label=invite_label,
             device_id=device_id,
             token_hash=token_hash,
             expires_at=datetime.now() + timedelta(days=30),  # Default expiration

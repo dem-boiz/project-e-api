@@ -2,7 +2,7 @@ from datetime import datetime
 from uuid import UUID
 from pydantic import BaseModel
 from typing import Optional
-
+    
 class EventCreateSchema(BaseModel):
     name: str
     location: str
@@ -17,6 +17,16 @@ class EventUpdateSchema(BaseModel):
     location: Optional[str] = None
     datetime: Optional[str] = None
     description: Optional[str] = None
+
+
+class GuestReadSchema(BaseModel):
+    id: UUID
+    name: str
+    email: Optional[str] = None
+    type: str
+    class Config:
+        orm_mode = True
+        from_attributes = True
 
 class EventReadSchema(BaseModel):
     id: UUID

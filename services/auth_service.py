@@ -273,6 +273,11 @@ class AuthService:
             )
 
         
+
+        # TODO: Critical bug where this will always be false after we redeploy the server...
+        # Despite setting a pepper env value, it seems the hashing is not matching when the token
+        # was created before the redeploy. Need to investigate further.
+
         valid_csrf = self.verify_csrf_hash(csrf_token, existing_csrf_hash)
         logger.info(f"Valid CSRF: {valid_csrf}")
 

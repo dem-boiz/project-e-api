@@ -12,7 +12,7 @@ from repository import EventRepository
 from models import Event 
 from repository.user_repository import UserRepository
 from schema import EventCreateSchema, EventUpdateSchema
-from schema.event_schemas import EventReadSchema
+from schema.event_schemas import EventReadSchema, GuestReadSchema
 from schema.invite_schemas import InviteUpdateRequest
 from schema.user_grant_schemas import UserGrantCreateSchema, UserGrantReadSchema
 from schema.user_schemas import UserReadSchema
@@ -105,7 +105,6 @@ class EventService:
     async def get_all_events(self) -> Sequence[EventReadSchema]:
         return await self.repo.get_all_events()
     
-
     async def get_accessible_events_for_user(
             self, 
             user: UserReadSchema | None = None,
@@ -141,8 +140,6 @@ class EventService:
 
 
         return non_duplicate_events
-
-
 
     async def get_valid_event_ids_from_device_cookies(
             self, 
@@ -192,6 +189,34 @@ class EventService:
         # TODO: Implement the logic to check for duplicate events
         return False
 
+    async def get_event_guests(self, event_id: uuid.UUID) -> list[GuestReadSchema]:
+        """Retrieve all guests (both user and device based) for a specific event."""
+        guests = []
+        # First we get all user grants for the event
+        user_grant_service = UserGrantService(self.repo.session)
+        user_grants = await user_grant_service.get_active_grants_for_event(event_id)  # type: ignore
+        user_ids = [grant.user_id for grant in user_grants if grant.user_id is not None]
+        for user_id in user_ids:
+            user_data = await self.user_repo.get_user_by_id(user_id)
+            if user_data:
+                guests.append(GuestReadSchema(
+                    id=user_data.id,
+                    name=user_data.name,
+                    email=user_data.email,
+                    type="user"
+                ))
+
+        # Now we get all device grants for the event
+        device_grant_service = DeviceGrantService(self.repo.session)
+        device_grants = await device_grant_service.get_active_grants_for_event(event_id)  # type: ignore
+        for device in device_grants:
+            guests.append(GuestReadSchema(
+                id=device.id,
+                name=device.label,
+                type="device"
+            ))
+
+        return guests
 
     async def join_event_with_user_id(self, x_otp: str, user_id: uuid.UUID) -> UserGrantReadSchema:
         db_session = self.repo.session
@@ -236,7 +261,12 @@ class EventService:
             logger.warning(f"Device {device_id} has hit the maximum event limit.")
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Device has hit the maximum event limit.")
 
-        grant, token = await device_grant_service.issue_device_grant(event_id, device_id, invite.id) # type: ignore
+        grant, token = await device_grant_service.issue_device_grant(
+            event_id,
+            device_id,
+            invite.id,
+            invite.email if invite.email else invite.label
+        ) # type: ignore
         return grant, token
 
 

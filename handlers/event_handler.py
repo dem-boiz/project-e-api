@@ -40,6 +40,9 @@ async def get_event_by_name_handler(name: str, service: EventService):
 async def get_event_pending_invites_handler(event_id: uuid.UUID, service: InviteService):
     return await service.get_pending_invites_by_event(event_id)
 
+async def get_event_guests_handler(event_id: uuid.UUID, service: EventService):
+    return await service.get_event_guests(event_id)
+
 async def join_event_handler(
     otp: str, 
     service: EventService, 

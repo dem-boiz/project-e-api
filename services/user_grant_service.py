@@ -31,14 +31,21 @@ class UserGrantService:
         )
         return await self.repo.create_user_grant(new_access)
 
-
-
     async def get_active_grants_by_user_id(self, user_id: uuid.UUID) -> list[UserGrantReadSchema]:
         logger.info('Fetching active grants for user_id: %s', user_id)
         grants = await self.repo.get_active_grants_by_user(user_id)
         logger.info('Found %d active grants for user_id: %s', len(grants), user_id)
         return [UserGrantReadSchema.model_validate(grant) for grant in grants]
 
+
+    async def get_active_grants_for_event(self, event_id: uuid.UUID) -> list[UserGrantReadSchema]:
+        logger.info('Fetching active grants for event_id: %s', event_id)
+        grants = await self.repo.get_active_grants_for_event(event_id)
+        logger.info('Found %d active grants for event_id: %s', len(grants), event_id)
+        return [UserGrantReadSchema.model_validate(grant) for grant in grants]
+
     async def user_hit_limit(self, user_id: uuid.UUID) -> bool:
         """Check if the user has hit the maximum event limit."""
         return await self.repo.get_active_grants_by_user_count(user_id) >= USER_GRANT_LIMIT
+    
+

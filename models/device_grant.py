@@ -1,6 +1,7 @@
 from sqlalchemy import (
     Column,
     String,
+    Text,
     DateTime,
     ForeignKey
 )
@@ -15,6 +16,7 @@ from datetime import datetime
 class DeviceGrant(Base):
     __tablename__ = "device_grants"
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    label: Mapped[str] = mapped_column(Text, nullable=True)
     device_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("guest_devices.id", ondelete="CASCADE"), nullable=False)
     event_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("events.id", ondelete="CASCADE"), nullable=False)
     token_hash: Mapped[str] = mapped_column(String, unique=True, nullable=False)

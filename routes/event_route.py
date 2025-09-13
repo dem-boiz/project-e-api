@@ -18,7 +18,7 @@ from services.event_service import EventService
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.session import get_async_session
 
-from handlers.event_handler import create_event_invite_handler, update_pending_event_invite_handler
+from handlers.event_handler import create_event_invite_handler, get_event_guests_handler, update_pending_event_invite_handler
 from schema.invite_schemas import InviteCreateRequest, InviteUpdateRequest, InviteCreateResponse
 from services import EventService, InviteService
 from services.auth_service import (
@@ -219,7 +219,7 @@ async def delete_event_pending_invite(
 )
 async def get_event_guests(
     event_id: uuid.UUID,
-    service: InviteService = Depends(get_invite_service)
+    service: EventService = Depends(get_event_service)
 ):
     """Get all guests for a specific event - requires authentication and event existence verification"""
     logger.info(f"Fetching guests for event: {event_id}")

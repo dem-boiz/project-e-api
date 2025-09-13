@@ -20,7 +20,7 @@ class UserGrantRepository:
         return UserGrantReadSchema(**user_grant.__dict__)
 
 
-    async def get_active_grants_by_user(self, user_id: uuid.UUID) -> Sequence[UserGrant]:
+    async def get_active_grants_by_user(self, user_id: uuid.UUID) -> Sequence[UserGrantReadSchema]:
         """Retrieve all active UserGrant records by user_id."""
         result = await self.session.execute(
             select(UserGrant).where(
@@ -30,7 +30,7 @@ class UserGrantRepository:
         )
         return result.scalars().all()
 
-    async def get_active_user_grant_by_user_and_event(self, user_id: uuid.UUID, event_id: uuid.UUID) -> Sequence[UserGrant]:
+    async def get_active_user_grant_by_user_and_event(self, user_id: uuid.UUID, event_id: uuid.UUID) -> Sequence[UserGrantReadSchema]:
         """Retrieve a UserGrant record by user_id and event_id."""
         result = await self.session.execute(
             select(UserGrant).where(
@@ -52,3 +52,13 @@ class UserGrantRepository:
         )
         return len(result.scalars().all())
 
+
+    async def get_active_grants_for_event(self, event_id: uuid.UUID) -> Sequence[UserGrantReadSchema]:
+        """Retrieve all active UserGrant records by event_id."""
+        result = await self.session.execute(
+            select(UserGrant).where(
+                UserGrant.event_id == event_id,
+                UserGrant.revoked_at == None  # Active grants only
+            )
+        )
+        return [UserGrantReadSchema.model_validate(grant) for grant in result.scalars().all()]
