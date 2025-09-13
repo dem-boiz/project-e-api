@@ -57,7 +57,6 @@ class DeviceGrantService:
             label=invite_label,
             device_id=device_id,
             token_hash=token_hash,
-            expires_at=datetime.now() + timedelta(days=30),  # Default expiration
             issued_at=datetime.now(),
             created_from_invite_id=created_from_invite_id
         )
