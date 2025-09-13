@@ -267,6 +267,11 @@ class EventService:
             invite.id,
             invite.email if invite.email else invite.label
         ) # type: ignore
+
+
+        update_data = InviteUpdateRequest(used_at=datetime.now())
+        await invite_service.update_pending_invite_by_event_id(update_data, event_id, invite.id)
+
         return grant, token
 
 
