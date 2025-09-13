@@ -73,6 +73,10 @@ async def join_event_handler(
     return {"message": "Joined event successfully"}
 
 
+async def remove_guest_handler(service: EventService, event_id: uuid.UUID, guest_id: uuid.UUID, type: str):
+    await service.remove_guest_from_event(event_id, guest_id, type)
+    return
+
 async def create_event_invite_handler(
     invite_data: InviteCreateRequest, 
     event_id: uuid.UUID, user_id: uuid.UUID,

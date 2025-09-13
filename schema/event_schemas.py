@@ -28,6 +28,8 @@ class GuestReadSchema(BaseModel):
         orm_mode = True
         from_attributes = True
 
+
+
 class EventReadSchema(BaseModel):
     id: UUID
     name: str

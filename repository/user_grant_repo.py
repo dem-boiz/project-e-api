@@ -62,3 +62,24 @@ class UserGrantRepository:
             )
         )
         return [UserGrantReadSchema.model_validate(grant) for grant in result.scalars().all()]
+    
+    async def revoke_user_grant(self, user_id: uuid.UUID, event_id: uuid.UUID) -> Sequence[UserGrantReadSchema]:
+        """Revoke a UserGrant by setting its revoked_at timestamp."""
+        result = await self.session.execute(
+            select(UserGrant).where(
+                UserGrant.user_id == user_id,
+                UserGrant.event_id == event_id,
+                UserGrant.revoked_at == None  # Active grants only
+            )
+        )
+        grants = result.scalars().all()
+        if not grants:
+            return []
+
+        revoked_at = datetime.now()
+        for grant in grants:
+            grant.revoked_at = revoked_at
+            self.session.add(grant)
+
+        await self.session.commit()
+        return grants

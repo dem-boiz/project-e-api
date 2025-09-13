@@ -209,10 +209,10 @@ class EventService:
         # Now we get all device grants for the event
         device_grant_service = DeviceGrantService(self.repo.session)
         device_grants = await device_grant_service.get_active_grants_for_event(event_id)  # type: ignore
-        for device in device_grants:
+        for device_grant in device_grants:
             guests.append(GuestReadSchema(
-                id=device.id,
-                name=device.label,
+                id=device_grant.id,
+                name=device_grant.label,
                 type="device"
             ))
 
@@ -274,8 +274,21 @@ class EventService:
 
         return grant, token
 
+    async def remove_guest_from_event(self, event_id: uuid.UUID, guest_id: uuid.UUID, type: str) -> None:
+        db_session = self.repo.session
 
-
-
+        if type == "user":
+            logger.info(f"Removing user guest {guest_id} from event {event_id}")
+            user_grant_service = UserGrantService(db_session)
+            await user_grant_service.revoke_user_grant(guest_id, event_id)
+            logger.info(f"Removed user guest {guest_id} from event {event_id}")
+        elif type == "device":
+            logger.info(f"Removing device guest {guest_id} from event {event_id}")
+            device_grant_service = DeviceGrantService(db_session)
+            await device_grant_service.revoke_device_grant(guest_id, event_id)
+            logger.info(f"Removed device guest {guest_id} from event {event_id}")
+        else:
+            logger.error(f"Invalid guest type provided: {type}")
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid guest type.")
 
 

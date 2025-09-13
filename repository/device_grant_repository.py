@@ -1,3 +1,4 @@
+from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from models.device_grant import DeviceGrant
@@ -56,3 +57,27 @@ class DeviceGrantRepository:
             await self.db.commit()
             return True
         return False
+
+    async def revoke_device_grant(self, device_id: uuid.UUID, event_id: uuid.UUID) -> Sequence[DeviceGrant]:
+        """Revoke a device grant by setting revoked_at timestamp"""
+        query = select(DeviceGrant).where(
+            DeviceGrant.device_id == device_id,
+            DeviceGrant.event_id == event_id,
+            DeviceGrant.revoked_at == None  # Only active grants
+        )
+        result = await self.db.execute(query)
+        device_grants = result.scalars().all()
+
+        if not device_grants:
+            return []
+
+
+        revoked_at = datetime.now()
+        for grant in device_grants:
+            grant.revoked_at = revoked_at
+            self.db.add(grant)
+
+        await self.db.commit()
+        return device_grants
+    
+ 

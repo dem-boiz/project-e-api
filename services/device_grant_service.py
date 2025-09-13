@@ -10,6 +10,7 @@ from config import EVENT_TOKEN_PEPPER, DEVICE_GRANT_LIMIT
 from models.device_grant import DeviceGrant
 from repository.device_grant_repository import DeviceGrantRepository
 from config.logging_config import get_logger
+from fastapi import HTTPException, status
 
 logger = get_logger("device_grant")
 
@@ -97,25 +98,13 @@ class DeviceGrantService:
         logger.debug(f"Device token validated successfully: {device_grant.id}")
         return True
 
-    async def revoke_device_grant(self, device_grant_id: uuid.UUID) -> bool:
+    async def revoke_device_grant(self, device_id: uuid.UUID, event_id: uuid.UUID):
         """Revoke a device grant by setting revoked_at timestamp"""
-        logger.debug(f"Revoking device grant: {device_grant_id}")
-        
-        device_grant = await self.repo.get_by_id(device_grant_id)
-        if not device_grant:
-            logger.warning(f"Device grant not found for revocation: {device_grant_id}")
-            return False
-        
-        if device_grant.revoked_at is not None:
-            logger.warning(f"Device grant already revoked: {device_grant_id}")
-            return False
-        
-        # Set revocation timestamp
-        device_grant.revoked_at = datetime.utcnow()
-        await self.repo.update(device_grant)
-        
-        logger.info(f"Device grant revoked: {device_grant_id}")
-        return True
+        device_grants = await self.repo.revoke_device_grant(device_id, event_id)
+        if not device_grants or len(device_grants) == 0:
+            logger.warning(f"Failed to revoke device grant: {device_id}, {event_id}")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Active DeviceGrant not found for the given ID.")
+        return
 
     async def revoke_all_for_event(self, event_id: uuid.UUID) -> int:
         """Revoke all active device grants for an event"""

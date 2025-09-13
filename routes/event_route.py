@@ -18,7 +18,12 @@ from services.event_service import EventService
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.session import get_async_session
 
-from handlers.event_handler import create_event_invite_handler, get_event_guests_handler, update_pending_event_invite_handler
+from handlers.event_handler import (
+    create_event_invite_handler, 
+    get_event_guests_handler, 
+    update_pending_event_invite_handler,
+    remove_guest_handler
+)
 from schema.invite_schemas import InviteCreateRequest, InviteUpdateRequest, InviteCreateResponse
 from services import EventService, InviteService
 from services.auth_service import (
@@ -210,6 +215,29 @@ async def delete_event_pending_invite(
     logger.info(f"Deleted {len(result) if isinstance(result, list) else 'unknown count'} pending invites for event: {event_id}")
     return result
 
+
+
+
+
+
+@router.delete("/{event_id}/guests/{guest_id}?type={type}", 
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[
+        Depends(validate_token_parent_session), 
+        Depends(verify_event_ownership)
+    ]
+)
+async def delete_event_guest(
+    event_id: uuid.UUID,
+    guest_id: uuid.UUID,
+    type: str,
+    service: EventService = Depends(get_event_service),
+):
+    """Delete a guest from an event - requires authentication and ownership verification"""
+    logger.info(f"Deleting guest {guest_id} from event: {event_id}")
+    await remove_guest_handler(service, event_id, guest_id, type)
+    logger.info(f"Deleted guest {guest_id} from event: {event_id}")
+    
 
 @router.get("/{event_id}/guests", 
     dependencies=[

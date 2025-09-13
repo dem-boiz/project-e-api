@@ -49,3 +49,9 @@ class UserGrantService:
         return await self.repo.get_active_grants_by_user_count(user_id) >= USER_GRANT_LIMIT
     
 
+    async def revoke_user_grant(self, user_id: uuid.UUID, event_id: uuid.UUID) -> None:
+        """Revoke a UserGrant by setting its revoked_at timestamp."""
+        grants = await self.repo.revoke_user_grant(user_id, event_id)
+        if not grants or len(grants) == 0:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Active UserGrant not found for the given user and event.")
+        return
