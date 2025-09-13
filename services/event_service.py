@@ -60,7 +60,7 @@ class EventService:
             raise ValueError("Event already exists with this name.")
 
         # Check if the event date is in the past
-        event_datetime = datetime.fromisoformat(event_data.datetime)
+        event_datetime = datetime.fromisoformat(event_data.date_time)
         now = datetime.now(event_datetime.tzinfo) if event_datetime.tzinfo else datetime.now()
         if event_datetime < now:
             raise ValueError("Event date cannot be in the past.")   

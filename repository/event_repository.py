@@ -20,7 +20,7 @@ class EventRepository:
             id=uuid.uuid4(),
             name=event.name,
             description=event.description,
-            date_time=datetime.fromisoformat(event.datetime),
+            date_time=datetime.fromisoformat(event.date_time),
             location=event.location,
             host_id=host_id,
             event_images=[]
@@ -91,8 +91,8 @@ class EventRepository:
                 event.description = data.description
             if data.location is not None:
                 event.location = data.location
-            if data.datetime is not None:
-                event.date_time = datetime.fromisoformat(data.datetime)
+            if data.date_time is not None:
+                event.date_time = datetime.fromisoformat(data.date_time)
 
             await self.session.commit()
             await self.session.refresh(event)

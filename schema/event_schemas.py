@@ -6,7 +6,7 @@ from typing import Optional
 class EventCreateSchema(BaseModel):
     name: str
     location: str
-    datetime: str
+    date_time: str
     description: str
 
 class EventJoinRequest(BaseModel):
@@ -15,7 +15,7 @@ class EventJoinRequest(BaseModel):
 class EventUpdateSchema(BaseModel):
     name: Optional[str] = None
     location: Optional[str] = None
-    datetime: Optional[str] = None
+    date_time: Optional[str] = None
     description: Optional[str] = None
 
 
