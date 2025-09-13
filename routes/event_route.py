@@ -220,7 +220,7 @@ async def delete_event_pending_invite(
 
 
 
-@router.delete("/{event_id}/guests/{guest_id}?type={type}", 
+@router.delete("/{event_id}/guests/{guest_id}", 
     status_code=status.HTTP_204_NO_CONTENT,
     dependencies=[
         Depends(validate_token_parent_session), 
@@ -230,8 +230,8 @@ async def delete_event_pending_invite(
 async def delete_event_guest(
     event_id: uuid.UUID,
     guest_id: uuid.UUID,
-    type: str,
     service: EventService = Depends(get_event_service),
+    type: str = ""
 ):
     """Delete a guest from an event - requires authentication and ownership verification"""
     logger.info(f"Deleting guest {guest_id} from event: {event_id}")
