@@ -106,19 +106,6 @@ class DeviceGrantService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Active DeviceGrant not found for the given ID.")
         return
 
-    async def revoke_all_for_event(self, event_id: uuid.UUID) -> int:
-        """Revoke all active device grants for an event"""
-        logger.debug(f"Revoking all device grants for event: {event_id}")
-        
-        grants = await self.get_active_grants_for_event(event_id)
-        revoked_count = 0
-        
-        for grant in grants:
-            if await self.revoke_device_grant(grant.id):
-                revoked_count += 1
-        
-        logger.info(f"Revoked {revoked_count} device grants for event: {event_id}")
-        return revoked_count
 
     async def get_active_grants_for_event(self, event_id: uuid.UUID) -> List[DeviceGrant]:
         """Get all active (non-expired, non-revoked) grants for an event"""

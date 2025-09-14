@@ -200,7 +200,7 @@ class EventService:
             user_data = await self.user_repo.get_user_by_id(user_id)
             if user_data:
                 guests.append(GuestReadSchema(
-                    id=user_data.id,
+                    id=user_id,
                     name=user_data.name,
                     email=user_data.email,
                     type="user"
@@ -211,7 +211,7 @@ class EventService:
         device_grants = await device_grant_service.get_active_grants_for_event(event_id)  # type: ignore
         for device_grant in device_grants:
             guests.append(GuestReadSchema(
-                id=device_grant.id,
+                id=device_grant.device_id,
                 name=device_grant.label,
                 type="device"
             ))
