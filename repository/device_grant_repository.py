@@ -60,6 +60,10 @@ class DeviceGrantRepository:
 
     async def revoke_device_grant(self, device_id: uuid.UUID, event_id: uuid.UUID) -> Sequence[DeviceGrant]:
         """Revoke a device grant by setting revoked_at timestamp"""
+
+
+        print('deleting device grant with device_id:', device_id, 'and event_id:', event_id)
+
         query = select(DeviceGrant).where(
             DeviceGrant.device_id == device_id,
             DeviceGrant.event_id == event_id,
@@ -67,6 +71,9 @@ class DeviceGrantRepository:
         )
         result = await self.db.execute(query)
         device_grants = result.scalars().all()
+
+
+        print('found device grants to revoke:', device_grants)
 
         if not device_grants:
             return []
