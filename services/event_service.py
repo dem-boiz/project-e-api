@@ -225,6 +225,7 @@ class EventService:
 
         # Validate the invite
         invite = await invite_service.validate_invite(x_otp)
+        event = await self.repo.get_event_by_id(invite.event_id)
 
         event_id = invite.event_id
 
@@ -233,6 +234,11 @@ class EventService:
             logger.warning(f"User {user_id} has hit the maximum event limit.")
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User has hit the maximum event limit.")
 
+
+        if event and event.host_id == user_id:
+            logger.warning(f"User {user_id} is the host of event {event_id} and cannot join as a guest.")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Event host cannot join their own event.")
+        
         grant_data = UserGrantCreateSchema(
             user_id=user_id,
             event_id=event_id,
