@@ -388,6 +388,7 @@ class AuthService:
             domain=None,
             path="/" 
         )
+
         logger.debug("Generated new CSRF token for refreshed session.")
         # Return access token and new CSRF token in response body
         return RefreshTokensSchema(

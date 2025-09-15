@@ -91,7 +91,7 @@ async def refresh_token(
 
     result = await refresh_token_handler(refresh_token, service, response, request)
 
-    logger.debug("New access token and CSRF token generated")
+    logger.debug(f"New access token and CSRF token generated: {result.access_token}, {result.csrf_token}")
     return result
  
 
