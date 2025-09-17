@@ -13,7 +13,7 @@ class EventVendorsReadSchema(BaseModel):
     added_at: datetime
     
 class EventVendorsUpdateSchema(BaseModel):
-    event_vendor_id: UUID
+    event_vendor_id: str
     description: Optional[str] = None 
 
 class EventVendorSearchSchema(BaseModel):
