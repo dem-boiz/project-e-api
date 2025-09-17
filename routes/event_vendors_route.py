@@ -126,6 +126,7 @@ async def update_user(
     service: EventVendorsService = Depends(get_event_vendor_service),
     
 ):
+    logger.info(f"Updating event vendor with ID: {data.event_vendor_id}")
     return await update_event_vendors_handler(data=data, service=service)
 
 
