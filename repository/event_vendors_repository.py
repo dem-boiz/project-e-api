@@ -87,41 +87,24 @@ class EventVendorsRepository:
         
     async def update_event_vendors(self, data: EventVendorsUpdateSchema) -> EventVendorsReadSchema | None:
         try:
-            # Check if updating a specific vendor in an event 
-            if data.event_id is not None:
-                result = await self.session.execute(
-                    select(EventVendor)
-                    .where(EventVendor.user_id == data.user_id 
-                           and EventVendor.event_id == data.event_id
-                           )
-                    )
+             
+            # Get all matching Event Vendor records with event_vendor_id
+            result = await self.session.execute(
+                select(EventVendor)
+                .where(EventVendor.id == data.event_vendor_id)
+            )
+            event_vendors = result.scalars().all()
+
+            # Check if description and/or images being updated and update
+            for event_vendor in event_vendors:
+                if data.description is not None:
+                    event_vendor.vendor_description = data.description
                 
-                event_vendor = result.scalar_one()
-                if data.vendor_description is not None:
-                    event_vendor.vendor_description = data.vendor_description
-                 
+
                 await self.session.commit()
                 await self.session.refresh(event_vendor)
-                return self.return_schema(event_vendor)
-            # Or if updating this vendor for all events
-            else:
-                # Get all matching Event Vendor records with user_id
-                result = await self.session.execute(
-                    select(EventVendor)
-                    .where(EventVendor.user_id == data.user_id)
-                )
-                event_vendors = result.scalars().all()
 
-                # Check if description and/or images being updated and update
-                for event_vendor in event_vendors:
-                    if data.vendor_description is not None:
-                        event_vendor.vendor_description = data.vendor_description
-                 
-
-                    await self.session.commit()
-                    await self.session.refresh(event_vendor)
-
-                return self.return_schema(event_vendors[0])
+            return self.return_schema(event_vendors[0])
 
                 
         except NoResultFound:

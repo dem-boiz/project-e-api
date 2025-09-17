@@ -73,7 +73,7 @@ class EventVendorsService:
         return return_list
     
     async def update_event_vendors_service(self, data: EventVendorsUpdateSchema) -> EventVendorsReadSchema: 
-        logger.info(f"Updating information for vendor {data.user_id} for event {data.event_id}")
+        logger.info(f"Updating information for vendor {data.event_vendor_id}")
         updated_event_vendors = await self.event_vendors_repo.update_event_vendors(data=data)
         
         if not updated_event_vendors:
