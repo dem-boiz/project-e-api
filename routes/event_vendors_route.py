@@ -122,7 +122,7 @@ async def get_vendors_for_event(
         Depends(verify_event_vendor_ownership)
     ])
 async def update_user(
-    data: EventVendorsUpdateSchema = Depends(), 
+    data: EventVendorsUpdateSchema, 
     service: EventVendorsService = Depends(get_event_vendor_service),
     
 ):
