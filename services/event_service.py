@@ -189,6 +189,44 @@ class EventService:
         # TODO: Implement the logic to check for duplicate events
         return False
 
+
+
+
+    async def get_event_vendors(self, event_id: uuid.UUID) -> list[GuestReadSchema]:
+        """Retrieve all vendors (both user and device based) for a specific event."""
+        vendors = []
+        # First we get all user grants for the event
+        user_grant_service = UserGrantService(self.repo.session)
+        user_grants = await user_grant_service.get_active_grants_for_event(event_id)  # type: ignore
+
+        for grant in user_grants:
+            if grant.user_id is None:
+                logger.warning(f"UserGrant {grant.id} has no associated user_id.")
+                continue
+            if grant.user_id is not None:
+                user_data = await self.user_repo.get_user_by_id(grant.user_id)
+                if user_data and grant.access_type == "vendor":
+                    vendors.append(GuestReadSchema(
+                        id=grant.user_id,
+                        name=user_data.name,
+                        email=user_data.email,
+                        type="user"
+                    ))
+
+
+        # Now we get all device grants for the event
+        device_grant_service = DeviceGrantService(self.repo.session)
+        device_grants = await device_grant_service.get_active_grants_for_event(event_id)  # type: ignore
+        for device_grant in device_grants:
+            vendors.append(GuestReadSchema(
+                id=device_grant.device_id,
+                name=device_grant.label,
+                type="device"
+            ))
+
+        return vendors
+
+
     async def get_event_guests(self, event_id: uuid.UUID) -> list[GuestReadSchema]:
         """Retrieve all guests (both user and device based) for a specific event."""
         guests = []

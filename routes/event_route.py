@@ -21,6 +21,7 @@ from database.session import get_async_session
 from handlers.event_handler import (
     create_event_invite_handler, 
     get_event_guests_handler, 
+    get_event_vendors_handler,
     update_pending_event_invite_handler,
     remove_guest_handler
 )
@@ -253,4 +254,21 @@ async def get_event_guests(
     logger.info(f"Fetching guests for event: {event_id}")
     result = await get_event_guests_handler(event_id, service)
     logger.info(f"Retrieved {len(result) if isinstance(result, list) else 'unknown count'} guests for event: {event_id}")
+    return result
+
+
+@router.get("/{event_id}/vendors", 
+    dependencies=[
+        Depends(validate_token_parent_session), 
+        Depends(verify_event_ownership)
+    ]
+)
+async def get_event_vendors(
+    event_id: uuid.UUID,
+    service: EventService = Depends(get_event_service)
+):
+    """Get all vendors for a specific event - requires authentication and event existence verification"""
+    logger.info(f"Fetching vendors for event: {event_id}")
+    result = await get_event_vendors_handler(event_id, service)
+    logger.info(f"Retrieved {len(result) if isinstance(result, list) else 'unknown count'} vendors for event: {event_id}")
     return result
