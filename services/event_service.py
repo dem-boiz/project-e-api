@@ -196,15 +196,21 @@ class EventService:
         user_grant_service = UserGrantService(self.repo.session)
         user_grants = await user_grant_service.get_active_grants_for_event(event_id)  # type: ignore
         user_ids = [grant.user_id for grant in user_grants if grant.user_id is not None]
-        for user_id in user_ids:
-            user_data = await self.user_repo.get_user_by_id(user_id)
-            if user_data:
-                guests.append(GuestReadSchema(
-                    id=user_id,
-                    name=user_data.name,
-                    email=user_data.email,
-                    type="user"
-                ))
+
+        for grant in user_grants:
+            if grant.user_id is None:
+                logger.warning(f"UserGrant {grant.id} has no associated user_id.")
+                continue
+            if grant.user_id is not None:
+                user_data = await self.user_repo.get_user_by_id(grant.user_id)
+                if user_data and grant.access_type is "guest":
+                    guests.append(GuestReadSchema(
+                        id=grant.user_id,
+                        name=user_data.name,
+                        email=user_data.email,
+                        type="user"
+                    ))
+
 
         # Now we get all device grants for the event
         device_grant_service = DeviceGrantService(self.repo.session)
